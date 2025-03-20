@@ -1,0 +1,61 @@
+services:
+  db:
+    container_name: node-react-pos-db
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123456
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    container_name: node-react-pos-pgadmin
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  backend:
+    container_name: node-react-pos-backend
+    build: ./backend
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://postgres:admin123456@db:5432/node_react_pos?schema=public
+      JWT_SECRET_KEY: 8qNw4tpBGY6JfnciNpmizjUFIozrHxYB
+      FRONTEND_URL: http://frontend:80
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["/bin/sh", "-c", "sleep 5 && npx prisma migrate dev --name init && npm run dev"]
+
+  frontend:
+    container_name: node-react-pos-frontend
+    build: ./frontend
+    restart: always
+    ports:
+      - "9000:80"
+    environment:
+      API_URL: http://backend:4000
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  pgadmin_data:

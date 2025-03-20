@@ -1,0 +1,28 @@
+# Use Node.js 18 (Debian-based)
+FROM node:18-bullseye
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy the rest of the project files
+COPY . .
+
+# Install OpenSSL (if needed)
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+# Expose port
+EXPOSE 4000
+
+# Define environment variables
+ENV NODE_ENV=development
+
+# Entrypoint script for migrations, seeding, and starting app
+COPY docker-entrypoint-dev.sh /app/docker-entrypoint-dev.sh
+RUN chmod +x /app/docker-entrypoint-dev.sh
+
+# Start the script
+ENTRYPOINT ["/app/docker-entrypoint-dev.sh"]
