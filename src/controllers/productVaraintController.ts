@@ -85,7 +85,13 @@ const storage = multer.diskStorage({
 });
 
 export const fileFilter = async (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    const variantId = req.params.id ? parseInt(req.params.id, 10) : undefined;
+    // const variantId = req.params.id ? parseInt(req.params.id, 10) : undefined;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+    if (!allowedTypes.includes(file.mimetype)) {
+        return cb(new Error("Invalid file type. Only JPG, PNG, WEBP, and GIF are allowed."));
+    }
 
     // Check for file size here as well (besides multer's built-in fileSize limit)
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -93,17 +99,17 @@ export const fileFilter = async (req: Request, file: Express.Multer.File, cb: mu
         return cb(new multer.MulterError('LIMIT_FILE_SIZE', 'File is too large')); // Explicitly reject file
     }
 
-    if (variantId) {
-        const existingProduct = await prisma.productVariants.findUnique({
-            where: { id: variantId },
-            select: { image: true },
-        });
+    // if (variantId) {
+    //     const existingProduct = await prisma.productVariants.findUnique({
+    //         where: { id: variantId },
+    //         select: { image: true },
+    //     });
 
-        if (existingProduct?.image?.includes(file.originalname)) {
-            console.log(`File ${file.originalname} already exists in the database. Skipping upload.`);
-            return cb(null, false); // Reject upload
-        }
-    }
+    //     if (existingProduct?.image?.includes(file.originalname)) {
+    //         console.log(`File ${file.originalname} already exists in the database. Skipping upload.`);
+    //         return cb(null, false); // Reject upload
+    //     }
+    // }
 
     const filePath = path.join("public/images/productvariants/", file.originalname);
 
