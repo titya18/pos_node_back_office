@@ -3,12 +3,13 @@ import { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-const handleValidationErrors = async (
+export const handleValidationErrors = async (
     req: Request, res: Response, next: NextFunction
 ) => {
     const errors = validationResult(req);
     if (!errors.isEmpty) {
-        return res.status(400).json({ errors: errors.array() });
+        res.status(400).json({ errors: errors.array() });
+        return
     }
     next();
 };
@@ -16,7 +17,7 @@ const handleValidationErrors = async (
 export const validateLoginRequest = [
     body("email").isEmail().notEmpty().withMessage("Email must be required"),
     body("password").isLength({ min: 6 }).withMessage("Password with 6 or more characters required"),
-    handleValidationErrors,
+    // handleValidationErrors,
 ];
 
 export const validateUserRequest = [
@@ -39,7 +40,7 @@ export const validateUserRequest = [
         .if((value, { req }) => req.body.roleType === "USER") // Only required if roleType is USER
         .notEmpty()
         .withMessage("Branch ID is required for users with the 'USER' role type"),
-    handleValidationErrors,
+    // handleValidationErrors,
 ];
 
 export const validateRoleandPermissionRequest = [

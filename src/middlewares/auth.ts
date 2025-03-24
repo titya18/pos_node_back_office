@@ -28,7 +28,8 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies["auth_token"];
 
     if (!token) {
-        return res.status(401).json({ message: "Unauthorized: No token provided" });
+        res.status(401).json({ message: "Unauthorized: No token provided" });
+        return;
     }
 
     try {
@@ -79,10 +80,12 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
             next();
         } else {
             res.status(404).json({ message: "User not found" });
+            return;
         }
     } catch (error) {
         console.log("Token verification error:", error); // Log the error
-        return res.status(401).json({ message: "Unauthorized: Invalid token" });
+        res.status(401).json({ message: "Unauthorized: Invalid token" });
+        return;
     }
 };
 

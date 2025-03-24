@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { validateLoginRequest, validateUserRequest } from '../middlewares/validation';
+import { validateLoginRequest, validateUserRequest, handleValidationErrors } from '../middlewares/validation';
 import { verifyToken } from "../middlewares/auth";
 import rateLimit from 'express-rate-limit';
 
@@ -21,8 +21,8 @@ const signInLimiter = rateLimit({
 
 const router = express.Router();
 
-router.post('/signUpUser', validateUserRequest, signUpUser);
-router.post('/signIn', validateLoginRequest, signInLimiter, signIn);
+router.post('/signUpUser', validateUserRequest, handleValidationErrors, signUpUser);
+router.post('/signIn', validateLoginRequest, handleValidationErrors, signInLimiter, signIn);
 router.get("/validateToken", verifyToken, validateToken);
 router.post("/signOut", signOut);
 
