@@ -282,7 +282,7 @@ export const getPurchaseById = async (req: Request, res: Response): Promise<void
 
         // Transform data to flatten `name` into `purchaseDetails`
         if (purchase) {
-            purchase.purchaseDetails = purchase.purchaseDetails.map((detail) => ({
+            purchase.purchaseDetails = purchase.purchaseDetails.map((detail: any) => ({
                 ...detail,
                 name: detail.productvariants.name, // Add `name` directly
             }));

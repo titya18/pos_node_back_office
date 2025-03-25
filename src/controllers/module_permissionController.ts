@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { DateTime } from "luxon";
-import { PrismaClient } from '@prisma/client';
+import { Permission, PrismaClient } from '@prisma/client';
 import logger from '../utils/logger';
 import { log } from 'console';
 
@@ -29,7 +29,7 @@ export const upsertModule = async (req: Request, res: Response): Promise<void> =
             }
 
             // Extract existing permissions for this module
-            currentModulePermissions = currentModule.permissions.map(p => p.name);
+            currentModulePermissions = currentModule.permissions.map((p: Permission) => p.name);
         }
 
         // Step 2: Check if the module name is unique (excluding the current module if updating)

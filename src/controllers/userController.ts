@@ -72,9 +72,9 @@ export const getAllUser = async (req: Request, res: Response): Promise<void> => 
         });
         
         // Step 2: Transform the users' data to fit the UserData and RoleType structure
-        const formattedUsers = users.map((user) => ({
+        const formattedUsers = users.map((user: any) => ({
             ...user,  // Spread the rest of the user data (id, email, firstName, etc.)
-            roles: user.roles.map((roleOnUser) => ({
+            roles: user.roles.map((roleOnUser: any) => ({
                 id: roleOnUser.role.id,  // Extract id from nested role object
                 name: roleOnUser.role.name,  // Extract name from nested role object
             })),

@@ -24,6 +24,23 @@ declare global {
     }
 }
 
+// Define interfaces for RoleOnUser and PermissionOnRole
+interface RoleOnUser {
+    role: {
+        id: number;
+        name: string;
+        permissions: {
+            permission: {
+                name: string;
+            }
+        }[];
+    }
+}
+
+interface PermissionOnRole {
+    name: string;
+}
+
 const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies["auth_token"];
 
@@ -58,12 +75,15 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
 
         if (user) {
             // Map the roles and permissions to the format expected by the interface
-            const rolesWithPermissions = user.roles.map(roleOnUser => ({
+            const rolesWithPermissions = user.roles.map((roleOnUser: RoleOnUser) => ({
                 id: roleOnUser.role.id,
                 name: roleOnUser.role.name,
-                permissions: roleOnUser.role.permissions.map(
-                    permissionOnRole => permissionOnRole.permission.name
-                ),
+                permissions: roleOnUser.role.permissions.map((permissionOnRole: { permission: PermissionOnRole }) =>
+                    permissionOnRole.permission.name // Correct mapping: extract name directly
+                )
+                // permissions: roleOnUser.role.permissions.map(
+                //     permissionOnRole => permissionOnRole.permission.name
+                // ),
             }));
 
             // Assign to req.user with correct 'roles' field
