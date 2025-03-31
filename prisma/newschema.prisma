@@ -1,0 +1,492 @@
+generator client { 
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================
+// 🔐 User Authentication
+// ========================
+model User {
+  id          String          @id @default(uuid())
+  branchId    String?
+  branch      Branch?      @relation(fields: [branchId], references: [id])
+  firstName   String       @db.VarChar(50)
+  lastName    String       @db.VarChar(50)
+  phoneNumber String       @db.VarChar(50)
+  email       String       @unique @db.VarChar(50)
+  password    String
+  roleType    UserRole     @default(ADMIN)
+  roles       RoleOnUser[]
+  status      Int          @default(1) // 1=Active and 0=Dis-Active
+
+  paymentsCreated Payment[] @relation("CreatedByUser")
+  paymentsUpdated Payment[] @relation("UpdatedByUser")
+
+  purchasingPaymentsCreated PurchasingPayment[] @relation("CreatedByUser")
+  purchasingPaymentsUpdated PurchasingPayment[] @relation("UpdatedByUser")
+
+  purchasesCreated Purchase[] @relation("CreatedBy") // ✅ Opposite relation to Purchase
+  purchasesUpdated Purchase[] @relation("UpdatedBy") // ✅ Opposite relation to Purchase
+
+  stockMovements          StockMovement[]   @relation("CreatedBy") // ✅ Opposite relation
+  approvedStockMovements  StockMovement[]   @relation("ApprovedBy") // ✅ Opposite relation
+
+  reports  Report[] @relation("UserToReport")
+  orders Order[]  // ✅ Opposite relation to Order
+  ordersCreated Order[] @relation("CreatedBy")  // ✅ Opposite relation to Order
+  ordersUpdated Order[] @relation("UpdatedBy")  // ✅ Opposite relation for `updatedByUser`
+  
+  holdingsCreated  Holding[] @relation("CreatedBy") // ✅ Opposite relation for `createdByUser`
+  holdingsUpdated  Holding[] @relation("UpdatedBy") // ✅ Opposite relation for `updatedByUser`
+
+  customers   Customer[]
+
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+model Role {
+  id          String                @id @default(uuid())
+  name        String             @unique
+  users RoleOnUser[]
+  permissions PermissionOnRole[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model Module {
+  id          String          @id @default(uuid())
+  name        String       @unique @db.VarChar(80) // Ensure module names are unique
+  permissions Permission[] // Relation to permissions
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Permission {
+  id          String          @id @default(uuid())
+  name        String       @unique @db.VarChar(80) // Ensure permission names are unique
+  moduleId  String   @unique               // Ensure this matches Module.id
+  module    Module   @relation(fields: [moduleId], references: [id])
+  roles       PermissionOnRole[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model RoleOnUser {
+  userId String  // Ensure this matches `User.id`
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId]) // Composite primary key
+}
+
+model PermissionOnRole {
+  id         String @id @default(uuid())
+  roleId     String  // Must match Role.id (String if UUID)
+  permissionId String
+  
+  role       Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+}
+
+enum PermissionType {
+  MANAGE_STOCK
+  MANAGE_ORDERS
+  MANAGE_PAYMENTS
+  VIEW_REPORTS
+}
+
+model Customer {
+  id          String      @id @default(uuid())
+  userId      String?     @unique
+  user        User?       @relation(fields: [userId], references: [id])
+  name        String
+  contact     String?
+  email       String?     @unique
+  phone       String?
+  address     String?
+  customPrices Price[]    @relation("CustomerPrice")  // Personalized pricing
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  orders      Order[]     // Opposite relation to Order
+}
+
+// ========================
+// 📦 Stock Type & Stock Item
+// ========================
+model StockType {
+  id    String @id @default(uuid())
+  name  String @unique // Example: "Weight", "Length", "Case", "Size", "Color"
+  
+  stockUnits StockUnit[]
+  products   Product[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StockUnit {
+  id          String @id @default(uuid())
+  name        String @unique // Example: "KG", "G", "M", "Small", "Red"
+  stockTypeId String
+  stockType   StockType @relation(fields: [stockTypeId], references: [id], onDelete: Cascade)
+
+  stockItems  StockItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProductCategory {
+  id   String @id @default(uuid())
+  name String @unique
+  products StockItem[]
+  createdAt DateTime @default(now())
+}
+
+model ProductBrand {
+  id   String @id @default(uuid())
+  name String @unique
+  products StockItem[]
+  createdAt DateTime @default(now())
+}
+
+model Branch {
+  id   String @id @default(uuid())
+  name String @unique
+  location String?
+  users     User[]
+  stockItems StockItem[]
+  stockMovements StockMovement[]
+  createdAt DateTime @default(now())
+
+  payments Payment[] // ✅ Opposite relation
+  purchasingPayments PurchasingPayment[]  @relation("BranchToPurchasingPayment")
+  reports Report[] @relation("BranchToReport")
+  purchases Purchase[] // ✅ Opposite relation to Purchase
+  orders  Order[]  // ✅ Opposite relation to Order
+  holdings Holding[]  // ✅ Opposite relation for `branch` in Holding
+  tableSits  TableSit[]  // ✅ Opposite relation for `branch`
+}
+
+model Product {
+  id         String     @id @default(uuid())
+  name       String
+  stockTypeId String
+  stockType   StockType @relation(fields: [stockTypeId], references: [id], onDelete: Cascade)
+  stockItems StockItem[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Price {
+  id         String    @id @default(uuid())
+  stockItemId String
+  stockItem  StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  customerId  String?   // Nullable, applies only to specific customers
+  customer    Customer? @relation("CustomerPrice", fields: [customerId], references: [id])
+  priceType  PriceType
+  amount     Decimal   @db.Decimal(10, 4) // ✅ Change to @db.Decimal instead of @db.Numeric(10, 4)
+  createdAt  DateTime  @default(now())
+
+  @@unique([stockItemId, priceType]) // ប្រាកដថាប្រភេទតម្លៃមិនមានស្ទួន
+}
+
+enum PriceType {
+  PURCHASE_PRICE
+  SELLING_PRICE
+  DISCOUNT_PRICE
+  SEASONAL_PRICE
+  WHOLESALE_PRICE
+  RETAIL_PRICE
+}
+
+model StockItem {
+  id          String        @id @default(uuid())
+  name        String
+  barcode   String? @unique @default(dbgenerated("concat('BC-', substring(md5(random()::text), 1, 8))"))
+  qrCode    String? @unique @default(dbgenerated("concat('QR-', substring(md5(random()::text), 1, 8))"))
+  quantity    Int
+  dimensions  Json? @default("{}")        // JSON for length/weight
+  prices      Price[]
+  orderItems OrderItem[]  // ✅ Opposite relation for `stockItem` in OrderItem
+  stockMovements StockMovement[]
+  purchaseItems PurchaseItem[]  @relation("StockItemPurchase") // ✅ Opposite relation
+  holdingItems  HoldingItem[]  // ✅ Opposite relation for `stockItem`
+  stockUnitId String
+  stockUnit   StockUnit @relation(fields: [stockUnitId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  brandId     String?
+  brand       ProductBrand? @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branchId    String?
+  branch      Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime @updatedAt
+}
+// ========================
+// 📦 Stock Movement History
+// ========================
+model StockMovement {
+  id              String      @id @default(uuid())
+  stockItemId     String
+  stockItem       StockItem   @relation(fields: [stockItemId], references: [id])
+  branchId        String
+  branch          Branch      @relation(fields: [branchId], references: [id])
+  type            MovementType
+  previousQuantity Int
+  newQuantity     Int
+  quantity        Int
+  reference String @unique @default(dbgenerated("concat('REF-', substring(md5(random()::text), 1, 8))"))
+  createdByUserId String?
+  createdByUser   User?    @relation("CreatedBy", fields: [createdByUserId], references: [id]) // ✅ Define relation
+  
+  approvedByUserId String?
+  approvedByUser   User?   @relation("ApprovedBy", fields: [approvedByUserId], references: [id]) // ✅ Define relation
+  status          MovementStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+}
+
+enum MovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+}
+
+enum MovementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+// ========================
+// 💰 Payment System
+// ========================
+model Payment {
+  id         String      @id @default(uuid())
+  orderId    String?
+  order      Order?      @relation(name: "OrderToPayment", fields: [orderId], references: [id])
+  branchId   String
+  branch     Branch      @relation(fields: [branchId], references: [id])
+  amount     Decimal     @db.Decimal(10, 4)
+  method     PaymentMethod
+  status     PaymentStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime @updatedAt
+  createdByUserId String?
+  createdByUser   User? @relation("CreatedByUser", fields: [createdByUserId], references: [id])
+
+  updatedByUserId String?
+  updatedByUser   User? @relation("UpdatedByUser", fields: [updatedByUserId], references: [id])
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  BANK_TRANSFER
+  PAY_LATER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELED
+}
+
+model PurchasingPayment {
+  id          String        @id @default(uuid())
+  purchaseId  String
+  purchase    Purchase @relation("PurchaseToPurchasingPayment", fields: [purchaseId], references: [id])
+  branchId    String
+  branch      Branch  @relation("BranchToPurchasingPayment", fields: [branchId], references: [id])
+  amount      Decimal       @db.Decimal(10, 4)
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  createdByUserId String?
+  createdByUser   User? @relation("CreatedByUser", fields: [createdByUserId], references: [id])
+
+  updatedByUserId String?
+  updatedByUser   User? @relation("UpdatedByUser", fields: [updatedByUserId], references: [id])
+}
+
+// ========================
+// 📊 Reporting System
+// ========================
+model Report {
+  id         String      @id @default(uuid())
+  branchId   String
+  branch     Branch      @relation("BranchToReport", fields: [branchId], references: [id])
+  type       ReportType
+  data       Json
+  generatedBy String
+  userId    String   // ✅ Make sure this field exists
+  user      User         @relation("UserToReport", fields: [userId], references: [id])
+  createdAt  DateTime    @default(now())
+}
+
+enum ReportType {
+  SALES_SUMMARY
+  STOCK_SUMMARY
+  PAYMENT_SUMMARY
+  SUPPLIER_ACTIVITY
+}
+
+// ========================
+// 🏬 Supplier & Purchasing
+// ========================
+model Supplier {
+  id          String     @id @default(uuid())
+  name        String
+  contact     String?
+  email       String?
+  phone       String?
+  address     String?
+  purchases   Purchase[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Purchase {
+  id          String        @id @default(uuid())
+  supplierId  String
+  supplier    Supplier      @relation(fields: [supplierId], references: [id])
+  branchId    String
+  branch      Branch        @relation(fields: [branchId], references: [id])
+  items       PurchaseItem[]
+  totalPrice  Decimal       @db.Decimal(10, 4)
+  totalPriceDue Decimal     @db.Decimal(10, 4)
+  status      PurchaseStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdByUserId String?   // ✅ Foreign Key
+  createdByUser   User?     @relation("CreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUserId   String?
+  updatedByUser User? @relation(name: "UpdatedBy", fields: [updatedByUserId], references: [id])
+
+  purchasingPayments  PurchasingPayment[] @relation("PurchaseToPurchasingPayment")
+}
+
+enum PurchaseStatus {
+  PENDING
+  RECEIVED
+  CANCELED
+}
+
+model PurchaseItem {
+  id                String   @id @default(uuid())
+  purchaseId        String
+  purchase          Purchase @relation(fields: [purchaseId], references: [id])
+  stockItemId  String
+  stockItem    StockItem @relation("StockItemPurchase", fields: [stockItemId], references: [id]) // ✅ Define relation name
+  quantity          Int
+  receivedQuantity  Int   @default(0)
+  price            Decimal    @db.Decimal(10, 4)
+  expectedDelivery DateTime? // ថ្ងៃត្រូវមកដល់
+
+  @@unique([purchaseId, stockItemId])
+}
+
+// ========================
+// 🛒 Ordering System
+// ========================
+model Order {
+  id          String      @id @default(uuid())
+  userId      String?
+  user        User? @relation(fields: [userId], references: [id])
+  branchId    String
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id]) // ✅ Missing relation added
+  items       OrderItem[]
+  totalPrice  Decimal     @db.Decimal(10, 4)
+  amountDue   Decimal     @db.Decimal(10, 4)
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdByUserId String?  // ✅ Required foreign key
+  createdByUser   User? @relation("CreatedBy", fields: [createdByUserId], references: [id])  // ✅ Define relation
+  updatedByUserId String?
+  updatedByUser   User? @relation("UpdatedBy", fields: [updatedByUserId], references: [id])  // ✅ Define relation
+
+  payments Payment[] @relation(name: "OrderToPayment")
+}
+
+model OrderItem {
+  id          String      @id @default(uuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stockItemId String
+  stockItem   StockItem   @relation(fields: [stockItemId], references: [id])
+  quantity    Int
+  unitPrice   Decimal     @db.Decimal(10, 4) // បន្ថែម unit price
+  discount    Decimal?    @db.Decimal(10, 4) @default(0.0000) // បន្ថែម discount
+  totalPrice  Decimal?    @db.Decimal(10, 4) @default(0.0000) // ✅ Pre-calculate total price
+  createdAt   DateTime    @default(now())
+
+  @@unique([orderId, stockItemId])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING  // ✅ New status
+  READY_TO_SHIP // ✅ New status
+  COMPLETED
+  CANCELED
+}
+
+// ========================
+// 📦 Holding System
+// ========================
+model Holding {
+  id          String   @id @default(uuid())
+  name        String
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  tableSitId  String?
+  tableSit    TableSit? @relation(fields: [tableSitId], references: [id])
+  items       HoldingItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdByUserId  String
+  updatedByUserId  String?
+
+  createdByUser    User?   @relation("CreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser    User?  @relation("UpdatedBy", fields: [updatedByUserId], references: [id])  // ✅ Define relation properly
+}
+
+model HoldingItem {
+  id          String   @id @default(uuid())
+  holdingId   String
+  holding     Holding  @relation(fields: [holdingId], references: [id])
+  stockItemId String
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id])
+  quantity    Int       @default(1)
+  createdAt   DateTime @default(now())
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
+
+model TableSit {
+  id          String    @id @default(uuid())
+  number      Int
+  branchId   String
+  branch     Branch @relation(fields: [branchId], references: [id])
+  holdings   Holding[]  // ✅ Opposite relation for `tableSit` in Holding
+  status      TableStatus @default(AVAILABLE)
+  createdAt   DateTime  @default(now())
+}

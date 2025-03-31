@@ -1,0 +1,22 @@
+2025-03-21 20:08:34 error: uncaughtException: Route.post() requires a callback function but got a [object Undefined]
+Error: Route.post() requires a callback function but got a [object Undefined]
+    at Route.<computed> [as post] (D:\node-react-pos\backend\node_modules\express\lib\router\route.js:216:15)
+    at proto.<computed> [as post] (D:\node-react-pos\backend\node_modules\express\lib\router\index.js:521:19)
+    at express (d:\node-react-pos\backend\src\routes\authRoute.ts:24:8)
+    at Object.<anonymous> (d:\node-react-pos\backend\src\routes\authRoute.ts:36:16)
+    at Module._compile (node:internal/modules/cjs/loader:1256:14)
+    at Object.transformer (D:\node-react-pos\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:2:1186)
+    at Module.load (node:internal/modules/cjs/loader:1119:32)
+    at Module._load (node:internal/modules/cjs/loader:960:12)
+    at Module.require (node:internal/modules/cjs/loader:1143:19)
+    at require (node:internal/modules/cjs/helpers:121:18) Error: Route.post() requires a callback function but got a [object Undefined]
+    at Route.<computed> [as post] (D:\node-react-pos\backend\node_modules\express\lib\router\route.js:216:15)
+    at proto.<computed> [as post] (D:\node-react-pos\backend\node_modules\express\lib\router\index.js:521:19)
+    at express (d:\node-react-pos\backend\src\routes\authRoute.ts:24:8)
+    at Object.<anonymous> (d:\node-react-pos\backend\src\routes\authRoute.ts:36:16)
+    at Module._compile (node:internal/modules/cjs/loader:1256:14)
+    at Object.transformer (D:\node-react-pos\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:2:1186)
+    at Module.load (node:internal/modules/cjs/loader:1119:32)
+    at Module._load (node:internal/modules/cjs/loader:960:12)
+    at Module.require (node:internal/modules/cjs/loader:1143:19)
+    at require (node:internal/modules/cjs/helpers:121:18)
