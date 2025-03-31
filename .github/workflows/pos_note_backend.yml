@@ -52,6 +52,6 @@ jobs:
           echo "Rebuilding and restarting backend on VPS..."
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@${{ secrets.SERVER_IP }} << 'EOF'
             cd /var/www/pos_node_back_office
-            docker compose -f /var/www/docker-compose.backend.yml build --no-cache frontend  # Rebuild frontend without cache
-            docker compose -f /var/www/docker-compose.backend.yml up -d --no-deps frontend  # Restart only frontend container
+            docker compose -f /var/www/docker-compose.backend.yml build --no-cache backend  # Rebuild backend without cache
+            docker compose -f /var/www/docker-compose.backend.yml up -d --no-deps backend  # Restart only backend container
           EOF
