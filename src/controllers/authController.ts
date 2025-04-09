@@ -49,6 +49,7 @@ export const signIn = async(req: Request, res: Response): Promise<void> => {
         }
 
         const token = generateToken(user);
+        console.log("get token", token);
         setAuthToken(res, token);
 
         res.status(200).json({user, token});
