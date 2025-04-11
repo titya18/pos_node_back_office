@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 
@@ -109,23 +109,34 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
     }
 };
 
-const authorize = (requiredPermissions: string[]) => (req: Request, res: Response, next: NextFunction) => {
-    const user = req.user;
+const authorize = (requiredPermissions: string[]): RequestHandler => {
+    return (req: Request, res: Response, next: NextFunction): void => {
+        const user = req.user;
+    
+        if (!user || !user.roles) {
+            res.status(403).json({ message: "Forbidden: No user or roles found" });
+            return;
+        }
 
-    if (!user || !user.roles) {
-        return res.status(403).json({ message: 'Forbidden: No user or roles found' });
-    }
-
-    // Flatten the permissions array from roles
-    const userPermissions = user.roles.flatMap(role => role.permissions);
-
-    const hasPermission = requiredPermissions.every(permission => userPermissions.includes(permission));
-
-    if (!hasPermission) {
-        return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-    }
-
-    next();
+        // Allow if Admin
+        if (user.roleType === 'ADMIN') {
+            return next();
+        }
+    
+        // Normal permission check
+        const userPermissions = user.roles.flatMap((role) => role.permissions);
+    
+        const hasPermission = requiredPermissions.every((perm) =>
+            userPermissions.includes(perm)
+        );
+    
+        if (!hasPermission) {
+            res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+            return;
+        }
+    
+        next();
+    };
 };
 
 export { verifyToken, authorize };

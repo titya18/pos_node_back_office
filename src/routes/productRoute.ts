@@ -1,6 +1,6 @@
 import express from "express";
 import { validateProductRequest } from "../middlewares/validation";
-import { verifyToken } from "../middlewares/auth";
+import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
     getAllProducts,
@@ -14,8 +14,8 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").get(getAllProducts).post(validateProductRequest, uploadImage, upsertProduct);
+router.route("/").get(authorize(["Product-View"]), getAllProducts).post(authorize(["Product-Create"]), validateProductRequest, uploadImage, upsertProduct);
 router.route("/status/:id").get(statusProduct);
-router.route("/:id").get(getProductById).put(validateProductRequest, uploadImage, upsertProduct).delete(deleteProduct);
+router.route("/:id").get(authorize(["Product-View"]), getProductById).put(authorize(["Product-Edit"]), validateProductRequest, uploadImage, upsertProduct).delete(authorize(["Product-Delete"]), deleteProduct);
 
 export default router;

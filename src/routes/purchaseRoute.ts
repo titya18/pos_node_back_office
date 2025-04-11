@@ -1,6 +1,6 @@
 import express from "express";
 import { validatePurchaseRequest } from "../middlewares/validation";
-import { verifyToken } from "../middlewares/auth";
+import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
     getAllPurchases,
@@ -14,9 +14,9 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").get(getAllPurchases).post(validatePurchaseRequest, upsertPurchase);
-router.route("/payment").post(insertPurchasePayment);
+router.route("/").get(authorize(["Purchase-View"]), getAllPurchases).post(validatePurchaseRequest, upsertPurchase);
+router.route("/payment").post(authorize(["Purchase-Payment"]), insertPurchasePayment);
 router.route("/payment/:id").get(getPurchasePaymentById);
-router.route("/:id").get(getPurchaseById).put(validatePurchaseRequest, upsertPurchase).delete(deletePurchase);
+router.route("/:id").get(authorize(["Purchase-View"]), getPurchaseById).put(authorize(["Purchase-Edit"]), validatePurchaseRequest, upsertPurchase).delete(authorize(["Purchase-Delete"]), deletePurchase);
 
 export default router;

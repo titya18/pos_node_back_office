@@ -1,6 +1,6 @@
 import express from "express";
 import { validateProductVariantRequest } from "../middlewares/validation";
-import { verifyToken } from "../middlewares/auth";
+import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
     getAllProductVariant,
@@ -14,8 +14,8 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").post(validateProductVariantRequest, uploadImage, upsertProductVariant);
+router.route("/").post(authorize(['Variant-Create']), validateProductVariantRequest, uploadImage, upsertProductVariant);
 router.route("/status/:id").get(statusVariant);
-router.route("/:id").get(getAllProductVariant, getProductVariantById).put(validateProductVariantRequest, uploadImage, upsertProductVariant).delete(deleteProductVaraint);
+router.route("/:id").get(authorize(['Variant-View']), getAllProductVariant, getProductVariantById).put(authorize(['Variant-Edit']), validateProductVariantRequest, uploadImage, upsertProductVariant).delete(authorize(['Variant-Delete']), deleteProductVaraint);
 
 export default router;

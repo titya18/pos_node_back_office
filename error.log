@@ -199,3 +199,68 @@ Database `node_react_pos` does not exist on the database server at `147.93.110.2
     at $n.request (D:\node-react-pos\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
     at async l (D:\node-react-pos\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
     at signIn (d:\node-react-pos\backend\src\controllers\authController.ts:33:22)
+2025-04-10 22:24:30 error: Login error 
+Invalid `prisma.user.findUnique()` invocation in
+d:\node-react-pos\backend\src\controllers\authController.ts:33:40
+
+  30 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  31     const { email, password } = req.body;
+  32     try {
+→ 33         const user = await prisma.user.findUnique({
+               where: {
+                 email: undefined,
+             ?   id?: Int,
+             ?   AND?: UserWhereInput | UserWhereInput[],
+             ?   OR?: UserWhereInput[],
+             ?   NOT?: UserWhereInput | UserWhereInput[],
+             ?   branchId?: IntNullableFilter | Int | Null,
+             ?   firstName?: StringFilter | String,
+             ?   lastName?: StringFilter | String,
+             ?   phoneNumber?: StringFilter | String,
+             ?   password?: StringFilter | String,
+             ?   roleType?: EnumUserTypeFilter | UserType,
+             ?   status?: IntFilter | Int,
+             ?   createdAt?: DateTimeFilter | DateTime,
+             ?   updatedAt?: DateTimeFilter | DateTime,
+             ?   branch?: BranchNullableRelationFilter | BranchWhereInput | Null,
+             ?   purchases?: PurchasesListRelationFilter,
+             ?   roles?: RoleOnUserListRelationFilter
+               }
+             })
+
+Argument `where` of type UserWhereUniqueInput needs at least one of `id` or `email` arguments. Available options are marked with ?. PrismaClientValidationError: 
+Invalid `prisma.user.findUnique()` invocation in
+d:\node-react-pos\backend\src\controllers\authController.ts:33:40
+
+  30 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  31     const { email, password } = req.body;
+  32     try {
+→ 33         const user = await prisma.user.findUnique({
+               where: {
+                 email: undefined,
+             ?   id?: Int,
+             ?   AND?: UserWhereInput | UserWhereInput[],
+             ?   OR?: UserWhereInput[],
+             ?   NOT?: UserWhereInput | UserWhereInput[],
+             ?   branchId?: IntNullableFilter | Int | Null,
+             ?   firstName?: StringFilter | String,
+             ?   lastName?: StringFilter | String,
+             ?   phoneNumber?: StringFilter | String,
+             ?   password?: StringFilter | String,
+             ?   roleType?: EnumUserTypeFilter | UserType,
+             ?   status?: IntFilter | Int,
+             ?   createdAt?: DateTimeFilter | DateTime,
+             ?   updatedAt?: DateTimeFilter | DateTime,
+             ?   branch?: BranchNullableRelationFilter | BranchWhereInput | Null,
+             ?   purchases?: PurchasesListRelationFilter,
+             ?   roles?: RoleOnUserListRelationFilter
+               }
+             })
+
+Argument `where` of type UserWhereUniqueInput needs at least one of `id` or `email` arguments. Available options are marked with ?.
+    at wn (D:\node-react-pos\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\node-react-pos\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\node-react-pos\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\node-react-pos\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\node-react-pos\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at signIn (d:\node-react-pos\backend\src\controllers\authController.ts:33:22)

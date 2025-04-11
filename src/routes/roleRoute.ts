@@ -1,6 +1,6 @@
 import express from "express";
 import { validateBranchRequest } from "../middlewares/validation";
-import { verifyToken } from "../middlewares/auth";
+import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
     getAllRole,
@@ -12,7 +12,7 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").get(verifyToken, getAllRole).post(verifyToken, validateBranchRequest, upsertRole);
-router.route("/:id").get(verifyToken, getRoleById).put(verifyToken, validateBranchRequest, upsertRole).delete(deleteRole);
+router.route("/").get(authorize(["Role-View"]), verifyToken, getAllRole).post(authorize(["Role-Create"]), verifyToken, validateBranchRequest, upsertRole);
+router.route("/:id").get(authorize(["Role-View"]), verifyToken, getRoleById).put(authorize(["Role-Edit"]), verifyToken, validateBranchRequest, upsertRole).delete(authorize(["Role-Delete"]), verifyToken, deleteRole);
 
 export default router;

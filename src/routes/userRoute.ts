@@ -1,6 +1,6 @@
 import express from "express";
 import { validateUserRequest } from "../middlewares/validation";
-import { verifyToken } from "../middlewares/auth";
+import { verifyToken, authorize } from "../middlewares/auth";
 
 import { 
     getAllUser,
@@ -13,11 +13,11 @@ import {
 
 const router = express.Router();
 
-router.get("/", verifyToken, getAllUser);
-router.get("/:id", verifyToken, getUserById);
+router.get("/", verifyToken, authorize(["User-View"]), getAllUser);
+router.get("/:id", verifyToken, authorize(["User-View"]), getUserById);
 router.get("/status/:id", verifyToken, statusUser);
-router.post("/", verifyToken, validateUserRequest, createUser);
-router.put("/:id", verifyToken, validateUserRequest, updateUser);
-router.delete("/:id", verifyToken, deleteUser);
+router.post("/", verifyToken, authorize(["User-Create"]), validateUserRequest, createUser);
+router.put("/:id", verifyToken, authorize(["User-Edit"]), validateUserRequest, updateUser);
+router.delete("/:id", verifyToken, authorize(["User-Delete"]), deleteUser);
 
 export default router;

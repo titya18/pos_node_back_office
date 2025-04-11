@@ -1,6 +1,6 @@
 import express from "express";
 import { validateRoleandPermissionRequest } from "../middlewares/validation";
-import { verifyToken } from "../middlewares/auth";
+import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
     upsertModule,
@@ -11,10 +11,10 @@ import {
 
 const router = express.Router();
 
-router.get("/", verifyToken, getModules);
-router.get("/:id", verifyToken, getModuleById);
-router.post("/", verifyToken, validateRoleandPermissionRequest, upsertModule);
-router.put("/:id", verifyToken, validateRoleandPermissionRequest, upsertModule);
-router.delete("/:id", verifyToken, deleteModule);
+router.get("/", verifyToken, authorize(["Permission-View"]), getModules);
+router.get("/:id", verifyToken, authorize(["Permission-View"]), getModuleById);
+router.post("/", verifyToken, authorize(["Permission-Create"]), validateRoleandPermissionRequest, upsertModule);
+router.put("/:id", verifyToken, authorize(["Permission-Edit"]), validateRoleandPermissionRequest, upsertModule);
+router.delete("/:id", verifyToken, authorize(["Permission-Delete"]), deleteModule);
 
 export default router;

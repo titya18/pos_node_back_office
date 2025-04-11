@@ -84,6 +84,7 @@ async function main() {
       { name: "Purchase-Create", moduleId: 11 },
       { name: "Purchase-Edit", moduleId: 11 },
       { name: "Purchase-Delete", moduleId: 11 },
+      { name: "Purchase-Payment", moduleId: 11 },
       { name: "Variant-View", moduleId: 12 },
       { name: "Variant-Create", moduleId: 12 },
       { name: "Variant-Edit", moduleId: 12 },
