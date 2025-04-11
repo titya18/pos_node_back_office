@@ -38,7 +38,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@${{ secrets.SERVER_IP }} << 'EOF'
             cd /var/www
             if [ -d "pos_node_back_office" ]; then
-              cd pos_react_front_office
+              cd pos_node_back_office
               git fetch --all  # Fetch all branches
               git reset --hard origin/main  # Discard local changes and force sync with remote
             else
