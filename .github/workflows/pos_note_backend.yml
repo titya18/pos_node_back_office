@@ -6,7 +6,7 @@ on:
       - main  # Deploy when code is pushed to 'main'
   pull_request:
     branches:
-      - main  # Deploy when a PR is merged into 'main'
+      - main  # Deploy when a PR is merged into 'main'.
 
 jobs:
   deploy:
@@ -46,7 +46,7 @@ jobs:
             fi
           EOF
 
-      # Step 5: Rebuild and deploy frontend only
+      # Step 5: Rebuild and deploy frontend only.
       - name: Deploy frontend to VPS
         run: |
           echo "Rebuilding and restarting backend on VPS..."
