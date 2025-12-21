@@ -9,13 +9,13 @@ import {
     uploadImage,
     deleteProductVaraint,
     statusVariant
-} from "../controllers/productVaraintController";
+} from "../controllers/productVariantController";
 
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").post(authorize(['Variant-Create']), validateProductVariantRequest, uploadImage, upsertProductVariant);
+router.route("/").post(authorize(['Product-Variant-Create']), validateProductVariantRequest, uploadImage, upsertProductVariant);
 router.route("/status/:id").get(statusVariant);
-router.route("/:id").get(authorize(['Variant-View']), getAllProductVariant, getProductVariantById).put(authorize(['Variant-Edit']), validateProductVariantRequest, uploadImage, upsertProductVariant).delete(authorize(['Variant-Delete']), deleteProductVaraint);
+router.route("/:id").get(authorize(['Product-Variant-View']), getAllProductVariant, getProductVariantById).put(authorize(['Product-Variant-Edit']), validateProductVariantRequest, uploadImage, upsertProductVariant).delete(authorize(['Product-Variant-Delete']), deleteProductVaraint);
 
 export default router;

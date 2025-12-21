@@ -3,6 +3,7 @@ import { validateSupplierRequest } from "../middlewares/validation";
 import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
+    getAllSuppliersWithPagination,
     getAllSuppliers,
     getSupplierById,
     upsertSupplier,
@@ -12,7 +13,8 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").get(authorize(["Supplier-View"]), getAllSuppliers).post(authorize(["Supplier-Create"]), validateSupplierRequest, upsertSupplier);
+router.route("/all").get(authorize(["Supplier-View"]), getAllSuppliers);
+router.route("/").get(authorize(["Supplier-View"]), getAllSuppliersWithPagination).post(authorize(["Supplier-Create"]), validateSupplierRequest, upsertSupplier);
 router.route("/:id").get(authorize(["Supplier-View"]), getSupplierById).put(authorize(["Supplier-Edit"]), validateSupplierRequest, upsertSupplier).delete(authorize(["Supplier-Delete"]), deleteSupplier);
 
 export default router;

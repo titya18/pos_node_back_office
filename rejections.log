@@ -1,0 +1,60 @@
+2025-11-25 15:43:21 error: unhandledRejection: Cannot set headers after they are sent to the client
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:258:25) Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:258:25)
+2025-11-25 15:58:43 error: unhandledRejection: Cannot set headers after they are sent to the client
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:265:25) Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:265:25)
+2025-11-25 16:13:58 error: unhandledRejection: Cannot set headers after they are sent to the client
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:272:21) Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:272:21)
+2025-11-25 16:26:21 error: unhandledRejection: Cannot set headers after they are sent to the client
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:263:25) Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:263:25)
+2025-11-25 16:27:25 error: unhandledRejection: Cannot set headers after they are sent to the client
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:263:25) Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:794:10)
+    at ServerResponse.send (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:174:12)
+    at ServerResponse.json (D:\Citylink-Inventory\backend\node_modules\express\lib\response.js:278:15)
+    at upsertProductVariant (D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:263:25)

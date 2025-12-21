@@ -5,7 +5,15 @@ import multer from "multer";
 import fs from "fs"; // Import fs module to delete files
 import path from "path";
 import logger from "../utils/logger";
-import { log } from "console";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const tz = "Asia/Phnom_Penh";
+const now = dayjs().tz(tz);
+const currentDate = new Date(Date.UTC(now.year(), now.month(), now.date(), now.hour(), now.minute(), now.second()));
 
 const prisma = new PrismaClient();
 
@@ -13,53 +21,88 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
     try {
         const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
-        const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString() : "";
+        const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
         const sortField = req.query.sortField ? req.query.sortField.toString() : "name";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
-        const skip = (pageNumber - 1) * pageSize;
+        const sortOrder = req.query.sortOrder === "desc" ? "DESC" : "ASC";
+        const offset = (pageNumber - 1) * pageSize;
 
-        const whereCondition: any = {
-            deletedAt: null
-        }
+        // Base LIKE term
+        const likeTerm = `%${searchTerm}%`;
 
-        if (searchTerm) {
-            whereCondition.name = {
-                contains: searchTerm,
-                mode: "insensitive" // Case-Insensitive search
-            }
-        }
+        // Split searchTerm into words → e.g. "Lorn Titya"
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
 
-        const total = await prisma.products.count({
-            where: whereCondition
-        });
+        // creator/updater multi-word name search
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    cr."firstName" ILIKE $${idx + 2} OR cr."lastName" ILIKE $${idx + 2}
+                    OR up."firstName" ILIKE $${idx + 2} OR up."lastName" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
 
-        const products = await prisma.products.findMany({
-            where: whereCondition,
-            skip: skip,
-            orderBy: {
-                [sortField]: sortOrder as "asc" | "desc"
-            },
-            take: pageSize,
-            include: {
-                categories: {
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                },
-                brands: {
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                }
-            }
-        });
+        // Build params dynamically
+        const params = [likeTerm, ...searchWords.map(w => `%${w}%`), pageSize, offset];
+
+        // 1️ Count total
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM "Products" p
+            LEFT JOIN "Categories" c ON p."categoryId" = c.id
+            LEFT JOIN "Brands" b ON p."brandId" = b.id
+            LEFT JOIN "User" cr ON p."createdBy" = cr.id
+            LEFT JOIN "User" up ON p."updatedBy" = up.id
+            WHERE p."deletedAt" IS NULL
+            AND (
+                p."name" ILIKE $1
+                OR c."name" ILIKE $1
+                OR b."en_name" ILIKE $1
+                OR b."kh_name" ILIKE $1
+                OR TO_CHAR(p."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `, ...params.slice(0, params.length - 2));
+
+        const total = parseInt(totalResult[0]?.total ?? 0, 10);
+
+        // 2️ Fetch paginated products
+        const products: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                p.*,
+                json_build_object('id', c.id, 'name', c."name") AS category,
+                json_build_object('id', b.id, 'en_name', b."en_name", 'kh_name', b."kh_name") AS brand,
+                json_build_object('id', cr.id, 'firstName', cr."firstName", 'lastName', cr."lastName") AS creator,
+                json_build_object('id', up.id, 'firstName', up."firstName", 'lastName', up."lastName") AS updater
+            FROM "Products" p
+            LEFT JOIN "Categories" c ON p."categoryId" = c.id
+            LEFT JOIN "Brands" b ON p."brandId" = b.id
+            LEFT JOIN "User" cr ON p."createdBy" = cr.id
+            LEFT JOIN "User" up ON p."updatedBy" = up.id
+            WHERE p."deletedAt" IS NULL
+            AND (
+                p."name" ILIKE $1
+                OR c."name" ILIKE $1
+                OR b."en_name" ILIKE $1
+                OR b."kh_name" ILIKE $1
+                OR TO_CHAR(p."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+            ORDER BY p."${sortField}" ${sortOrder}
+            LIMIT $${params.length - 1} OFFSET $${params.length}
+        `, ...params);
+
         res.status(200).json({ data: products, total });
+
     } catch (error) {
         logger.error("Error fetching products:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        res.status(500).json({ message: (error as Error).message });
     }
 };
 
@@ -79,10 +122,11 @@ const storage = multer.diskStorage({
 export const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // const productId = req.params.id ? parseInt(req.params.id, 10) : undefined;
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
+    const ext = path.extname(file.originalname).toLowerCase();
 
-    if (!allowedTypes.includes(file.mimetype)) {
-        return cb(new Error("Invalid file type. Only JPG, PNG, WEBP, and GIF are allowed."));
+    if (!allowedExtensions.includes(ext)) {
+        return cb(new Error("Invalid file type. Only JPG, PNG, WEBP, GIF, and SVG are allowed."));
     }
 
     // Check for file size here as well (besides multer's built-in fileSize limit)
@@ -90,19 +134,6 @@ export const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.F
     if (file.size > MAX_FILE_SIZE) {
         return cb(new multer.MulterError('LIMIT_FILE_SIZE', 'File is too large')); // Explicitly reject file
     }
-
-    // if (productId) {
-    //     const existingProduct = prisma.products.findUnique({
-    //         where: { id: productId },
-    //         select: { image: true },
-    //     });
-
-    //     const resolvedProduct = await existingProduct;
-    //     if (resolvedProduct?.image?.includes(file.originalname)) {
-    //         console.log(`File ${file.originalname} already exists in the database. Skipping upload.`);
-    //         return cb(null, false); // Reject upload
-    //     }
-    // }
 
     const filePath = path.join("public/images/products/", file.originalname);
 
@@ -140,82 +171,87 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
     const { id } = req.params;
     const { categoryId, brandId, name, note, isActive, imagesToDelete } = req.body;
     const imagePaths = req.files ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, "")) : [];
-    const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
 
     try {
-        const productId = id ? parseInt(id, 10) : undefined;
+        const result = await prisma.$transaction(async (prisma) => {
+            const productId = id ? parseInt(id, 10) : undefined;
 
-        const checkExisting = await prisma.products.findFirst({
-            where: {
-                name,
-                id: { not: productId },
-            },
-        });
+            const checkExisting = await prisma.products.findFirst({
+                where: {
+                    name,
+                    id: { not: productId },
+                },
+            });
 
-        if (checkExisting) {
-            res.status(400).json({ message: "Product's name must be unique" });
-            return;
-        }
-
-        let existingImages: string[] = [];
-        if (productId) {
-            const checkProduct = await prisma.products.findUnique({ where: { id: productId } });
-            if (!checkProduct) {
-                res.status(404).json({ message: "Product not found!" });
+            if (checkExisting) {
+                res.status(400).json({ message: "Product's name must be unique" });
                 return;
             }
-            existingImages = checkProduct.image || [];
-        }
 
-        // Parse and handle imagesToDelete
-        const parsedImagesToDelete = typeof imagesToDelete === "string" ? JSON.parse(imagesToDelete) : imagesToDelete;
-
-        if (Array.isArray(parsedImagesToDelete)) {
-            parsedImagesToDelete.forEach((imagePath: string) => {
-                // const fullPath = path.join("public/images/products/", imagePath);
-                const fullPath = `public/${imagePath}`;
-                if (fs.existsSync(fullPath)) {
-                    fs.unlinkSync(fullPath); // Delete file from filesystem
+            let existingImages: string[] = [];
+            if (productId) {
+                const checkProduct = await prisma.products.findUnique({ where: { id: productId } });
+                if (!checkProduct) {
+                    res.status(404).json({ message: "Product not found!" });
+                    return;
                 }
-            });
+                existingImages = checkProduct.image || [];
+            }
 
-            // Remove deleted images from existingImages
-            existingImages = existingImages.filter(img => !parsedImagesToDelete.includes(img));
-        } else if (imagesToDelete) {
-            console.error("imagesToDelete is not a valid array:", imagesToDelete);
-        }
+            // Parse and handle imagesToDelete
+            const parsedImagesToDelete = typeof imagesToDelete === "string" ? JSON.parse(imagesToDelete) : imagesToDelete;
 
-        // Combine new and existing images
-        const updatedImages = [...existingImages, ...imagePaths];
+            if (Array.isArray(parsedImagesToDelete)) {
+                parsedImagesToDelete.forEach((imagePath: string) => {
+                    // const fullPath = path.join("public/images/products/", imagePath);
+                    const fullPath = `public/${imagePath}`;
+                    if (fs.existsSync(fullPath)) {
+                        fs.unlinkSync(fullPath); // Delete file from filesystem
+                    }
+                });
 
-        // Create or Update the product
-        const product = productId
-            ? await prisma.products.update({
-                where: { id: productId },
-                data: {
-                    categoryId: parseInt(categoryId, 10),
-                    brandId: parseInt(brandId, 10),
-                    name,
-                    note,
-                    isActive,
-                    updatedAt: utcNow.toJSDate(),
-                    image: updatedImages, // Combine existing and new images
-                },
-            })
-            : await prisma.products.create({
-                data: {
-                    categoryId: parseInt(categoryId, 10),
-                    brandId: parseInt(brandId, 10),
-                    name,
-                    note,
-                    isActive,
-                    createdAt: utcNow.toJSDate(),
-                    updatedAt: utcNow.toJSDate(),
-                    image: updatedImages, // Include new images only
-                },
-            });
+                // Remove deleted images from existingImages
+                existingImages = existingImages.filter(img => !parsedImagesToDelete.includes(img));
+            } else if (imagesToDelete) {
+                console.error("imagesToDelete is not a valid array:", imagesToDelete);
+            }
 
-        res.status(id ? 200 : 201).json(product);
+            // Combine new and existing images
+            const updatedImages = [...existingImages, ...imagePaths];
+
+            // Create or Update the product
+            const product = productId
+                ? await prisma.products.update({
+                    where: { id: productId },
+                    data: {
+                        categoryId: parseInt(categoryId, 10),
+                        brandId: parseInt(brandId, 10),
+                        name,
+                        note,
+                        isActive,
+                        updatedAt: currentDate,
+                        updatedBy: req.user ? req.user.id : null,
+                        image: updatedImages, // Combine existing and new images
+                    },
+                })
+                : await prisma.products.create({
+                    data: {
+                        categoryId: parseInt(categoryId, 10),
+                        brandId: parseInt(brandId, 10),
+                        name,
+                        note,
+                        isActive,
+                        createdAt: currentDate,
+                        createdBy: req.user ? req.user.id : null,
+                        updatedAt: currentDate,
+                        updatedBy: req.user ? req.user.id : null,
+                        image: updatedImages, // Include new images only
+                    },
+                });
+            return product;
+        });
+
+        res.status(id ? 200 : 201).json(result);
     } catch (error) {
         logger.error("Error upserting product:", error);
         const typedError = error as Error;
@@ -335,7 +371,8 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
         await prisma.products.update({
             where: { id: parseInt(id, 10) },
             data: {
-                deletedAt: utcNow.toJSDate()
+                deletedAt: currentDate,
+                updatedBy: req.user ? req.user.id : null
             }
         });
         res.status(200).json(product);

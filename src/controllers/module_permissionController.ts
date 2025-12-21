@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { DateTime } from "luxon";
 import { PrismaClient } from '@prisma/client';
 import logger from '../utils/logger';
-import { log } from 'console';
 
 const prisma = new PrismaClient();
 
@@ -117,7 +116,7 @@ export const upsertModule = async (req: Request, res: Response): Promise<void> =
 };
 
 // Get All Modules
-export const getModules = async (req: Request, res: Response): Promise<void> => {
+export const getAllModulesWithPagination = async (req: Request, res: Response): Promise<void> => {
     try {
         const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
@@ -150,9 +149,27 @@ export const getModules = async (req: Request, res: Response): Promise<void> => 
                 [sortField]: sortOrder as "asc" | "desc", // Dynamic sorting
             },
             take: pageSize,
-            include: { permissions: true }
+            include: { 
+                permissions: true,
+                creator: true,
+                updater: true
+            }
         });
         res.status(200).json({data: modules, total});
+    } catch (error) {
+        logger.error("Error fetching modules:", error);
+        const typedError = error as Error; // Type assertion
+        res.status(500).json({ message: typedError.message });
+    }
+};
+
+// Get All Modules
+export const getAllModules = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const modules = await prisma.module.findMany({
+            include: { permissions: true }
+        });
+        res.status(200).json(modules);
     } catch (error) {
         logger.error("Error fetching modules:", error);
         const typedError = error as Error; // Type assertion
@@ -184,14 +201,26 @@ export const getModuleById = async (req: Request, res: Response): Promise<void> 
 // Delete a Module
 export const deleteModule = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+
     try {
-        await prisma.module.delete({
-            where: { id: parseInt(id, 10) }
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete all permissions linked to this module
+            await tx.permission.deleteMany({
+                where: { moduleId: parseInt(id, 10) }
+            });
+
+            // 2. Now delete the module
+            await tx.module.delete({
+                where: { id: parseInt(id, 10) }
+            });
         });
-        res.status(204).end(); // No content
+
+        res.status(200).json({ message: "Module deleted successfully" });
     } catch (error) {
         logger.error("Error deleting module:", error);
-        const typedError = error as Error; // Type assertion
-        res.status(500).json({ message: typedError.message });
+
+        res.status(500).json({
+            message: (error as Error).message
+        });
     }
 };

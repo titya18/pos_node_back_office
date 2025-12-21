@@ -14,17 +14,26 @@ import roleRoute from './routes/roleRoute';
 import categoryRoute from './routes/categoryRoute';
 import unitRoute from './routes/unitRoute';
 import brandRoute from './routes/brandRoute';
+import variantAttributeRoute from './routes/variantAttributeRoute';
 import productRoute from './routes/productRoute';
 import productVariantRoute from './routes/productVariantRoute';
 import supplierRoute from './routes/supplierRoute';
 import purchaseRoute from './routes/purchaseRoute';
 import searchProductRoute from './routes/searchProductRoute';
+import searchServiceRoute from './routes/searchServiceRoute';
+import serviceRoute from './routes/serviceRoute';
+import quotationRoute from './routes/quotationRoute';
+import customerRoute from './routes/customerRoute';
+import invoiceRoute from './routes/invoiceRoute';
+import stockRoute from './routes/stockRoute';
 
 const app = express();
 
 // Serve the 'public' folder as the root for static files
 // Serve static images
-const publicPath = path.resolve(__dirname, '../../../../../public');
+
+// Note: If doesn't show image on frontend, we just add/remove ../.. like this behide of /public
+const publicPath = path.resolve(__dirname, '../public');
 // const publicPath = path.resolve(__dirname, '../public');
 app.use('/images', express.static(path.join(publicPath, 'images')));
 
@@ -60,11 +69,18 @@ app.use('/api/role', roleRoute);
 app.use('/api/category', categoryRoute);
 app.use('/api/unit', unitRoute);
 app.use('/api/brand', brandRoute);
+app.use('/api/variant_attribute', variantAttributeRoute);
 app.use('/api/product', productRoute);
 app.use('/api/productvariant', productVariantRoute);
 app.use('/api/supplier', supplierRoute);
 app.use('/api/purchase', purchaseRoute);
 app.use('/api/searchProductRoute', searchProductRoute);
+app.use('/api/searchServiceRoute', searchServiceRoute);
+app.use('/api/service', serviceRoute);
+app.use('/api/quotation', quotationRoute);
+app.use('/api/customer', customerRoute);
+app.use('/api/invoice', invoiceRoute);
+app.use('/api/stock', stockRoute);
 
 // Default route
 app.get("/", (req, res) => {

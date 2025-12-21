@@ -19,58 +19,191 @@ enum UserType {
 }
 
 model Branch {
-  id          Int          @id @default(autoincrement())
-  name        String       @db.VarChar(100)
-  address     String       @db.VarChar(400) @default("Null")
-  users       User[]
-  stocks      Stocks[]
-  purchase    Purchases[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  address   String   @default("Null") @db.VarChar(400)
+  createdAt DateTime @default(now())
+  createdBy Int?
+  updatedAt DateTime @updatedAt
+  updatedBy Int?
+
+  creator User? @relation("BranchCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("BranchUpdatedBy", fields: [updatedBy], references: [id])
+
+  users          User[]
+  stocks         Stocks[]
+  purchase       Purchases[]
+  quotation      Quotations[]
+  order          Order[]
+  stockMovements StockMovements[]
+  stockAdjustments StockAdjustments[]
+  stockRequests StockRequests[]
+  stockReturns StockReturns[]
+  stockTransfers StockTransfers[]
+
+  outgoingTransfers StockTransfers[] @relation("FromBranch")
+  incomingTransfers StockTransfers[] @relation("ToBranch")
 }
 
 model User {
-  id          Int          @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   branchId    Int?
-  branch      Branch?      @relation(fields: [branchId], references: [id])
-  purchases   Purchases[]
-  firstName   String       @db.VarChar(50)
-  lastName    String       @db.VarChar(50)
-  phoneNumber String       @db.VarChar(50)
-  email       String       @unique @db.VarChar(50)
+  branch      Branch?   @relation(fields: [branchId], references: [id])
+  firstName   String    @db.VarChar(50)
+  lastName    String    @db.VarChar(50)
+  phoneNumber String    @db.VarChar(50)
+  email       String    @unique @db.VarChar(50)
   password    String
-  roleType    UserType     @default(ADMIN)
-  roles       RoleOnUser[] @relation("UserRoles")
-  status      Int          @default(1) // 1=Active and 0=Dis-Active
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  roleType    UserType  @default(ADMIN)
+  status      Int       @default(1) // 1=Active and 0=Dis-Active
+  createdAt   DateTime  @default(now())
+  createdBy   Int?
+  updatedAt   DateTime  @updatedAt
+  updatedBy   Int?
+  deletedAt   DateTime?
+  deletedBy   Int?
+
+  // Relations for audit fields
+  createdBranches Branch[] @relation("BranchCreatedBy")
+  updatedBranches Branch[] @relation("BranchUpdatedBy")
+
+  createRole Role[] @relation("RoleCreatedBy")
+  updateRole Role[] @relation("RoleUpdatedBy")
+
+  createModule Module[] @relation("ModuleCreatedBy")
+  updateModule Module[] @relation("ModuleUpdatedBy")
+
+  createCategories Categories[] @relation("CategoriesCreatedBy")
+  updateCategories Categories[] @relation("CategoriesUpdatedBy")
+  deleteCategories Categories[] @relation("CategoriesDeletedBy")
+
+  createBrands Brands[] @relation("BrandsCreatedBy")
+  updateBrands Brands[] @relation("BrandsUpdatedBy")
+  deleteBrands Brands[] @relation("BrandsDeletedBy")
+
+  createUnits Units[] @relation("UnitsCreatedBy")
+  updateUnits Units[] @relation("UnitsUpdatedBy")
+  deleteUnits Units[] @relation("UnitsDeletedBy")
+
+  createProducts Products[] @relation("ProductsCreatedBy")
+  updateProducts Products[] @relation("ProductsUpdatedBy")
+  deleteProducts Products[] @relation("ProductsDeletedBy")
+
+  createVariantAttribute VariantAttribute[] @relation("VariantAttributeCreatedBy")
+  updateVariantAttribute VariantAttribute[] @relation("VariantAttributeUpdatedBy")
+  deleteVariantAttribute VariantAttribute[] @relation("VariantAttributeDeletedBy")
+
+  createProductVariants ProductVariants[] @relation("ProductVariantsCreatedBy")
+  updateProductVariants ProductVariants[] @relation("ProductVariantsUpdatedBy")
+  deleteProductVariants ProductVariants[] @relation("ProductVariantsDeletedBy")
+
+  createStocks Stocks[] @relation("StocksCreatedBy")
+  updateStocks Stocks[] @relation("StocksUpdatedBy")
+
+  createPaymentMethods PaymentMethods[] @relation("PaymentMethodsCreatedBy")
+  updatePaymentMethods PaymentMethods[] @relation("PaymentMethodsUpdatedBy")
+  deletePaymentMethods PaymentMethods[] @relation("PaymentMethodsDeletedBy")
+
+  createSuppliers Suppliers[] @relation("SuppliersCreatedBy")
+  updateSuppliers Suppliers[] @relation("SuppliersUpdatedBy")
+  deleteSuppliers Suppliers[] @relation("SuppliersDeletedBy")
+
+  createPurchases  Purchases[] @relation("PurchasesCreatedBy")
+  updatePurchases  Purchases[] @relation("PurchasesUpdatedBy")
+  deletePurchases  Purchases[] @relation("PurchasesDeletedBy")
+  receivePurchases Purchases[] @relation("PurchasesReceivedBy")
+
+  createPurchaseOnPayments PurchaseOnPayments[] @relation("PurchaseOnPaymentsCreatedBy")
+
+  creatCustomer Customer[] @relation("CustomerCreatedBy")
+  updatCustomer Customer[] @relation("CustomerUpdatedBy")
+
+  createOrder  Order[] @relation("OrderCreatedBy")
+  updateOrder  Order[] @relation("OrderUpdatedBy")
+  deleteOrder  Order[] @relation("OrderDeletedBy")
+  approveOrder Order[] @relation("OrderApprovedBy")
+
+  createOrderOnPayments OrderOnPayments[] @relation("OrderOnPaymentsCreatedBy")
+  updateOrderOnPayments OrderOnPayments[] @relation("OrderOnPaymentsUpdatedBy")
+  deleteOrderOnPayments OrderOnPayments[] @relation("OrderOnPaymentsDeletedBy")
+
+  createService Services[] @relation("ServiceCreatedBy")
+  updateService Services[] @relation("ServiceUpdatedBy")
+  deleteService Services[] @relation("ServiceDeletedBy")
+
+  createQuotation  Quotations[] @relation("QuotationCreatedBy")
+  updateQuotation  Quotations[] @relation("QuotationUpdatedBy")
+  deleteQuotation  Quotations[] @relation("QuotationDeletedBy")
+  sendQuotation    Quotations[] @relation("QuotationSentBy")
+  invoiceQuotation Quotations[] @relation("QuotationInvoicedBy")
+
+  createStockMovements StockMovements[] @relation("StockMovementsCreatedBy")
+  updateStockMovements StockMovements[] @relation("StockMovementsUpdatedBy")
+  cancelStockMovements StockMovements[] @relation("StockMovementsCancelledBy")
+  approveStockMovements StockMovements[] @relation("StockMovementsApprovedBy")
+
+  createStockAdjustments StockAdjustments[] @relation("AdjustCreatedBy")
+  updateStockAdjustments StockAdjustments[] @relation("AdjustUpdatedBy")
+  deleteStockAdjustments StockAdjustments[] @relation("AdjustDeletedBy")
+  approveStockAdjustments StockAdjustments[] @relation("AdjustApprovedBy")
+
+  createStockTransfer StockTransfers[] @relation("TransferCreatedBy")
+  updateStockTransfer StockTransfers[] @relation("TransferUpdatedBy")
+  deleteStockTransfer StockTransfers[] @relation("TransferDeletedBy")
+  approveStockTransfer StockTransfers[] @relation("TransferApprovedBy")
+
+  createStockRequest StockRequests[] @relation("RequestCreatedBy")
+  updateStockRequest StockRequests[] @relation("RequestUpdatedBy")
+  deleteStockRequest StockRequests[] @relation("RequestDeletedBy")
+  approveStockRequest StockRequests[] @relation("RequestApprovedBy")
+  requestStockBy StockRequests[] @relation("RequestBy")
+
+  createStockReturn StockReturns[] @relation("ReturnCreatedBy")
+  updateStockReturn StockReturns[] @relation("ReturnUpdatedBy")
+  deleteStockReturn StockReturns[] @relation("ReturnDeletedBy")
+  approveStockReturn StockReturns[] @relation("ReturnApprovedBy")
+  returnStockBy StockReturns[] @relation("ReturnBy")
+
+  purchases Purchases[]
+  roles     RoleOnUser[] @relation("UserRoles")
 }
 
 model Role {
-  id          Int                @id @default(autoincrement())
-  name        String             @unique
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  createdBy Int?
+  updatedBy Int?
+  updatedAt DateTime? @updatedAt
+
+  creator User? @relation("RoleCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("RoleUpdatedBy", fields: [updatedBy], references: [id])
+
   users       RoleOnUser[]       @relation("UserRoles")
   permissions PermissionOnRole[] @relation("RolePermissions")
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
 }
 
 model Module {
-  id          Int          @id @default(autoincrement())
-  name        String       @unique @db.VarChar(80) // Ensure module names are unique
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(80) // Ensure module names are unique
+  createdAt DateTime @default(now())
+  createdBy Int?
+  updatedBy Int?
+  updatedAt DateTime @updatedAt
+
+  creator User? @relation("ModuleCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("ModuleUpdatedBy", fields: [updatedBy], references: [id])
+
   permissions Permission[] @relation("ModulePermissions") // Relation to permissions
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
 }
 
 model Permission {
-  id          Int          @id @default(autoincrement())
-  name        String       @unique @db.VarChar(80) // Ensure permission names are unique
-  moduleId    Int          // Foreign key to the Module model
-  module      Module       @relation("ModulePermissions", fields: [moduleId], references: [id])
-  roles       PermissionOnRole[] @relation("RolePermissions")
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id       Int    @id @default(autoincrement())
+  name     String @unique @db.VarChar(80) // Ensure permission names are unique
+  moduleId Int // Foreign key to the Module model
+  module   Module @relation("ModulePermissions", fields: [moduleId], references: [id])
+
+  roles PermissionOnRole[] @relation("RolePermissions")
 }
 
 model RoleOnUser {
@@ -94,168 +227,775 @@ model PermissionOnRole {
 }
 
 model Categories {
-  id          Int       @id @default(autoincrement())
-  name        String    @db.VarChar(100)
-  code        String    @unique @db.VarChar(50)
-  products    Products[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-}
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  code      String    @unique @db.VarChar(50)
+  createdAt DateTime  @default(now())
+  createdBy Int?
+  updatedBy Int?
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  deletedBy Int?
 
-model Units {
-  id              Int       @id @default(autoincrement())
-  name            String    @unique @db.VarChar(100)
-  productvariants ProductVariants[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  creator User? @relation("CategoriesCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("CategoriesUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("CategoriesDeletedBy", fields: [deletedBy], references: [id])
+
+  products Products[]
 }
 
 model Brands {
-  id           Int        @id @default(autoincrement())
-  name         String     @unique @db.VarChar(100)
-  description  String?    @db.VarChar(300)
-  image        String?    @db.VarChar(80)
-  products     Products[]
-  deletedAt    DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id          Int       @id @default(autoincrement())
+  en_name     String    @unique @db.VarChar(100)
+  kh_name     String?   @unique @db.VarChar(100)
+  description String?   @db.VarChar(300)
+  image       String?   @db.VarChar(80)
+  deletedAt   DateTime?
+  deletedBy   Int?
+  createdAt   DateTime  @default(now())
+  createdBy   Int?
+  updatedBy   Int?
+  updatedAt   DateTime  @updatedAt
+
+  creator User? @relation("BrandsCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("BrandsUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("BrandsDeletedBy", fields: [deletedBy], references: [id])
+
+  products Products[]
 }
 
-model PaymentMethods {
-  id           Int                    @id @default(autoincrement())
-  name         String                 @unique @db.VarChar(150)
-  purchases    PurchaseOnPayments[]   @relation("PurchasePayments")
-  deletedAt    DateTime?
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
+// ENUMS
+enum UnitType {
+  WEIGHT // kg, g, mg
+  LENGTH // m, cm, mm
+  QUANTITY // pcs, box, bundle
+  COLOR // red, blue, black
+  SIZE // S, M, L, XL
+  VOLUME // L, mL
+  AREA // m2, cm2
+  CAPACITY // GB, TB
+}
+
+// UNITS
+model Units {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100) // e.g., "kg", "cm", "pcs", "Red", "XL", "L", "m2", "GB"
+  type      UnitType
+  createdAt DateTime  @default(now())
+  createdBy Int?
+  updatedBy Int?
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  deletedBy Int?
+
+  creator User? @relation("UnitsCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("UnitsUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("UnitsDeletedBy", fields: [deletedBy], references: [id])
+
+  productVariants ProductVariants[]
 }
 
 model Products {
-  id               Int         @id @default(autoincrement())
-  categoryId       Int
-  brandId          Int?
-  categories       Categories  @relation(fields: [categoryId], references: [id])
-  brands           Brands?     @relation(fields: [brandId], references: [id])
+  id         Int       @id @default(autoincrement())
+  categoryId Int
+  brandId    Int?
+  name       String    @unique @db.VarChar(200)
+  image      String[]  @db.VarChar(200) // Array of image URLs or paths
+  note       String?   @db.VarChar(250)
+  isActive   Int?      @default(1) @db.SmallInt
+  createdAt  DateTime  @default(now())
+  createdBy  Int?
+  updatedBy  Int?
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  deletedBy  Int?
+
+  creator User? @relation("ProductsCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("ProductsUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("ProductsDeletedBy", fields: [deletedBy], references: [id])
+
+  categories       Categories         @relation(fields: [categoryId], references: [id])
+  brands           Brands?            @relation(fields: [brandId], references: [id])
   productvariants  ProductVariants[]
-  purchaseDetails  PurchaseDetails[] 
-  name             String      @unique @db.VarChar(200)
-  image            String[]    @db.VarChar(200) // Array of image URLs or paths
-  stockAlert       Int?        @default(0) @db.SmallInt
-  note             String?     @db.VarChar(250)
-  isActive         Int?        @default(1) @db.SmallInt
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  deletedAt        DateTime?
+  variants         PurchaseDetails[]
+  quotationDetails QuotationDetails[]
+  orderItems       OrderItem[]
+  adjustmentDetails AdjustmentDetails[]
+  requestDetails   RequestDetails[]
+  returnDetails    ReturnDetails[]
+  transferDetails  TransferDetails[]
 }
 
+// VARIANT ATTRIBUTE (e.g., Color, Size)
+model VariantAttribute {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique @db.VarChar(100)
+  createdAt DateTime  @default(now())
+  createdBy Int?
+  updatedBy Int?
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  deletedBy Int?
+
+  creator User? @relation("VariantAttributeCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("VariantAttributeUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("VariantAttributeDeletedBy", fields: [deletedBy], references: [id])
+
+  values VariantValue[] @relation("VariantAttribute_values")
+}
+
+// ATTRIBUTE VALUE (e.g., Red, XL)
+model VariantValue {
+  id                 Int    @id @default(autoincrement())
+  variantAttributeId Int
+  value              String @db.VarChar(100)
+
+  variantAttribute     VariantAttribute       @relation("VariantAttribute_values", fields: [variantAttributeId], references: [id])
+  productVariants      ProductVariants[]
+  productVariantValues ProductVariantValues[]
+}
+
+// PRODUCT VARIANT (SKU)
 model ProductVariants {
-  id              Int                  @id @default(autoincrement())
-  productId       Int
-  unitId          Int?
-  products        Products             @relation(fields: [productId], references: [id])
-  units           Units?               @relation(fields: [unitId], references: [id])
-  stocks          Stocks[]
-  purchaseDetails PurchaseDetails[]
-  code            String                @unique @db.VarChar(100)
-  name            String                @db.VarChar(200) // Array of image URLs or paths
-  image           String[]              @db.VarChar(200)
-  purchasePrice   Decimal               @default(0.0000) @db.Decimal(10, 4)
-  retailPrice     Decimal               @db.Decimal(10, 4)
-  wholeSalePrice  Decimal               @db.Decimal(10, 4)
-  isActive        Int?                  @default(1) @db.SmallInt
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  deletedAt       DateTime?
+  id             Int       @id @default(autoincrement())
+  productId      Int
+  unitId         Int?
+  sku            String    @unique
+  barcode        String?   @unique // New field for barcode/QR
+  stockAlert     Int?      @default(0) @db.SmallInt
+  name           String    @db.VarChar(200)
+  image          String[]  @db.VarChar(200) // Array of image URLs or paths
+  purchasePrice  Decimal   @default(0.0000) @db.Decimal(10, 4)
+  retailPrice    Decimal   @db.Decimal(10, 4)
+  wholeSalePrice Decimal   @db.Decimal(10, 4)
+  isActive       Int?      @default(1) @db.SmallInt
+  createdAt      DateTime  @default(now())
+  createdBy      Int?
+  updatedAt      DateTime  @updatedAt
+  updatedBy      Int?
+  deletedAt      DateTime?
+  deletedBy      Int?
+
+  creator User? @relation("ProductVariantsCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("ProductVariantsUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("ProductVariantsDeletedBy", fields: [deletedBy], references: [id])
+
+  products             Products               @relation(fields: [productId], references: [id])
+  units                Units?                 @relation(fields: [unitId], references: [id])
+  variantValues        VariantValue[]
+  productVariantValues ProductVariantValues[]
+  stocks               Stocks[]
+  purchaseDetails      PurchaseDetails[]
+  quotationDetails     QuotationDetails[]
+  stockMovements       StockMovements[]
+  orderItems           OrderItem[]
+  stockAdjustments     AdjustmentDetails[]
+  stockReturns         ReturnDetails[]
+  stockTransfers       TransferDetails[]
+  stockRequests        RequestDetails[]
+
+  @@index([productId])
+}
+
+// Join table for many-to-many relationship between ProductVariants and VariantValue
+model ProductVariantValues {
+  id               Int @id @default(autoincrement())
+  productVariantId Int
+  variantValueId   Int
+
+  productVariant ProductVariants @relation(fields: [productVariantId], references: [id])
+  variantValue   VariantValue    @relation(fields: [variantValueId], references: [id])
+
+  @@unique([productVariantId, variantValueId])
 }
 
 model Stocks {
-  id               Int             @id @default(autoincrement())
-  branchId         Int
+  id               Int      @id @default(autoincrement())
   productVariantId Int
-  branch           Branch          @relation(fields: [branchId], references: [id])
-  productvariants  ProductVariants @relation(fields: [productVariantId], references: [id])
-  qty              Int?
+  quantity         Decimal  @default(0.0000) @db.Decimal(10, 4)
+  branchId         Int
+  createdAt        DateTime @default(now())
+  createdBy        Int?
+  updatedAt        DateTime @updatedAt
+  updatedBy        Int?
+
+  creator User? @relation("StocksCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("StocksUpdatedBy", fields: [updatedBy], references: [id])
+
+  productVariant ProductVariants @relation(fields: [productVariantId], references: [id])
+  branch         Branch          @relation(fields: [branchId], references: [id])
+
+  @@unique([productVariantId, branchId])
+}
+
+model PaymentMethods {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique @db.VarChar(150)
+  deletedAt DateTime?
+  deletedBy Int?
+  createdAt DateTime  @default(now())
+  createdBy Int?
+  updatedBy Int?
+  updatedAt DateTime  @updatedAt
+
+  creator User? @relation("PaymentMethodsCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("PaymentMethodsUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("PaymentMethodsDeletedBy", fields: [deletedBy], references: [id])
+
+  purchases PurchaseOnPayments[] @relation("PurchasePayments")
+  orderPayments OrderOnPayments[] @relation("OrderPayments")
 }
 
 model Suppliers {
-  id          Int         @id @default(autoincrement())
-  purchases   Purchases[]
-  name        String      @db.VarChar(100)
-  phone       String      @unique @db.VarChar(50)
-  email       String      @db.VarChar(50)
-  address     String?     @db.VarChar(400)
-  deletedAt   DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  phone     String    @unique @db.VarChar(50)
+  email     String    @unique @db.VarChar(50)
+  address   String?   @db.VarChar(400)
+  deletedAt DateTime?
+  deletedBy Int?
+  createdAt DateTime  @default(now())
+  createdBy Int?
+  updatedBy Int?
+  updatedAt DateTime  @updatedAt
+
+  creator User? @relation("SuppliersCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("SuppliersUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("SuppliersDeletedBy", fields: [deletedBy], references: [id])
+
+  purchases Purchases[]
+}
+
+enum PurchaseStatus {
+  /// Order created but not yet processed
+  PENDING
+
+  /// Items physically received at branch/warehouse
+  RECEIVED
+
+  /// Purchase fully completed (received + paid)
+  COMPLETED
+
+  /// Order cancelled
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+  PARTIAL
 }
 
 model Purchases {
-  id                Int                   @id @default(autoincrement())
-  userId            Int
-  branchId          Int
-  supplierId        Int
-  user              User                  @relation(fields: [userId], references: [id])
-  branch            Branch                @relation(fields: [branchId], references: [id])
-  suppliers         Suppliers             @relation(fields: [supplierId], references: [id])
-  purchaseDetails   PurchaseDetails[]
-  payments          PurchaseOnPayments[]  @relation("PurchasePayments")
-  ref               String                @db.VarChar(50)
-  date              String                @db.VarChar(30)
-  taxRate           Decimal?              @default(0) @db.Decimal(10, 4)
-  taxNet            Decimal?              @default(0) @db.Decimal(10, 4)
-  discount          Decimal?              @default(0) @db.Decimal(10, 4)
-  shipping          Decimal?              @default(0) @db.Decimal(10, 4)
-  grandTotal        Decimal               @db.Decimal(10, 4)
-  paidAmount        Decimal?              @default(0) @db.Decimal(10, 4)
-  status            String                @db.VarChar(20)
-  paymentStatus     String?               @db.VarChar(20)
-  note              String?               @db.VarChar(500)
-  deletedAt         DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  id            Int            @id @default(autoincrement())
+  userId        Int
+  branchId      Int
+  supplierId    Int
+  ref           String         @db.VarChar(50)
+  purchaseDate  DateTime       @db.Date
+  taxRate       Decimal?       @default(0) @db.Decimal(10, 4)
+  taxNet        Decimal?       @default(0) @db.Decimal(10, 4)
+  discount      Decimal?       @default(0) @db.Decimal(10, 4)
+  shipping      Decimal?       @default(0) @db.Decimal(10, 4)
+  grandTotal    Decimal        @db.Decimal(10, 4)
+  paidAmount    Decimal?       @default(0) @db.Decimal(10, 4)
+  status        PurchaseStatus
+  paymentStatus PaymentStatus?
+  note          String?        @db.VarChar(500)
+  delReason     String?        @db.VarChar(1000)
+  deletedAt     DateTime?
+  deletedBy     Int?
+  createdBy     Int?
+  updatedBy     Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  receivedBy    Int?
+  receivedAt    DateTime?
+
+  creator  User? @relation("PurchasesCreatedBy", fields: [createdBy], references: [id])
+  updater  User? @relation("PurchasesUpdatedBy", fields: [updatedBy], references: [id])
+  deleter  User? @relation("PurchasesDeletedBy", fields: [deletedBy], references: [id])
+  receiver User? @relation("PurchasesReceivedBy", fields: [receivedBy], references: [id])
+
+  user            User                 @relation(fields: [userId], references: [id])
+  branch          Branch               @relation(fields: [branchId], references: [id])
+  suppliers       Suppliers            @relation(fields: [supplierId], references: [id])
+  purchaseDetails PurchaseDetails[]
+  payments        PurchaseOnPayments[] @relation("PurchasePayments")
 }
 
+// PURCHASE ITEM DETAILS
 model PurchaseDetails {
-  id                  Int             @id @default(autoincrement())
-  purchaseId          Int
-  productId           Int
-  productVariantId    Int
-  purchases           Purchases       @relation(fields: [purchaseId], references: [id])
-  products            Products        @relation(fields: [productId], references: [id])
-  productvariants     ProductVariants @relation(fields: [productVariantId], references: [id])
-  code                String?          @db.VarChar(100)
-  cost                Decimal         @db.Decimal(10, 4)
-  taxNet              Decimal?        @default(0) @db.Decimal(10, 4)
-  taxMethod           String?         @db.VarChar(15)
-  discount            Decimal?        @default(0) @db.Decimal(10, 4)
-  discountMethod      String?         @db.VarChar(15)
-  total               Decimal         @db.Decimal(10, 4)
-  quantity            Int
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  id               Int      @id @default(autoincrement())
+  purchaseId       Int
+  productId        Int
+  productVariantId Int
+  cost             Decimal  @db.Decimal(10, 4)
+  taxNet           Decimal? @default(0) @db.Decimal(10, 4)
+  taxMethod        String?  @db.VarChar(15)
+  discount         Decimal? @default(0) @db.Decimal(10, 4)
+  discountMethod   String?  @db.VarChar(15)
+  total            Decimal  @db.Decimal(10, 4)
+  quantity         Int
+  createdAt        DateTime @default(now())
+  createdBy        Int?
+  updatedBy        Int?
+  updatedAt        DateTime @updatedAt
+
+  purchases       Purchases       @relation(fields: [purchaseId], references: [id])
+  products        Products        @relation(fields: [productId], references: [id])
+  productvariants ProductVariants @relation(fields: [productVariantId], references: [id])
 }
 
 model PurchaseOnPayments {
-  id                Int            @id @default(autoincrement()) // Add this line for a unique identifier
-  branchId          Int
-  purchaseId        Int
-  paymentMethodId   Int
-  userId            Int
-  amount            Decimal        @db.Decimal(10, 4)
-  createdAt         DateTime       @default(now())
+  id              Int      @id @default(autoincrement()) // Add this line for a unique identifier
+  branchId        Int
+  purchaseId      Int
+  paymentMethodId Int
+  userId          Int
+  amount          Decimal  @db.Decimal(10, 4)
+  createdAt       DateTime @default(now())
+  createdBy       Int?
 
-  paymentMethods    PaymentMethods @relation("PurchasePayments", fields: [paymentMethodId], references: [id], onDelete: Cascade)
-  purchases         Purchases      @relation("PurchasePayments", fields: [purchaseId], references: [id], onDelete: Cascade)
+  creator User? @relation("PurchaseOnPaymentsCreatedBy", fields: [createdBy], references: [id])
+
+  paymentMethods PaymentMethods @relation("PurchasePayments", fields: [paymentMethodId], references: [id], onDelete: Cascade)
+  purchases      Purchases      @relation("PurchasePayments", fields: [purchaseId], references: [id], onDelete: Cascade)
 
   // @@id([paymentMethodId, purchaseId, userId]) // You can add a unique constraint on multiple fields
-  
+
   // Note: If want to use this line @@id([paymentMethodId, purchaseId, userId]), 
   // we need to commend this line (id                Int            @id @default(autoincrement())), 
   // but want to use this line (id                Int            @id @default(autoincrement())), 
   // we nee to commend this line @@id([paymentMethodId, purchaseId, userId])
 }
 
+enum ItemType {
+  PRODUCT
+  SERVICE
+}
+
+enum QuotationStatus {
+  PENDING
+  SENT
+  INVOICED
+  CANCELLED
+}
+
+enum QuoteSaleType {
+  RETAIL
+  WHOLESALE
+}
+
+model Quotations {
+  id            Int             @id @default(autoincrement())
+  branchId      Int
+  customerId    Int?
+  ref           String          @db.VarChar(50)
+  QuoteSaleType QuoteSaleType?
+  quotationDate DateTime        @db.Date
+  taxRate       Decimal?        @default(0) @db.Decimal(10, 4)
+  taxNet        Decimal?        @default(0) @db.Decimal(10, 4)
+  discount      Decimal?        @default(0) @db.Decimal(10, 4)
+  shipping      Decimal?        @default(0) @db.Decimal(10, 4)
+  grandTotal    Decimal         @db.Decimal(10, 4)
+  status        QuotationStatus
+  note          String?         @db.VarChar(500)
+  delReason     String?         @db.VarChar(1000)
+  deletedAt     DateTime?
+  deletedBy     Int?
+  createdBy     Int?
+  updatedBy     Int?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  sentAt        DateTime?
+  sentBy        Int?
+  invoicedAt    DateTime?
+  invoicedBy    Int?
+
+  creator  User? @relation("QuotationCreatedBy", fields: [createdBy], references: [id])
+  updater  User? @relation("QuotationUpdatedBy", fields: [updatedBy], references: [id])
+  deleter  User? @relation("QuotationDeletedBy", fields: [deletedBy], references: [id])
+  sender   User? @relation("QuotationSentBy", fields: [sentBy], references: [id])
+  invoicer User? @relation("QuotationInvoicedBy", fields: [invoicedBy], references: [id])
+
+  branch           Branch             @relation(fields: [branchId], references: [id])
+  customers        Customer?          @relation(fields: [customerId], references: [id])
+  quotationDetails QuotationDetails[]
+}
+
+// Quotation ITEM DETAILS
+model QuotationDetails {
+  id               Int       @id @default(autoincrement())
+  quotationId      Int
+  productId        Int?
+  productVariantId Int?
+  serviceId        Int?
+  ItemType         ItemType?
+  cost             Decimal   @db.Decimal(10, 4)
+  taxNet           Decimal?  @default(0) @db.Decimal(10, 4)
+  taxMethod        String?   @db.VarChar(15)
+  discount         Decimal?  @default(0) @db.Decimal(10, 4)
+  discountMethod   String?   @db.VarChar(15)
+  total            Decimal   @db.Decimal(10, 4)
+  quantity         Int
+
+  quotations      Quotations       @relation(fields: [quotationId], references: [id])
+  products        Products?        @relation(fields: [productId], references: [id])
+  productvariants ProductVariants? @relation(fields: [productVariantId], references: [id])
+  services        Services?        @relation(fields: [serviceId], references: [id])
+}
+
+enum MovementType {
+  QUOATETOINV
+  ORDER
+  REQUEST
+  RETURN
+  ADJUSTMENT
+  TRANSFER
+}
+
+enum AdjustMentType {
+  POSITIVE
+  NEGATIVE
+}
+
+enum MoveStatusType {
+  PENDING
+  APPROVED
+  CANCELLED
+}
+
+model StockMovements {
+  id               Int          @id @default(autoincrement())
+  productVariantId Int
+  branchId         Int
+  type             MovementType
+  AdjustMentType   AdjustMentType?
+  status           MoveStatusType?
+  quantity         Decimal      @db.Decimal(10, 4)
+  note             String?      @db.VarChar(200)
+  createdAt        DateTime     @default(now())
+  createdBy        Int?
+  approvedAt       DateTime?
+  approvedBy       Int?
+  cancelledAt      DateTime?
+  cancelledBy      Int?
+  updatedAt        DateTime?
+  updatedBy        Int?
+
+  creator User? @relation("StockMovementsCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("StockMovementsUpdatedBy", fields: [updatedBy], references: [id])
+  approver User? @relation("StockMovementsApprovedBy", fields: [approvedBy], references: [id])
+  canceler User? @relation("StockMovementsCancelledBy", fields: [cancelledBy], references: [id])
+
+  productvariants ProductVariants @relation(fields: [productVariantId], references: [id])
+  branch          Branch          @relation(fields: [branchId], references: [id])
+}
+
+model Customer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String    @unique
+  email     String?   @unique
+  address   String?
+  orders    Order[] // one-to-many
+  createdAt DateTime? @default(now())
+  createdBy Int?
+  updatedAt DateTime? @updatedAt
+  updatedBy Int?
+
+  creator User? @relation("CustomerCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("CustomerUpdatedBy", fields: [updatedBy], references: [id])
+
+  quotations Quotations[]
+}
+
+model Order {
+  id            Int            @id @default(autoincrement())
+  branchId      Int
+  customerId    Int?
+  OrderSaleType QuoteSaleType?
+  ref           String         @db.VarChar(50)
+  orderDate     DateTime       @default(now())
+  status        OrderStatus    @default(PENDING)
+  taxRate       Decimal?       @default(0) @db.Decimal(10, 4)
+  taxNet        Decimal?       @default(0) @db.Decimal(10, 4)
+  discount      Decimal?       @default(0) @db.Decimal(10, 4)
+  shipping      Decimal?       @default(0) @db.Decimal(10, 4)
+  totalAmount   Decimal?       @default(0) @db.Decimal(10, 4)
+  paidAmount    Decimal?       @default(0) @db.Decimal(10, 4)
+  note          String?        @db.VarChar(500)
+  delReason     String?        @db.VarChar(1000)
+  approvedAt    DateTime?
+  approvedBy    Int?
+  createdAt     DateTime       @default(now())
+  createdBy     Int?
+  updatedAt     DateTime?      @updatedAt
+  updatedBy     Int?
+  deletedAt     DateTime?
+  deletedBy     Int?
+
+  creator  User? @relation("OrderCreatedBy", fields: [createdBy], references: [id])
+  updater  User? @relation("OrderUpdatedBy", fields: [updatedBy], references: [id])
+  deleter  User? @relation("OrderDeletedBy", fields: [deletedBy], references: [id])
+  approver User? @relation("OrderApprovedBy", fields: [approvedBy], references: [id])
+
+  branch          Branch           @relation(fields: [branchId], references: [id])
+  customer        Customer?        @relation(fields: [customerId], references: [id])
+  items           OrderItem[]
+  orderOnPayments OrderOnPayments[] @relation("OrderPayments")
+}
+
+model OrderItem {
+  id               Int       @id @default(autoincrement())
+  orderId          Int
+  productId        Int?      // <- scalar field, needed for FK
+  productVariantId Int?
+  serviceId        Int?
+  /// PRODUCT = sale product, SERVICE = sale service
+  ItemType         ItemType?
+  taxNet           Decimal?  @default(0) @db.Decimal(10, 4)
+  taxMethod        String?   @db.VarChar(15)
+  discount         Decimal?  @default(0) @db.Decimal(10, 4)
+  discountMethod   String?   @db.VarChar(15)
+  total            Decimal   @db.Decimal(10, 4)
+  quantity         Int
+  price            Decimal   @db.Decimal(10, 4)
+
+  order           Order            @relation(fields: [orderId], references: [id])
+  products        Products?        @relation(fields: [productId], references: [id])
+  productvariants ProductVariants? @relation(fields: [productVariantId], references: [id])
+  services        Services?        @relation(fields: [serviceId], references: [id])
+}
+
+model OrderOnPayments {
+  id              Int         @id @default(autoincrement())
+  branchId        Int
+  orderId         Int
+  paymentDate     DateTime    @default(now())
+  paymentMethodId Int
+  totalPaid       Decimal     @db.Decimal(10, 4)
+  createdAt       DateTime    @default(now())
+  createdBy       Int?
+  updatedAt       DateTime    @updatedAt
+  updatedBy       Int?
+  deletedAt       DateTime?
+  deletedBy       Int?
+
+  creator User? @relation("OrderOnPaymentsCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("OrderOnPaymentsUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("OrderOnPaymentsDeletedBy", fields: [deletedBy], references: [id])
+
+  paymentMethods PaymentMethods @relation("OrderPayments", fields: [paymentMethodId], references: [id])
+  orders         Order          @relation("OrderPayments", fields: [orderId], references: [id])
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentType {
+  CASH
+  CARD
+  TRANSFER
+  E_WALLET
+}
+
+model Services {
+  id          Int       @id @default(autoincrement())
+  serviceCode String    @unique @db.VarChar(50)
+  name        String    @unique
+  description String?
+  price       Decimal   @db.Decimal(10, 4)
+  createdAt   DateTime  @default(now())
+  createdBy   Int?
+  updatedAt   DateTime  @updatedAt
+  updatedBy   Int?
+  deletedAt   DateTime?
+  deletedBy   Int?
+
+  creator User? @relation("ServiceCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("ServiceUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("ServiceDeletedBy", fields: [deletedBy], references: [id])
+
+  quotationDetails QuotationDetails[]
+
+  orderItems OrderItem[]
+}
+
+enum StatusType {
+  PENDING
+  APPROVED
+  CANCELLED
+}
+
+model StockAdjustments {
+  id              Int             @id @default(autoincrement())
+  branchId        Int
+  adjustDate      DateTime        @default(now())
+  StatusType      StatusType?
+  AdjustMentType  AdjustMentType?
+  note            String?         @db.VarChar(500)
+  delReason       String?         @db.VarChar(1000)
+  deletedAt       DateTime?
+  deletedBy       Int?
+  createdBy       Int?
+  updatedBy       Int?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  approvedAt      DateTime?
+  approvedBy      Int?
+
+  creator  User? @relation("AdjustCreatedBy", fields: [createdBy], references: [id])
+  updater  User? @relation("AdjustUpdatedBy", fields: [updatedBy], references: [id])
+  deleter  User? @relation("AdjustDeletedBy", fields: [deletedBy], references: [id])
+  approver User? @relation("AdjustApprovedBy", fields: [approvedBy], references: [id])
+
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  adjustmentDetails AdjustmentDetails[]
+}
+
+// Ajustment ITEM DETAILS
+model AdjustmentDetails {
+  id               Int       @id @default(autoincrement())
+  adjustmentId     Int
+  productId        Int?
+  productVariantId Int?
+  quantity         Int
+
+  stockadjustments      StockAdjustments       @relation(fields: [adjustmentId], references: [id])
+  products              Products?              @relation(fields: [productId], references: [id])
+  productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+}
+
+model StockTransfers {
+  id            Int             @id @default(autoincrement())
+  branchId      Int
+  transferDate  DateTime        @default(now())
+  fromBranchId  Int
+  toBranchId    Int
+  StatusType    StatusType?
+  note          String?         @db.VarChar(500)
+  delReason     String?         @db.VarChar(1000)
+  deletedAt     DateTime?
+  deletedBy     Int?
+  createdBy     Int?
+  updatedBy     Int?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  approvedAt    DateTime?
+  approvedBy    Int?
+
+  creator  User? @relation("TransferCreatedBy", fields: [createdBy], references: [id])
+  updater  User? @relation("TransferUpdatedBy", fields: [updatedBy], references: [id])
+  deleter  User? @relation("TransferDeletedBy", fields: [deletedBy], references: [id])
+  approver User? @relation("TransferApprovedBy", fields: [approvedBy], references: [id])
+
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  fromBranch Branch @relation("FromBranch", fields: [fromBranchId], references: [id])
+  toBranch   Branch @relation("ToBranch", fields: [toBranchId], references: [id])
+
+  transferDetails TransferDetails[]
+}
+
+// Transfer ITEM DETAILS
+model TransferDetails {
+  id               Int       @id @default(autoincrement())
+  transferId     Int
+  productId        Int?
+  productVariantId Int?
+  quantity         Int
+
+  stocktransfers        StockTransfers         @relation(fields: [transferId], references: [id])
+  products              Products?              @relation(fields: [productId], references: [id])
+  productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+}
+
+model StockRequests {
+  id            Int             @id @default(autoincrement())
+  branchId      Int
+  requestDate   DateTime        @default(now())
+  requestBy     Int
+  StatusType    StatusType?
+  note          String?         @db.VarChar(500)
+  delReason     String?         @db.VarChar(1000)
+  deletedAt     DateTime?
+  deletedBy     Int?
+  createdBy     Int?
+  updatedBy     Int?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  approvedAt    DateTime?
+  approvedBy    Int?
+
+  creator   User? @relation("RequestCreatedBy", fields: [createdBy], references: [id])
+  updater   User? @relation("RequestUpdatedBy", fields: [updatedBy], references: [id])
+  deleter   User? @relation("RequestDeletedBy", fields: [deletedBy], references: [id])
+  approver  User? @relation("RequestApprovedBy", fields: [approvedBy], references: [id])
+  requester User? @relation("RequestBy", fields: [requestBy], references: [id])
+
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  requestDetails RequestDetails[]
+}
+
+// Request ITEM DETAILS
+model RequestDetails {
+  id               Int       @id @default(autoincrement())
+  requestId     Int
+  productId        Int?
+  productVariantId Int?
+  quantity         Int
+
+  stockrequests         StockRequests          @relation(fields: [requestId], references: [id])
+  products              Products?              @relation(fields: [productId], references: [id])
+  productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+}
+
+model StockReturns {
+  id            Int             @id @default(autoincrement())
+  branchId      Int
+  returnDate    DateTime        @default(now())
+  returnBy      Int
+  StatusType    StatusType?
+  note          String?         @db.VarChar(500)
+  delReason     String?         @db.VarChar(1000)
+  deletedAt     DateTime?
+  deletedBy     Int?
+  createdBy     Int?
+  updatedBy     Int?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  approvedAt    DateTime?
+  approvedBy    Int?
+
+  creator   User? @relation("ReturnCreatedBy", fields: [createdBy], references: [id])
+  updater   User? @relation("ReturnUpdatedBy", fields: [updatedBy], references: [id])
+  deleter   User? @relation("ReturnDeletedBy", fields: [deletedBy], references: [id])
+  approver  User? @relation("ReturnApprovedBy", fields: [approvedBy], references: [id])
+  returner  User? @relation("ReturnBy", fields: [returnBy], references: [id])
+
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  returnDetails ReturnDetails[]
+}
+
+// Request ITEM DETAILS
+model ReturnDetails {
+  id               Int       @id @default(autoincrement())
+  returnId     Int
+  productId        Int?
+  productVariantId Int?
+  quantity         Int
+
+  stockreturns          StockReturns          @relation(fields: [returnId], references: [id])
+  products              Products?              @relation(fields: [productId], references: [id])
+  productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+}
+
 // How to run the Prisma Migrate
 // npx prisma migrate dev --name init or npx prisma migrate deploy
+// After run npx prisma migrate dev --name init or npx prisma migrate deploy and then run the below command
+// npx prisma generate

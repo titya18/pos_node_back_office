@@ -16,11 +16,13 @@ import roleRoute from './routes/roleRoute';
 import categoryRoute from './routes/categoryRoute';
 import unitRoute from './routes/unitRoute';
 import brandRoute from './routes/brandRoute';
+import variantAttributeRoute from './routes/variantAttributeRoute';
 import productRoute from './routes/productRoute';
 import productVariantRoute from './routes/productVariantRoute';
 import supplierRoute from './routes/supplierRoute';
 import purchaseRoute from './routes/purchaseRoute';
 import searchProductRoute from './routes/searchProductRoute';
+import serviceRoute from './routes/serviceRoute';
 
 const app = express();
 
@@ -62,15 +64,17 @@ app.use('/api/role', roleRoute);
 app.use('/api/category', categoryRoute);
 app.use('/api/unit', unitRoute);
 app.use('/api/brand', brandRoute);
+app.use('/api/variant_attribute', variantAttributeRoute);
 app.use('/api/product', productRoute);
 app.use('/api/productvariant', productVariantRoute);
 app.use('/api/supplier', supplierRoute);
 app.use('/api/purchase', purchaseRoute);
 app.use('/api/searchProductRoute', searchProductRoute);
+app.use('/api/service', serviceRoute);
 
 // For Socket IO
 io.on('connection', (socket) => {
-  console.log('A user connected');
+  // console.log('A user connected');
 
   socket.on('upsertRole', (roleData) => {
       // Emit the updated role permissions along with the role ID

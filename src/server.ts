@@ -36,4 +36,6 @@ io.on("connection", (socket) => {
 const PORT = process.env.APP_PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Backend server is running at http://localhost:${PORT}`);
+}).on("error", (err) => {
+  console.error("Server failed to start:", err);
 });

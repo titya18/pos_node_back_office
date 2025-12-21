@@ -52,15 +52,17 @@ export const searchProducts = async (req: Request, res: Response) => {
                 deletedAt: null,
                 OR: [
                     { name: { contains: searchTerm as string, mode: "insensitive" } },
-                    { code: { contains: searchTerm as string, mode: "insensitive" } },
+                    { barcode: { contains: searchTerm as string, mode: "insensitive" } },
                 ]
             },
             select: {
                 id: true,
                 productId: true,
                 name: true,
-                code: true,
+                barcode: true,
                 purchasePrice: true,
+                retailPrice: true,
+                wholeSalePrice: true,
                 products: {
                     select: {
                         id: true,

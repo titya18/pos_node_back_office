@@ -73,6 +73,28 @@ export const validateCategoryRequest = [
 
 export const validateUnitRequest = [
     body("name").notEmpty().withMessage("Unit's name must be required"),
+    body("type").notEmpty().withMessage("Unit's type must be required"),
+    handleValidationErrors
+];
+
+export const validateServiceRequest = [
+    body("serviceCode").notEmpty().withMessage("Service code must be required").custom(async (serviceCode) => {
+        const existingCode = await prisma.services.findFirst({
+            where: {
+                serviceCode: serviceCode
+            }
+        });
+        if (existingCode) {
+            throw new Error("Service code is already in use.");
+        }
+    }),
+    body("name").notEmpty().withMessage("Name must be required"),
+    body("price").notEmpty().withMessage("Price must be required"),
+    handleValidationErrors
+];
+
+export const validateBrandRequest = [
+    body("name").notEmpty().withMessage("Name must be required"),
     handleValidationErrors
 ];
 
@@ -93,12 +115,12 @@ export const validateProductRequest = [
 export const validateProductVariantRequest = [
     body("productId").notEmpty().withMessage("Product must be required"),
     body("unitId").notEmpty().withMessage("Unit must be required"),
-    body("code").notEmpty().withMessage("Code must be required").custom(async (code) => {
+    body("barcode").notEmpty().withMessage("Barcode must be required").custom(async (barcode) => {
         const existingCode = await prisma.productVariants.findUnique({
-            where: { code }
+            where: { barcode: barcode }
         });
         if (existingCode) {
-            throw new Error("Code is already in used.");
+            throw new Error("Barcode is already in use.");
         }
     }),
     body("name").notEmpty().withMessage("Name must be required"),
@@ -131,3 +153,31 @@ export const validatePurchaseRequest = [
         .withMessage("Branch is required"),
     handleValidationErrors
 ]
+
+export const validateQuotationRequest = [
+    body("customerId").notEmpty().withMessage("Customer must be required"),
+    body("quotationDate").notEmpty().withMessage("Quotation date must be required"),
+    // Conditional validation for branchId based on roleType
+    body("branchId")
+        .if((value, { req }) => req.body.roleType === "USER") // Only required if roleType is USER
+        .notEmpty()
+        .withMessage("Branch is required"),
+    handleValidationErrors
+]
+
+export const validateInvoiceRequest = [
+    body("customerId").notEmpty().withMessage("Customer must be required"),
+    body("orderDate").notEmpty().withMessage("Quotation date must be required"),
+    // Conditional validation for branchId based on roleType
+    body("branchId")
+        .if((value, { req }) => req.body.roleType === "USER") // Only required if roleType is USER
+        .notEmpty()
+        .withMessage("Branch is required"),
+    handleValidationErrors
+]
+
+export const validateVariantAttributeRequest = [
+    body("name").notEmpty().withMessage("Variant attribute's name must be required"),
+    body("values").isArray().isLength({ min: 1 }).withMessage("Variant attribute's values must have at least one value"),
+    handleValidationErrors
+];
