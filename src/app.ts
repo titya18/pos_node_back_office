@@ -26,6 +26,10 @@ import quotationRoute from './routes/quotationRoute';
 import customerRoute from './routes/customerRoute';
 import invoiceRoute from './routes/invoiceRoute';
 import stockRoute from './routes/stockRoute';
+import stockAdjustmentRoute from './routes/stockAdjustmentRoute';
+import stockTransferRoute from './routes/stockTransferRoute';
+import stockRequestRoute from './routes/stockRequestRoute';
+import stockReturnRoute from './routes/stockReturnRoute';
 
 const app = express();
 
@@ -81,6 +85,10 @@ app.use('/api/quotation', quotationRoute);
 app.use('/api/customer', customerRoute);
 app.use('/api/invoice', invoiceRoute);
 app.use('/api/stock', stockRoute);
+app.use('/api/stockadjustment', stockAdjustmentRoute);
+app.use('/api/stocktransfer', stockTransferRoute);
+app.use('/api/stockrequest', stockRequestRoute);
+app.use('/api/stockreturn', stockReturnRoute);
 
 // Default route
 app.get("/", (req, res) => {

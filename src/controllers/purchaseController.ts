@@ -117,7 +117,6 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
     }
 };
 
-
 export const upsertPurchase = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const { branchId, supplierId, taxRate, taxNet, discount, shipping, grandTotal, status, note, purchaseDetails, purchaseDate } = req.body;
@@ -159,6 +158,8 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                 }
             }
 
+            console.log("Date: ", purchaseDate);
+
             const purchase = purchaseId
                 ? await prisma.purchases.update({
                     where: { id: purchaseId },
@@ -166,7 +167,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         userId: loggedInUser.id,
                         branchId: parseInt(branchId, 10),
                         supplierId: parseInt(supplierId, 10),
-                        purchaseDate: new Date(purchaseDate),
+                        purchaseDate: new Date(dayjs(purchaseDate).format("YYYY-MM-DD")),
                         taxRate,
                         taxNet,
                         discount,
@@ -209,7 +210,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         grandTotal,
                         status,
                         note,
-                        purchaseDate: new Date(purchaseDate),
+                        purchaseDate: new Date(dayjs(purchaseDate).format("YYYY-MM-DD")),
                         createdAt: currentDate,
                         updatedAt: currentDate,
                         createdBy: req.user ? req.user.id : null,

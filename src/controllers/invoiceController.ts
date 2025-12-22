@@ -178,7 +178,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                     data: {
                         branchId: parseInt(branchId, 10),
                         customerId: parseInt(customerId, 10),
-                        orderDate: new Date(orderDate),
+                        orderDate: new Date(dayjs(orderDate).format("YYYY-MM-DD")),
                         OrderSaleType,
                         taxRate,
                         taxNet,
@@ -230,7 +230,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         totalAmount,
                         status,
                         note,
-                        orderDate: new Date(orderDate),
+                        orderDate: new Date(dayjs(orderDate).format("YYYY-MM-DD")),
                         createdAt: currentDate,
                         updatedAt: currentDate,
                         createdBy: req.user ? req.user.id : null,

@@ -179,7 +179,7 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                     data: {
                         branchId: parseInt(branchId, 10),
                         customerId: parseInt(customerId, 10),
-                        quotationDate: new Date(quotationDate),
+                        quotationDate: new Date(dayjs(quotationDate).format("YYYY-MM-DD")),
                         QuoteSaleType,
                         taxRate,
                         taxNet,
@@ -225,7 +225,7 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                         grandTotal,
                         status,
                         note,
-                        quotationDate: new Date(quotationDate),
+                        quotationDate: new Date(dayjs(quotationDate).format("YYYY-MM-DD")),
                         createdAt: currentDate,
                         updatedAt: currentDate,
                         createdBy: req.user ? req.user.id : null,

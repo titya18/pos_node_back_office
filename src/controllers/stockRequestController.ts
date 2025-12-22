@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import logger from "../utils/logger";
-import { Decimal } from "@prisma/client/runtime/library"
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -14,7 +13,7 @@ const currentDate = new Date(Date.UTC(now.year(), now.month(), now.date(), now.h
 
 const prisma = new PrismaClient();
 
-export const getAllStockAdjustments = async (req: Request, res: Response): Promise<void> => {
+export const getAllStockRequests = async (req: Request, res: Response): Promise<void> => {
     try {
         const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
@@ -50,30 +49,32 @@ export const getAllStockAdjustments = async (req: Request, res: Response): Promi
         // Branch restriction
         let branchRestriction = "";
         if (loggedInUser.roleType === "USER" && loggedInUser.branchId) {
-            branchRestriction = `AND sam."branchId" = ${loggedInUser.branchId}`;
+            branchRestriction = `AND sr."branchId" = ${loggedInUser.branchId}`;
         }
 
         // ----- 1) COUNT -----
         const totalResult: any = await prisma.$queryRawUnsafe(`
             SELECT COUNT(*) AS total
-            FROM "StockAdjustments" sam
-            LEFT JOIN "Branch" br ON sam."branchId" = br.id
-            LEFT JOIN "User" c ON sam."createdBy" = c.id
-            LEFT JOIN "User" u ON sam."updatedBy" = u.id
-            LEFT JOIN "User" ab ON sam."approvedBy" = ab.id
+            FROM "StockRequests" sr
+            LEFT JOIN "Branch" br ON sr."branchId" = br.id
+            LEFT JOIN "User" c ON sr."createdBy" = c.id
+            LEFT JOIN "User" u ON sr."updatedBy" = u.id
+            LEFT JOIN "User" ab ON sr."approvedBy" = ab.id
+            LEFT JOIN "User" rb ON sr."requestBy" = rb.id
             WHERE 1=1
                 ${branchRestriction}
                 AND (
-                    sam."AdjustMentType"::text ILIKE $1
-                    OR sam."StatusType"::text ILIKE $1
+                    sr."StatusType"::text ILIKE $1
+                    OR rb."firstName" ILIKE $1
+                    OR rb."lastName" ILIKE $1
                     OR br."name" ILIKE $1
-                    OR TO_CHAR(sam."adjustDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."requestDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                     ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
                 )
         `, ...params.slice(0, params.length - 2));
@@ -82,46 +83,49 @@ export const getAllStockAdjustments = async (req: Request, res: Response): Promi
 
         // ----- 2) DATA FETCH -----
         const stockAdjustment: any = await prisma.$queryRawUnsafe(`
-            SELECT sam.*,
+            SELECT sr.*,
                    json_build_object('id', br.id, 'name', br.name) AS branch,
                    json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
                    json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater,
-                   json_build_object('id', ab.id, 'firstName', ab."firstName", 'lastName', ab."lastName") AS approver
-            FROM "StockAdjustments" sam
-            LEFT JOIN "Branch" br ON sam."branchId" = br.id
-            LEFT JOIN "User" c ON sam."createdBy" = c.id
-            LEFT JOIN "User" u ON sam."updatedBy" = u.id
-            LEFT JOIN "User" ab ON sam."approvedBy" = ab.id
+                   json_build_object('id', ab.id, 'firstName', ab."firstName", 'lastName', ab."lastName") AS approver,
+                   json_build_object('id', rb.id, 'firstName', rb."firstName", 'lastName', rb."lastName") AS requester
+            FROM "StockRequests" sr
+            LEFT JOIN "Branch" br ON sr."branchId" = br.id
+            LEFT JOIN "User" c ON sr."createdBy" = c.id
+            LEFT JOIN "User" u ON sr."updatedBy" = u.id
+            LEFT JOIN "User" ab ON sr."approvedBy" = ab.id
+            LEFT JOIN "User" rb ON sr."requestBy" = rb.id
             WHERE 1=1
                 ${branchRestriction}
                 AND (
-                    sam."AdjustMentType"::text ILIKE $1
-                    OR sam."StatusType"::text ILIKE $1
+                    sr."StatusType"::text ILIKE $1
+                    OR rb."firstName" ILIKE $1
+                    OR rb."lastName" ILIKE $1
                     OR br."name" ILIKE $1
-                    OR TO_CHAR(sam."adjustDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                    OR TO_CHAR(sam."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."requestDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(sr."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                     ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
                 )
-            ORDER BY sam."${sortField}" ${sortOrder}
+            ORDER BY sr."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
 
         res.status(200).json({ data: stockAdjustment, total });
 
     } catch (error) {
-        console.error("Error fetching adjustment:", error);
+        console.error("Error fetching stock request:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 };
 
-export const upsertAdjustment = async (req: Request, res: Response): Promise<void> => {
+export const upsertRequest = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { branchId, AdjustMentType, StatusType, note, adjustmentDetails, adjustDate } = req.body;
+    const { branchId, StatusType, note, requestDetails, requestDate } = req.body;
     
     try {
         const result = await prisma.$transaction(async (tx) => {
@@ -132,35 +136,35 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                 return;
             }
 
-            const adjustmentId = id ? parseInt(id, 10) : undefined;
-            if (adjustmentId) {
-                const checkStockAdjustment = await tx.stockAdjustments.findUnique({ where: { id: adjustmentId } });
-                if (!checkStockAdjustment) {
-                    res.status(404).json({ message: "Adjustment not found!" });
+            const requestId = id ? parseInt(id, 10) : undefined;
+            if (requestId) {
+                const checkStockRequest = await tx.stockRequests.findUnique({ where: { id: requestId } });
+                if (!checkStockRequest) {
+                    res.status(404).json({ message: "Request not found!" });
                     return;
                 }
             }
 
-            if (!adjustmentDetails || adjustmentDetails.length === 0) {
-                throw new Error("Adjustment details cannot be empty");
+            if (!requestDetails || requestDetails.length === 0) {
+                throw new Error("Request details cannot be empty");
             }
 
-            const adjustment = adjustmentId
-                ? await tx.stockAdjustments.update({
-                    where: { id: adjustmentId },
+            const requestData = requestId
+                ? await tx.stockRequests.update({
+                    where: { id: requestId },
                     data: {
                         branchId: parseInt(branchId, 10),
-                        adjustDate: new Date(dayjs(adjustDate).format("YYYY-MM-DD")),
-                        AdjustMentType,
+                        requestBy: req.user ? req.user.id : 0,
+                        requestDate: new Date(dayjs(requestDate).format("YYYY-MM-DD")),
                         StatusType,
                         note,
                         updatedAt: currentDate,
                         updatedBy: req.user ? req.user.id : null,
-                        adjustmentDetails: {
+                        requestDetails: {
                             deleteMany: {
-                                adjustmentId: adjustmentId   // MUST include a filter
-                            }, // Delete existing adjustment details
-                            create: adjustmentDetails.map((detail: any) => ({
+                                requestId: requestId   // MUST include a filter
+                            },
+                            create: requestDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
                                 productVariantId: parseInt(detail.productVariantId, 10),
                                 quantity: parseInt(detail.quantity, 10),
@@ -168,19 +172,19 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                         },
                     }
                 })
-                : await tx.stockAdjustments.create({
+                : await tx.stockRequests.create({
                     data: {
                         branchId: parseInt(branchId, 10),
+                        requestBy: req.user ? req.user.id : 0,
                         note,
-                        adjustDate: new Date(dayjs(adjustDate).format("YYYY-MM-DD")),
-                        AdjustMentType,
+                        requestDate: new Date(dayjs(requestDate).format("YYYY-MM-DD")),
                         StatusType,
                         createdAt: currentDate,
                         updatedAt: currentDate,
                         createdBy: req.user ? req.user.id : null,
                         updatedBy: req.user ? req.user.id : null,
-                        adjustmentDetails: {
-                            create: adjustmentDetails.map((detail: any) => ({
+                        requestDetails: {
+                            create: requestDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
                                 productVariantId: parseInt(detail.productVariantId, 10),
                                 quantity: parseInt(detail.quantity, 10),
@@ -191,9 +195,9 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
             
             // If status is Received update stock
             if (StatusType === "APPROVED") {
-                for (const detail of adjustmentDetails) {
-                    // Determine signed quantity for adjustment
-                    const signedQuantity = AdjustMentType === 'POSITIVE' ? Number(detail.quantity) : -Number(detail.quantity);
+                for (const detail of requestDetails) {
+                    // Determine signed quantity for request
+                    const signedQuantity = -Number(detail.quantity);
 
                     // Update or create stock
                      await tx.stocks.upsert({
@@ -222,7 +226,7 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                         data: {
                             productVariantId: Number(detail.productVariantId),
                             branchId: Number(branchId),
-                            type: "ADJUSTMENT",
+                            type: "REQUEST",
                             quantity: signedQuantity,
                             note,
                             createdBy: req.user ? req.user.id : null,
@@ -231,8 +235,8 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                     });
                 }
 
-                await tx.stockAdjustments.update({
-                    where: { id: adjustment.id },
+                await tx.stockRequests.update({
+                    where: { id: requestData.id },
                     data: {
                         StatusType: "APPROVED",
                         approvedAt: currentDate,
@@ -241,24 +245,24 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                 });
             }
 
-            return adjustment;
+            return requestData;
         });
         
         res.status(id ? 200 : 201).json(result);
     } catch (error) {
-        logger.error("Error creating/updating adjustment:", error);
+        logger.error("Error creating/updating stock request:", error);
         const typedError = error as Error;
         res.status(500).json({ message: typedError.message });
     }
 };
 
-export const getStockAdjustmentById = async (req: Request, res: Response): Promise<void> => {
+export const getStockRequestById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     try {
-        const adjustment = await prisma.stockAdjustments.findUnique({
+        const requestData = await prisma.stockRequests.findUnique({
             where: { id: parseInt(id, 10) },
             include: { 
-                adjustmentDetails: {
+                requestDetails: {
                     include: {
                         products: true, // Include related products data
                         productvariants: {
@@ -274,39 +278,39 @@ export const getStockAdjustmentById = async (req: Request, res: Response): Promi
             },
         });
 
-        // Transform data to flatten `name` into `adjustDetails`
-        if (adjustment) {
-            adjustment.adjustmentDetails = adjustment.adjustmentDetails.map((detail: any) => ({
+        // Transform data to flatten `name` into `requestDetails`
+        if (requestData) {
+            requestData.requestDetails = requestData.requestDetails.map((detail: any) => ({
                 ...detail,
                 name: detail.productvariants.name, // Add `name` directly
             }));
         }
 
-        if (!adjustment) {
-            res.status(404).json({ message: "Adjustment not found!" });
+        if (!requestData) {
+            res.status(404).json({ message: "Stock request not found!" });
             return;
         }
-        res.status(200).json(adjustment);
+        res.status(200).json(requestData);
     } catch (error) {
-        logger.error("Error fetching adjustment by ID:", error);
+        logger.error("Error fetching stock request by ID:", error);
         const typedError = error as Error;
         res.status(500).json({ message: typedError.message });
     }
 };
 
-export const deleteAdjustment = async (req: Request, res: Response): Promise<void> => {
+export const deleteRequest = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const { delReason } = req.body;
     try {
-        const adjustment = await prisma.stockAdjustments.findUnique({ 
+        const requestData = await prisma.stockRequests.findUnique({ 
             where: { id: parseInt(id, 10) },
-            include: { adjustmentDetails: true } 
+            include: { requestDetails: true } 
         });
-        if (!adjustment) {
-            res.status(404).json({ message: "Adjustment not found!" });
+        if (!requestData) {
+            res.status(404).json({ message: "Stock request not found!" });
             return;
         }
-        await prisma.stockAdjustments.update({
+        await prisma.stockRequests.update({
             where: { id: parseInt(id, 10) },
             data: {
                 deletedAt: currentDate,
@@ -315,9 +319,9 @@ export const deleteAdjustment = async (req: Request, res: Response): Promise<voi
                 StatusType: "CANCELLED"
             }
         });
-        res.status(200).json(adjustment);
+        res.status(200).json(requestData);
     } catch (error) {
-        logger.error("Error deleting adjustment:", error);
+        logger.error("Error deleting stock request:", error);
         const typedError = error as Error;
         res.status(500).json({ message: typedError.message });
     }

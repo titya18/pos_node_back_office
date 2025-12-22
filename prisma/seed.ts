@@ -138,6 +138,16 @@ async function main() {
       { name: "Stock-Movement-Edit", moduleId: 20 },
       { name: "Stock-Movement-Delete", moduleId: 20 },
       { name: "Stock-Movement-Approve", moduleId: 20 },
+      { name: "Stock-Request-View", moduleId: 21 },
+      { name: "Stock-Request-Create", moduleId: 21 },
+      { name: "Stock-Request-Edit", moduleId: 21 },
+      { name: "Stock-Request-Delete", moduleId: 21 },
+      { name: "Stock-Request-Approve", moduleId: 21 },
+      { name: "Stock-Return-View", moduleId: 22 },
+      { name: "Stock-Return-Create", moduleId: 22 },
+      { name: "Stock-Return-Edit", moduleId: 22 },
+      { name: "Stock-Return-Delete", moduleId: 22 },
+      { name: "Stock-Return-Approve", moduleId: 22 }
     ],
   });
 
