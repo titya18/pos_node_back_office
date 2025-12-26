@@ -105,6 +105,9 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
             WHERE 1=1
                 ${branchRestriction}
                 AND (
+                    q."status" IN ('PENDING', 'SENT')
+                )
+                AND (
                     q."ref" ILIKE $1
                     OR cs."name" ILIKE $1
                     OR br."name" ILIKE $1

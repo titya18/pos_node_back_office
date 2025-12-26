@@ -40,6 +40,8 @@ model Branch {
   stockRequests StockRequests[]
   stockReturns StockReturns[]
   stockTransfers StockTransfers[]
+  expense Expenses[]
+  income Incomes[]
 
   outgoingTransfers StockTransfers[] @relation("FromBranch")
   incomingTransfers StockTransfers[] @relation("ToBranch")
@@ -163,6 +165,14 @@ model User {
   deleteStockReturn StockReturns[] @relation("ReturnDeletedBy")
   approveStockReturn StockReturns[] @relation("ReturnApprovedBy")
   returnStockBy StockReturns[] @relation("ReturnBy")
+
+  createExpense Expenses[] @relation("ExpenseCreatedBy")
+  updateExpense Expenses[] @relation("ExpenseUpdatedBy")
+  deleteExpense Expenses[] @relation("ExpenseDeletedBy")
+
+  createIncome Incomes[] @relation("IncomeCreatedBy")
+  updateIncome Incomes[] @relation("IncomeUpdatedBy")
+  deleteIncome Incomes[] @relation("IncomeDeletedBy")
 
   purchases Purchases[]
   roles     RoleOnUser[] @relation("UserRoles")
@@ -782,6 +792,8 @@ model OrderOnPayments {
   updatedBy       Int?
   deletedAt       DateTime?
   deletedBy       Int?
+  delReason       String?     @db.VarChar(1000)
+  status          String?     @db.VarChar(20)
 
   creator User? @relation("OrderOnPaymentsCreatedBy", fields: [createdBy], references: [id])
   updater User? @relation("OrderOnPaymentsUpdatedBy", fields: [updatedBy], references: [id])
@@ -993,6 +1005,50 @@ model ReturnDetails {
   stockreturns          StockReturns          @relation(fields: [returnId], references: [id])
   products              Products?              @relation(fields: [productId], references: [id])
   productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+}
+
+model Expenses {
+  id            Int             @id @default(autoincrement())
+  branchId      Int
+  expenseDate   DateTime        @default(now())
+  name          String          @db.VarChar(200)
+  amount        Decimal         @db.Decimal(10, 4)
+  description   String?         @db.VarChar(2000)
+  createdAt     DateTime        @default(now())
+  createdBy     Int?
+  updatedAt     DateTime?
+  updatedBy     Int?
+  delReason     String?         @db.VarChar(1000)
+  deletedAt     DateTime?
+  deletedBy     Int?
+
+  creator User? @relation("ExpenseCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("ExpenseUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("ExpenseDeletedBy", fields: [deletedBy], references: [id])
+
+  branch Branch @relation(fields: [branchId], references: [id])
+}
+
+model Incomes {
+  id            Int             @id @default(autoincrement())
+  branchId      Int
+  incomeDate    DateTime        @default(now())
+  name          String          @db.VarChar(200)
+  amount        Decimal         @db.Decimal(10, 4)
+  description   String?         @db.VarChar(2000) 
+  createdAt     DateTime        @default(now())
+  createdBy     Int?
+  updatedAt     DateTime?
+  updatedBy     Int?
+  delReason     String?         @db.VarChar(1000)
+  deletedAt     DateTime?
+  deletedBy     Int?
+
+  creator User? @relation("IncomeCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("IncomeUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("IncomeDeletedBy", fields: [deletedBy], references: [id])
+
+  branch Branch @relation(fields: [branchId], references: [id])
 }
 
 // How to run the Prisma Migrate

@@ -9,6 +9,7 @@ import {
     insertInvoicePayment,
     getInvoicePaymentById,
     deleteInvoice,
+    deletePayment,
     approveInvoice
 } from "../controllers/invoiceController";
 
@@ -20,5 +21,6 @@ router.route("/payment").post(authorize(["Invoice-Payment"]), insertInvoicePayme
 router.route("/payment/:id").get(getInvoicePaymentById);
 router.route("/:id").get(authorize(["Invoice-View"]), getInvoiceById).put(authorize(["Invoice-Edit"]), validateInvoiceRequest, upsertInvoice).delete(authorize(["Invoice-Delete"]), deleteInvoice);
 router.route("/approve/:id").get(authorize(["Invoice-Approve"]), approveInvoice);
+router.route("/delpayment/:id").delete(authorize(["Delete-Payment-Invoice"]), deletePayment);
 
 export default router;

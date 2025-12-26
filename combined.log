@@ -26642,3 +26642,466 @@ Invalid value for argument `purchaseDate`: premature end of input. Expected ISO-
     at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockReturnController.ts:149:23)
     at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
     at async upsertReturn (D:\Citylink-Inventory\backend\src\controllers\stockReturnController.ts:131:24)
+2025-12-23 15:58:27 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:79:31)
+2025-12-23 15:58:27 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:79:31)
+2025-12-23 16:03:29 error: Error fetching incomes: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllIncomeWithPagination (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:56:34)
+2025-12-23 16:03:29 error: Error fetching incomes: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllIncomeWithPagination (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:56:34)
+2025-12-23 16:03:30 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:79:31)
+2025-12-23 16:03:30 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:79:31)
+2025-12-23 16:05:12 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:79:31)
+2025-12-23 16:05:12 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:79:31)
+2025-12-23 16:06:07 error: Error fetching incomes: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllIncomeWithPagination (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:56:34)
+2025-12-23 16:06:07 error: Error fetching incomes: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column inc.expenseDate does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllIncomeWithPagination (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:56:34)
+2025-12-23 16:06:47 error: Error fetching incomes: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllIncomeWithPagination (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:79:30)
+2025-12-23 16:06:47 error: Error fetching incomes: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "s"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllIncomeWithPagination (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:79:30)
+2025-12-23 16:08:35 error: Error upserting expense: 
+Invalid `prisma.expenses.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:160:41
+
+  157         updatedBy: req.user ? req.user.id : null
+  158     }
+  159 })
+→ 160 : await prisma.expenses.create({
+        data: {
+          branchId: "1",
+                    ~~~
+          expenseDate: new Date("2025-12-24T00:00:00.000Z"),
+          name: "expense testing",
+          amount: "15.5",
+          description: "aaaaaaaaa",
+          createdAt: new Date("2025-12-23T16:06:58.000Z"),
+          updatedAt: new Date("2025-12-23T16:06:58.000Z"),
+          createdBy: 1,
+          updatedBy: 1
+        }
+      })
+
+Argument `branchId`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.expenses.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:160:41
+
+  157         updatedBy: req.user ? req.user.id : null
+  158     }
+  159 })
+→ 160 : await prisma.expenses.create({
+        data: {
+          branchId: "1",
+                    ~~~
+          expenseDate: new Date("2025-12-24T00:00:00.000Z"),
+          name: "expense testing",
+          amount: "15.5",
+          description: "aaaaaaaaa",
+          createdAt: new Date("2025-12-23T16:06:58.000Z"),
+          updatedAt: new Date("2025-12-23T16:06:58.000Z"),
+          createdBy: 1,
+          updatedBy: 1
+        }
+      })
+
+Argument `branchId`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:160:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertExpense (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:136:25)
+2025-12-23 16:31:55 error: Error upserting expense: 
+Invalid `prisma.expenses.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:148:41
+
+  145 }
+  146 
+  147 const expense = id
+→ 148     ? await prisma.expenses.update({
+            where: {
+              id: 3
+            },
+            data: {
+              branchId: 1,
+              expenseDate: new Date("2025-12-24T00:00:00.000Z"),
+              name: "expense testings",
+              amount: "15.553s",
+                      ~~~~~~~~~
+              description: "aaaaaaaaa",
+              updatedAt: new Date("2025-12-23T16:11:18.000Z"),
+              updatedBy: 1
+            }
+          })
+
+Invalid value for argument `amount`: invalid digit found in string. Expected decimal String. PrismaClientValidationError: 
+Invalid `prisma.expenses.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:148:41
+
+  145 }
+  146 
+  147 const expense = id
+→ 148     ? await prisma.expenses.update({
+            where: {
+              id: 3
+            },
+            data: {
+              branchId: 1,
+              expenseDate: new Date("2025-12-24T00:00:00.000Z"),
+              name: "expense testings",
+              amount: "15.553s",
+                      ~~~~~~~~~
+              description: "aaaaaaaaa",
+              updatedAt: new Date("2025-12-23T16:11:18.000Z"),
+              updatedBy: 1
+            }
+          })
+
+Invalid value for argument `amount`: invalid digit found in string. Expected decimal String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:148:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertExpense (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:136:25)
+2025-12-23 16:34:07 error: Error upserting income: 
+Invalid `prisma.incomes.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:160:40
+
+  157         updatedBy: req.user ? req.user.id : null
+  158     }
+  159 })
+→ 160 : await prisma.incomes.create({
+        data: {
+          branchId: "1",
+                    ~~~
+          incomeDate: new Date("2025-12-31T00:00:00.000Z"),
+          name: "fffff",
+          amount: "17.5",
+          description: "fffff",
+          createdAt: new Date("2025-12-23T16:33:06.000Z"),
+          updatedAt: new Date("2025-12-23T16:33:06.000Z"),
+          createdBy: 1,
+          updatedBy: 1
+        }
+      })
+
+Argument `branchId`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.incomes.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:160:40
+
+  157         updatedBy: req.user ? req.user.id : null
+  158     }
+  159 })
+→ 160 : await prisma.incomes.create({
+        data: {
+          branchId: "1",
+                    ~~~
+          incomeDate: new Date("2025-12-31T00:00:00.000Z"),
+          name: "fffff",
+          amount: "17.5",
+          description: "fffff",
+          createdAt: new Date("2025-12-23T16:33:06.000Z"),
+          updatedAt: new Date("2025-12-23T16:33:06.000Z"),
+          createdBy: 1,
+          updatedBy: 1
+        }
+      })
+
+Argument `branchId`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:160:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertIncome (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:136:25)
+2025-12-26 16:21:12 error: Error deleting payment: 
+Invalid `prisma.orderOnPayments.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:478:38
+
+  475     res.status(404).json({ message: "Payment not found!" });
+  476     return;
+  477 }
+→ 478 await prisma.orderOnPayments.update({
+        where: {
+          id: 40
+        },
+        data: {
+          deletedAt: new Date("2025-12-26T16:01:31.000Z"),
+          deletedBy: 1,
+          ~~~~~~~~~
+          status: "CANCELLED",
+          delReason: "sfdsfs fd afds df saf sfsdaf",
+      ?   branchId?: Int | IntFieldUpdateOperationsInput,
+      ?   paymentDate?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   totalPaid?: Decimal | DecimalFieldUpdateOperationsInput,
+      ?   createdAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   updatedAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   creator?: UserUpdateOneWithoutCreateOrderOnPaymentsNestedInput,
+      ?   updater?: UserUpdateOneWithoutUpdateOrderOnPaymentsNestedInput,
+      ?   deleter?: UserUpdateOneWithoutDeleteOrderOnPaymentsNestedInput,
+      ?   paymentMethods?: PaymentMethodsUpdateOneRequiredWithoutOrderPaymentsNestedInput,
+      ?   orders?: OrderUpdateOneRequiredWithoutOrderOnPaymentsNestedInput
+        }
+      })
+
+Unknown argument `deletedBy`. Did you mean `deletedAt`? Available options are marked with ?. PrismaClientValidationError: 
+Invalid `prisma.orderOnPayments.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:478:38
+
+  475     res.status(404).json({ message: "Payment not found!" });
+  476     return;
+  477 }
+→ 478 await prisma.orderOnPayments.update({
+        where: {
+          id: 40
+        },
+        data: {
+          deletedAt: new Date("2025-12-26T16:01:31.000Z"),
+          deletedBy: 1,
+          ~~~~~~~~~
+          status: "CANCELLED",
+          delReason: "sfdsfs fd afds df saf sfsdaf",
+      ?   branchId?: Int | IntFieldUpdateOperationsInput,
+      ?   paymentDate?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   totalPaid?: Decimal | DecimalFieldUpdateOperationsInput,
+      ?   createdAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   updatedAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   creator?: UserUpdateOneWithoutCreateOrderOnPaymentsNestedInput,
+      ?   updater?: UserUpdateOneWithoutUpdateOrderOnPaymentsNestedInput,
+      ?   deleter?: UserUpdateOneWithoutDeleteOrderOnPaymentsNestedInput,
+      ?   paymentMethods?: PaymentMethodsUpdateOneRequiredWithoutOrderPaymentsNestedInput,
+      ?   orders?: OrderUpdateOneRequiredWithoutOrderOnPaymentsNestedInput
+        }
+      })
+
+Unknown argument `deletedBy`. Did you mean `deletedAt`? Available options are marked with ?.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async deletePayment (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:478:9)
+2025-12-26 16:22:57 error: Error deleting payment: 
+Invalid `prisma.orderOnPayments.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:478:38
+
+  475     res.status(404).json({ message: "Payment not found!" });
+  476     return;
+  477 }
+→ 478 await prisma.orderOnPayments.update({
+        where: {
+          id: 40
+        },
+        data: {
+          deletedAt: new Date("2025-12-26T16:22:39.000Z"),
+          deletedBy: 1,
+          ~~~~~~~~~
+          delReason: "sfsf  ffd df fsdf sdaf sdafa",
+          status: "CANCELLED",
+      ?   branchId?: Int | IntFieldUpdateOperationsInput,
+      ?   paymentDate?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   totalPaid?: Decimal | DecimalFieldUpdateOperationsInput,
+      ?   createdAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   updatedAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   creator?: UserUpdateOneWithoutCreateOrderOnPaymentsNestedInput,
+      ?   updater?: UserUpdateOneWithoutUpdateOrderOnPaymentsNestedInput,
+      ?   deleter?: UserUpdateOneWithoutDeleteOrderOnPaymentsNestedInput,
+      ?   paymentMethods?: PaymentMethodsUpdateOneRequiredWithoutOrderPaymentsNestedInput,
+      ?   orders?: OrderUpdateOneRequiredWithoutOrderOnPaymentsNestedInput
+        }
+      })
+
+Unknown argument `deletedBy`. Did you mean `deletedAt`? Available options are marked with ?. PrismaClientValidationError: 
+Invalid `prisma.orderOnPayments.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:478:38
+
+  475     res.status(404).json({ message: "Payment not found!" });
+  476     return;
+  477 }
+→ 478 await prisma.orderOnPayments.update({
+        where: {
+          id: 40
+        },
+        data: {
+          deletedAt: new Date("2025-12-26T16:22:39.000Z"),
+          deletedBy: 1,
+          ~~~~~~~~~
+          delReason: "sfsf  ffd df fsdf sdaf sdafa",
+          status: "CANCELLED",
+      ?   branchId?: Int | IntFieldUpdateOperationsInput,
+      ?   paymentDate?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   totalPaid?: Decimal | DecimalFieldUpdateOperationsInput,
+      ?   createdAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   updatedAt?: DateTime | DateTimeFieldUpdateOperationsInput,
+      ?   creator?: UserUpdateOneWithoutCreateOrderOnPaymentsNestedInput,
+      ?   updater?: UserUpdateOneWithoutUpdateOrderOnPaymentsNestedInput,
+      ?   deleter?: UserUpdateOneWithoutDeleteOrderOnPaymentsNestedInput,
+      ?   paymentMethods?: PaymentMethodsUpdateOneRequiredWithoutOrderPaymentsNestedInput,
+      ?   orders?: OrderUpdateOneRequiredWithoutOrderOnPaymentsNestedInput
+        }
+      })
+
+Unknown argument `deletedBy`. Did you mean `deletedAt`? Available options are marked with ?.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async deletePayment (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:478:9)

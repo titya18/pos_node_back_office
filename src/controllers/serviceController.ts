@@ -59,7 +59,7 @@ export const getAllServicesWithPagination = async (req: Request, res: Response):
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
 
         // 2️ Fetch paginated data
-        const branches: any = await prisma.$queryRawUnsafe(`
+        const services: any = await prisma.$queryRawUnsafe(`
             SELECT s.*, 
                    json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
                    json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater
@@ -79,7 +79,7 @@ export const getAllServicesWithPagination = async (req: Request, res: Response):
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
 
-        res.status(200).json({ data: branches, total });
+        res.status(200).json({ data: services, total });
 
     } catch (error) {
         logger.error("Error fetching services:", error);

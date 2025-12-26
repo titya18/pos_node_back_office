@@ -30,6 +30,9 @@ import stockAdjustmentRoute from './routes/stockAdjustmentRoute';
 import stockTransferRoute from './routes/stockTransferRoute';
 import stockRequestRoute from './routes/stockRequestRoute';
 import stockReturnRoute from './routes/stockReturnRoute';
+import expenseRoute from './routes/expenseRoute';
+import incomeRoute from './routes/incomeRoute';
+import reportRoute from './routes/reportRoute';
 
 const app = express();
 
@@ -89,6 +92,9 @@ app.use('/api/stockadjustment', stockAdjustmentRoute);
 app.use('/api/stocktransfer', stockTransferRoute);
 app.use('/api/stockrequest', stockRequestRoute);
 app.use('/api/stockreturn', stockReturnRoute);
+app.use('/api/expense', expenseRoute);
+app.use('/api/income', incomeRoute);
+app.use('/api/report', reportRoute);
 
 // Default route
 app.get("/", (req, res) => {

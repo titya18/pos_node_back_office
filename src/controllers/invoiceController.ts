@@ -67,6 +67,10 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
             WHERE 1=1
                 ${branchRestriction}
                 AND (
+                    rd."status" NOT IN ('COMPLETED', 'CANCELLED')
+                    OR rd."orderDate"::date >= CURRENT_DATE
+                )
+                AND (
                     rd."ref" ILIKE $1
                     OR cs."name" ILIKE $1
                     OR br."name" ILIKE $1
@@ -100,6 +104,10 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
             WHERE 1=1
                 ${branchRestriction}
                 AND (
+                    rd."status" NOT IN ('COMPLETED', 'CANCELLED')
+                    OR rd."orderDate"::date >= CURRENT_DATE
+                )
+                AND (
                     rd."ref" ILIKE $1
                     OR cs."name" ILIKE $1
                     OR br."name" ILIKE $1
@@ -123,7 +131,6 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
         res.status(500).json({ message: "Internal server error" });
     }
 };
-
 
 export const upsertInvoice = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
@@ -386,6 +393,7 @@ export const insertInvoicePayment = async (req: Request, res: Response): Promise
                     createdBy: req.user ? req.user.id : null,
                     updatedAt: currentDate,
                     updatedBy: req.user ? req.user.id : null,
+                    status: "PAID"
                 }
             });
 
@@ -439,7 +447,10 @@ export const getInvoicePaymentById = async (req: Request, res: Response): Promis
     const { id } = req.params;
     try {
         const purchasePayment = await prisma.orderOnPayments.findMany({ 
-            where: { orderId: parseInt(id, 10) },
+            where: { 
+                orderId: parseInt(id, 10) ,
+                status: 'PAID'
+            },
             orderBy: { id: 'desc' },
             include: {
                 paymentMethods: {
@@ -456,6 +467,46 @@ export const getInvoicePaymentById = async (req: Request, res: Response): Promis
         res.status(500).json({ message: typedError.message });
     }
 }
+
+export const deletePayment = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { delReason } = req.body;
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const payment = await tx.orderOnPayments.findUnique({ 
+                where: { id: parseInt(id, 10) },
+            });
+            if (!payment) {
+                res.status(404).json({ message: "Payment not found!" });
+                return;
+            }
+            await tx.orderOnPayments.update({
+                where: { id: parseInt(id, 10) },
+                data: {
+                    deletedAt: currentDate,
+                    deletedBy: req.user ? req.user.id : null,
+                    delReason,
+                    status: "CANCELLED"
+                }
+            });
+
+            await tx.order.update({
+                where: { id: payment.orderId },
+                data: {
+                    paidAmount: {
+                        decrement: payment.totalPaid.toNumber()
+                    }
+                }
+            });
+            return payment;
+        });
+        res.status(200).json(result);
+    } catch (error) {
+        logger.error("Error deleting payment:", error);
+        const typedError = error as Error;
+        res.status(500).json({ message: typedError.message });
+    }
+};
 
 export const deleteInvoice = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;

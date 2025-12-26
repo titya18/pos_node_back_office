@@ -95,6 +95,9 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
             WHERE 1=1
                 ${branchRestriction}
                 AND (
+                    p."status" NOT IN ('COMPLETED', 'CANCELLED')
+                )
+                AND (
                     p."ref" ILIKE $1
                     OR su."name" ILIKE $1
                     OR br."name" ILIKE $1
