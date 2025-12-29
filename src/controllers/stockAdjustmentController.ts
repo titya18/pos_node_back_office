@@ -20,7 +20,7 @@ export const getAllStockAdjustments = async (req: Request, res: Response): Promi
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
         const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
         const sortField = req.query.sortField ? req.query.sortField.toString() : "ref";
-        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "desc";
+        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -145,6 +145,25 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                 throw new Error("Adjustment details cannot be empty");
             }
 
+            let ref = "SAJM-";
+
+            // Generate a new ref only for creation
+            if (!id) {
+                // Query for the highest ref in the same branch
+                const lastAdjustment = await prisma.stockAdjustments.findFirst({
+                    where: { branchId: parseInt(branchId, 10) },
+                    orderBy: { id: 'desc' }, // Sort by ref in descending order
+                });
+
+                // Extract and increment the numeric part of the ref
+                if (lastAdjustment && lastAdjustment.ref) {
+                    const refNumber = parseInt(lastAdjustment.ref.split('-')[1], 10) || 0;
+                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+                } else {
+                    ref += "00001"; // Start from 00001 if no ref exists for the branch
+                }
+            }
+
             const adjustment = adjustmentId
                 ? await tx.stockAdjustments.update({
                     where: { id: adjustmentId },
@@ -171,6 +190,7 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                 : await tx.stockAdjustments.create({
                     data: {
                         branchId: parseInt(branchId, 10),
+                        ref,
                         note,
                         adjustDate: new Date(dayjs(adjustDate).format("YYYY-MM-DD")),
                         AdjustMentType,

@@ -19,7 +19,7 @@ export const getAllStockReturns = async (req: Request, res: Response): Promise<v
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
         const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
         const sortField = req.query.sortField ? req.query.sortField.toString() : "ref";
-        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "desc";
+        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -149,6 +149,25 @@ export const upsertReturn = async (req: Request, res: Response): Promise<void> =
                 throw new Error("Return details cannot be empty");
             }
 
+            let ref = "SRT-";
+
+            // Generate a new ref only for creation
+            if (!id) {
+                // Query for the highest ref in the same branch
+                const lastReturn = await prisma.stockReturns.findFirst({
+                    where: { branchId: parseInt(branchId, 10) },
+                    orderBy: { id: 'desc' }, // Sort by ref in descending order
+                });
+
+                // Extract and increment the numeric part of the ref
+                if (lastReturn && lastReturn.ref) {
+                    const refNumber = parseInt(lastReturn.ref.split('-')[1], 10) || 0;
+                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+                } else {
+                    ref += "00001"; // Start from 00001 if no ref exists for the branch
+                }
+            }
+
             const returnData = returnId
                 ? await tx.stockReturns.update({
                     where: { id: returnId },
@@ -176,6 +195,7 @@ export const upsertReturn = async (req: Request, res: Response): Promise<void> =
                     data: {
                         branchId: parseInt(branchId, 10),
                         returnBy: req.user ? req.user.id : 0,
+                        ref,
                         note,
                         returnDate: new Date(dayjs(returnDate).format("YYYY-MM-DD")),
                         StatusType,

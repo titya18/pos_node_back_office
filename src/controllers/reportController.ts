@@ -26,7 +26,7 @@ export const getAllReportInvoices = async (
 
         const searchTerm = ((req.query.searchTerm as string) || "").trim();
         const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "asc" : "desc";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -231,7 +231,7 @@ export const getAllCancelReportInvoices = async (
 
         const searchTerm = ((req.query.searchTerm as string) || "").trim();
         const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "asc" : "desc";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -433,7 +433,7 @@ export const getAllPaymentInvoices = async (
 
         const searchTerm = ((req.query.searchTerm as string) || "").trim();
         const sortField = (req.query.sortField as string) || "paymentDate";
-        const sortOrder = req.query.sortOrder === "desc" ? "asc" : "desc";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -474,14 +474,14 @@ export const getAllPaymentInvoices = async (
         let branchRestriction = "";
         if (loggedInUser.roleType === "ADMIN") {
             if (branchId) {
-                branchRestriction = `AND o."branchId" = ${branchId}`;
+                branchRestriction = `AND op."branchId" = ${branchId}`;
             }
         } else {
             if (!loggedInUser.branchId) {
                 res.status(403).json({ message: "Branch not assigned." });
                 return;
             }
-            branchRestriction = `AND o."branchId" = ${loggedInUser.branchId}`;
+            branchRestriction = `AND op."branchId" = ${loggedInUser.branchId}`;
         }
 
         /* -------------------- Date Filter (PAYMENT DATE) -------------------- */
@@ -494,8 +494,8 @@ export const getAllPaymentInvoices = async (
         const commonFilters = `
             WHERE 1=1
             ${branchRestriction}
-            ${saleType ? `AND o."OrderSaleType" = '${saleType}'` : ""}
-            ${status ? `AND o."status" = '${status}'` : ""}
+            ${saleType ? `AND op."OrderSaleType" = '${saleType}'` : ""}
+            ${status ? `AND op."status" = '${status}'` : ""}
             ${dateFilter}
             AND (
                 o."ref" ILIKE $1
@@ -503,8 +503,10 @@ export const getAllPaymentInvoices = async (
                 OR br."name" ILIKE $1
                 OR TO_CHAR(op."paymentDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(op."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(op."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(op."paymentDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
             )
         `;
@@ -520,7 +522,7 @@ export const getAllPaymentInvoices = async (
             LEFT JOIN "Customer" cs ON o."customerId" = cs.id
             LEFT JOIN "Branch" br ON o."branchId" = br.id
             LEFT JOIN "User" c ON op."createdBy" = c.id
-            LEFT JOIN "User" u ON op."updatedBy" = u.id
+            LEFT JOIN "User" db ON op."deletedBy" = db.id
             ${commonFilters}
             `,
             ...params
@@ -540,7 +542,7 @@ export const getAllPaymentInvoices = async (
             LEFT JOIN "Customer" cs ON o."customerId" = cs.id
             LEFT JOIN "Branch" br ON o."branchId" = br.id
             LEFT JOIN "User" c ON op."createdBy" = c.id
-            LEFT JOIN "User" u ON op."updatedBy" = u.id
+            LEFT JOIN "User" db ON op."deletedBy" = db.id
             ${commonFilters}
             `,
             ...params
@@ -553,7 +555,7 @@ export const getAllPaymentInvoices = async (
             "paymentDate",
             "totalPaid",
             "createdAt",
-            "updatedAt"
+            "deletedAt"
         ];
         const safeSortField = allowedSortFields.includes(sortField)
             ? sortField
@@ -580,14 +582,14 @@ export const getAllPaymentInvoices = async (
                 json_build_object('id', cs.id, 'name', cs.name) AS customer,
                 json_build_object('id', br.id, 'name', br.name) AS branch,
                 json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
-                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter
             FROM "OrderOnPayments" op
             LEFT JOIN "Order" o ON op."orderId" = o.id
             LEFT JOIN "Customer" cs ON o."customerId" = cs.id
-            LEFT JOIN "PaymentMethods" pm ON o."customerId" = pm.id
+            LEFT JOIN "PaymentMethods" pm ON op."paymentMethodId" = pm.id
             LEFT JOIN "Branch" br ON o."branchId" = br.id
             LEFT JOIN "User" c ON op."createdBy" = c.id
-            LEFT JOIN "User" u ON op."updatedBy" = u.id
+            LEFT JOIN "User" db ON op."deletedBy" = db.id
             ${commonFilters}
             ORDER BY op."${safeSortField}" ${sortOrder}
             LIMIT ${pageSize} OFFSET ${offset}
@@ -636,7 +638,7 @@ export const getAllReportQuotations = async (
 
         const searchTerm = ((req.query.searchTerm as string) || "").trim();
         const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "asc" : "desc";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -824,7 +826,7 @@ export const getAllReportPurchases = async (
 
         const searchTerm = ((req.query.searchTerm as string) || "").trim();
         const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "asc" : "desc";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -982,8 +984,8 @@ export const getAllReportPurchases = async (
             receivedBy: quote.receivedBy ? Number(quote.receivedBy) : null,
             deletedBy: quote.deletedBy ? Number(quote.deletedBy) : null
         }));
-        console.log("Data: ", purchaseSafe);
-        console.log("Summary: ", summarySafe);
+        // console.log("Data: ", purchaseSafe);
+        // console.log("Summary: ", summarySafe);
 
         res.status(200).json({
             data: purchaseSafe,
@@ -994,5 +996,1021 @@ export const getAllReportPurchases = async (
     } catch (error) {
         console.error("Report purchase error:", error);
         res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const getAllReportAdjustments = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------------------------------------- */
+        /* PAGINATION & FILTER PARAMS                         */
+        /* -------------------------------------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "ref";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const adjustType = req.query.adjustType as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------------------------------------- */
+        /* SEARCH SETUP                                       */
+        /* -------------------------------------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR ap."firstName" ILIKE $${idx + 2}
+                    OR ap."lastName" ILIKE $${idx + 2}
+                    OR db."firstName" ILIKE $${idx + 2}
+                    OR db."lastName" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------------------------------------- */
+        /* BRANCH RESTRICTION                                 */
+        /* -------------------------------------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) branchRestriction = `AND sam."branchId" = ${branchId}`;
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND sam."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------------------------------------- */
+        /* COMMON FILTERS                                     */
+        /* -------------------------------------------------- */
+        
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${startDate && endDate ? `AND sam."adjustDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            ${adjustType ? `AND sam."AdjustMentType" = '${adjustType}'` : ""}
+            ${status ? `AND sam."StatusType" = '${status}'` : ""}
+            AND (
+                br."name" ILIKE $1
+                OR TO_CHAR(sam."adjustDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."adjustDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sam."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------------------------------------- */
+        /* 21 TOTAL COUNT (PAGINATION)                       */
+        /* -------------------------------------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT sam.id
+                FROM "StockAdjustments" sam
+                LEFT JOIN "Branch" br ON sam."branchId" = br.id
+                LEFT JOIN "User" c ON sam."createdBy" = c.id
+                LEFT JOIN "User" u ON sam."updatedBy" = u.id
+                LEFT JOIN "User" ap ON sam."approvedBy" = ap.id
+                LEFT JOIN "User" db ON sam."deletedBy" = db.id
+                ${commonFilters}
+                GROUP BY sam.id
+            ) AS t
+        `, ...params);
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------------------------------------- */
+        /* 3️ DATA LIST                                      */
+        /* -------------------------------------------------- */
+        const adjustments: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                sam.*,
+                COALESCE(SUM(ad.quantity), 0) AS "totalQuantity",
+
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater,
+                json_build_object('id', ap.id, 'firstName', ap."firstName", 'lastName', ap."lastName") AS approver,
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter
+
+            FROM "StockAdjustments" sam
+                LEFT JOIN "AdjustmentDetails" ad ON ad."adjustmentId" = sam.id
+                LEFT JOIN "Branch" br ON sam."branchId" = br.id
+                LEFT JOIN "User" c ON sam."createdBy" = c.id
+                LEFT JOIN "User" u ON sam."updatedBy" = u.id
+                LEFT JOIN "User" ap ON sam."approvedBy" = ap.id
+                LEFT JOIN "User" db ON sam."deletedBy" = db.id
+                ${commonFilters}
+                
+            GROUP BY 
+                sam.id,
+                br.id,
+                c.id,
+                u.id,
+                ap.id,
+                db.id
+
+            ORDER BY sam."${sortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+        `, ...params);
+
+        const adjustmentsSafe = adjustments.map((adj: any) => ({
+            ...adj,
+            id: Number(adj.id),
+            branchId: Number(adj.branchId),
+            totalQuantity: Number(adj.totalQuantity),
+            createdBy: adj.createdBy ? Number(adj.createdBy) : null,
+            updatedBy: adj.updatedBy ? Number(adj.updatedBy) : null,
+            approvedBy: adj.approvedBy ? Number(adj.approvedBy) : null,
+            deletedBy: adj.deletedBy ? Number(adj.deletedBy) : null
+        }));
+
+        // console.log("Data: ", adjustments);
+        // console.log("Summary: ", summarySafe);
+
+        res.status(200).json({
+            data: adjustmentsSafe,
+            total
+        });
+
+    } catch (error) {
+        console.error("Report adjustment error:", error);
+        res.status(500).json({ message: "Adjustment server error" });
+    }
+};
+
+export const getAllReportTransfers = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------------------------------------- */
+        /* PAGINATION & FILTER PARAMS                         */
+        /* -------------------------------------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "ref";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------------------------------------- */
+        /* SEARCH SETUP                                       */
+        /* -------------------------------------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR ap."firstName" ILIKE $${idx + 2}
+                    OR ap."lastName" ILIKE $${idx + 2}
+                    OR db."firstName" ILIKE $${idx + 2}
+                    OR db."lastName" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                    OR tbr."name" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------------------------------------- */
+        /* BRANCH RESTRICTION                                 */
+        /* -------------------------------------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) branchRestriction = `AND sts."branchId" = ${branchId}`;
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND sts."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------------------------------------- */
+        /* COMMON FILTERS                                     */
+        /* -------------------------------------------------- */
+        
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${startDate && endDate ? `AND sts."transferDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            ${status ? `AND sts."StatusType" = '${status}'` : ""}
+            AND (
+                br."name" ILIKE $1
+                OR tbr."name" ILIKE $1
+                OR TO_CHAR(sts."transferDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."transferDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sts."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------------------------------------- */
+        /* 21 TOTAL COUNT (PAGINATION)                       */
+        /* -------------------------------------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT sts.id
+                FROM "StockTransfers" sts
+                LEFT JOIN "Branch" br ON sts."branchId" = br.id
+                LEFT JOIN "Branch" tbr ON sts."toBranchId" = tbr.id
+                LEFT JOIN "User" c ON sts."createdBy" = c.id
+                LEFT JOIN "User" u ON sts."updatedBy" = u.id
+                LEFT JOIN "User" ap ON sts."approvedBy" = ap.id
+                LEFT JOIN "User" db ON sts."deletedBy" = db.id
+                ${commonFilters}
+                GROUP BY sts.id
+            ) AS t
+        `, ...params);
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------------------------------------- */
+        /* 3️ DATA LIST                                      */
+        /* -------------------------------------------------- */
+        const transfers: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                sts.*,
+                COALESCE(SUM(td.quantity), 0) AS "totalQuantity",
+
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', tbr.id, 'name', tbr.name) AS tobranch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater,
+                json_build_object('id', ap.id, 'firstName', ap."firstName", 'lastName', ap."lastName") AS approver,
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter
+
+            FROM "StockTransfers" sts
+                LEFT JOIN "TransferDetails" td ON td."transferId" = sts.id
+                LEFT JOIN "Branch" br ON sts."branchId" = br.id
+                LEFT JOIN "Branch" tbr ON sts."toBranchId" = tbr.id
+                LEFT JOIN "User" c ON sts."createdBy" = c.id
+                LEFT JOIN "User" u ON sts."updatedBy" = u.id
+                LEFT JOIN "User" ap ON sts."approvedBy" = ap.id
+                LEFT JOIN "User" db ON sts."deletedBy" = db.id
+                ${commonFilters}
+                
+            GROUP BY 
+                sts.id,
+                br.id,
+                tbr.id,
+                c.id,
+                u.id,
+                ap.id,
+                db.id
+
+            ORDER BY sts."${sortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+        `, ...params);
+
+        const transfersSafe = transfers.map((adj: any) => ({
+            ...adj,
+            id: Number(adj.id),
+            branchId: Number(adj.branchId),
+            totalQuantity: Number(adj.totalQuantity),
+            createdBy: adj.createdBy ? Number(adj.createdBy) : null,
+            updatedBy: adj.updatedBy ? Number(adj.updatedBy) : null,
+            approvedBy: adj.approvedBy ? Number(adj.approvedBy) : null,
+            deletedBy: adj.deletedBy ? Number(adj.deletedBy) : null
+        }));
+
+        console.log("Data: ", transfers);
+        // console.log("Summary: ", summarySafe);
+
+        res.status(200).json({
+            data: transfersSafe,
+            total
+        });
+
+    } catch (error) {
+        console.error("Report transfer report error:", error);
+        res.status(500).json({ message: "Transfer report server error" });
+    }
+};
+
+export const getAllReportRequests = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------------------------------------- */
+        /* PAGINATION & FILTER PARAMS                         */
+        /* -------------------------------------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "ref";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------------------------------------- */
+        /* SEARCH SETUP                                       */
+        /* -------------------------------------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR ap."firstName" ILIKE $${idx + 2}
+                    OR ap."lastName" ILIKE $${idx + 2}
+                    OR db."firstName" ILIKE $${idx + 2}
+                    OR db."lastName" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                    OR rqb."firstName" ILIKE $${idx + 2}
+                    OR rqb."lastName" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------------------------------------- */
+        /* BRANCH RESTRICTION                                 */
+        /* -------------------------------------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) branchRestriction = `AND srq."branchId" = ${branchId}`;
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND srq."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------------------------------------- */
+        /* COMMON FILTERS                                     */
+        /* -------------------------------------------------- */
+        
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${startDate && endDate ? `AND srq."requestDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            ${status ? `AND srq."StatusType" = '${status}'` : ""}
+            AND (
+                br."name" ILIKE $1
+                OR TO_CHAR(srq."requestDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."requestDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srq."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------------------------------------- */
+        /* 21 TOTAL COUNT (PAGINATION)                       */
+        /* -------------------------------------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT srq.id
+                FROM "StockRequests" srq
+                LEFT JOIN "Branch" br ON srq."branchId" = br.id
+                LEFT JOIN "User" c ON srq."createdBy" = c.id
+                LEFT JOIN "User" u ON srq."updatedBy" = u.id
+                LEFT JOIN "User" ap ON srq."approvedBy" = ap.id
+                LEFT JOIN "User" db ON srq."deletedBy" = db.id
+                LEFT JOIN "User" rqb ON srq."requestBy" = rqb.id
+                ${commonFilters}
+                GROUP BY srq.id
+            ) AS t
+        `, ...params);
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------------------------------------- */
+        /* 3️ DATA LIST                                      */
+        /* -------------------------------------------------- */
+        const requests: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                srq.*,
+                COALESCE(SUM(rqd.quantity), 0) AS "totalQuantity",
+
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater,
+                json_build_object('id', ap.id, 'firstName', ap."firstName", 'lastName', ap."lastName") AS approver,
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter,
+                json_build_object('id', rqb.id, 'firstName', rqb."firstName", 'lastName', rqb."lastName") AS requester
+
+            FROM "StockRequests" srq
+                LEFT JOIN "RequestDetails" rqd ON rqd."requestId" = srq.id
+                LEFT JOIN "Branch" br ON srq."branchId" = br.id
+                LEFT JOIN "User" c ON srq."createdBy" = c.id
+                LEFT JOIN "User" u ON srq."updatedBy" = u.id
+                LEFT JOIN "User" ap ON srq."approvedBy" = ap.id
+                LEFT JOIN "User" db ON srq."deletedBy" = db.id
+                LEFT JOIN "User" rqb ON srq."requestBy" = rqb.id
+                ${commonFilters}
+                
+            GROUP BY 
+                srq.id,
+                br.id,
+                c.id,
+                u.id,
+                rqb.id,
+                ap.id,
+                db.id
+
+            ORDER BY srq."${sortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+        `, ...params);
+
+        const requestsSafe = requests.map((adj: any) => ({
+            ...adj,
+            id: Number(adj.id),
+            branchId: Number(adj.branchId),
+            totalQuantity: Number(adj.totalQuantity),
+            createdBy: adj.createdBy ? Number(adj.createdBy) : null,
+            updatedBy: adj.updatedBy ? Number(adj.updatedBy) : null,
+            approvedBy: adj.approvedBy ? Number(adj.approvedBy) : null,
+            deletedBy: adj.deletedBy ? Number(adj.deletedBy) : null,
+            requestedBy: adj.requestBy ? Number(adj.requestBy) : null
+        }));
+
+        // console.log("Data: ", requests);
+        // console.log("Summary: ", summarySafe);
+
+        res.status(200).json({
+            data: requestsSafe,
+            total
+        });
+
+    } catch (error) {
+        console.error("Report request report error:", error);
+        res.status(500).json({ message: "Request report server error" });
+    }
+};
+
+export const getAllReportReturns = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------------------------------------- */
+        /* PAGINATION & FILTER PARAMS                         */
+        /* -------------------------------------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "ref";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------------------------------------- */
+        /* SEARCH SETUP                                       */
+        /* -------------------------------------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR ap."firstName" ILIKE $${idx + 2}
+                    OR ap."lastName" ILIKE $${idx + 2}
+                    OR db."firstName" ILIKE $${idx + 2}
+                    OR db."lastName" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                    OR rtb."firstName" ILIKE $${idx + 2}
+                    OR rtb."lastName" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------------------------------------- */
+        /* BRANCH RESTRICTION                                 */
+        /* -------------------------------------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) branchRestriction = `AND srt."branchId" = ${branchId}`;
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND srt."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------------------------------------- */
+        /* COMMON FILTERS                                     */
+        /* -------------------------------------------------- */
+        
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${startDate && endDate ? `AND srt."returnDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            ${status ? `AND srt."StatusType" = '${status}'` : ""}
+            AND (
+                br."name" ILIKE $1
+                OR TO_CHAR(srt."returnDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."returnDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(srt."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------------------------------------- */
+        /* 21 TOTAL COUNT (PAGINATION)                       */
+        /* -------------------------------------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT srt.id
+                FROM "StockReturns" srt
+                LEFT JOIN "Branch" br ON srt."branchId" = br.id
+                LEFT JOIN "User" c ON srt."createdBy" = c.id
+                LEFT JOIN "User" u ON srt."updatedBy" = u.id
+                LEFT JOIN "User" ap ON srt."approvedBy" = ap.id
+                LEFT JOIN "User" db ON srt."deletedBy" = db.id
+                LEFT JOIN "User" rtb ON srt."returnBy" = rtb.id
+                ${commonFilters}
+                GROUP BY srt.id
+            ) AS t
+        `, ...params);
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------------------------------------- */
+        /* 3️ DATA LIST                                      */
+        /* -------------------------------------------------- */
+        const returns: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                srt.*,
+                COALESCE(SUM(rtd.quantity), 0) AS "totalQuantity",
+
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater,
+                json_build_object('id', ap.id, 'firstName', ap."firstName", 'lastName', ap."lastName") AS approver,
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter,
+                json_build_object('id', rtb.id, 'firstName', rtb."firstName", 'lastName', rtb."lastName") AS returner
+
+            FROM "StockReturns" srt
+                LEFT JOIN "ReturnDetails" rtd ON rtd."returnId" = srt.id
+                LEFT JOIN "Branch" br ON srt."branchId" = br.id
+                LEFT JOIN "User" c ON srt."createdBy" = c.id
+                LEFT JOIN "User" u ON srt."updatedBy" = u.id
+                LEFT JOIN "User" ap ON srt."approvedBy" = ap.id
+                LEFT JOIN "User" db ON srt."deletedBy" = db.id
+                LEFT JOIN "User" rtb ON srt."returnBy" = rtb.id
+                ${commonFilters}
+                
+            GROUP BY 
+                srt.id,
+                br.id,
+                c.id,
+                u.id,
+                rtb.id,
+                ap.id,
+                db.id
+
+            ORDER BY srt."${sortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+        `, ...params);
+
+        const returnsSafe = returns.map((adj: any) => ({
+            ...adj,
+            id: Number(adj.id),
+            branchId: Number(adj.branchId),
+            totalQuantity: Number(adj.totalQuantity),
+            createdBy: adj.createdBy ? Number(adj.createdBy) : null,
+            updatedBy: adj.updatedBy ? Number(adj.updatedBy) : null,
+            approvedBy: adj.approvedBy ? Number(adj.approvedBy) : null,
+            deletedBy: adj.deletedBy ? Number(adj.deletedBy) : null,
+            returnBy: adj.returnBy ? Number(adj.returnBy) : null
+        }));
+
+        // console.log("Data: ", returns);
+        // console.log("Summary: ", summarySafe);
+
+        res.status(200).json({
+            data: returnsSafe,
+            total
+        });
+
+    } catch (error) {
+        console.error("Report return report error:", error);
+        res.status(500).json({ message: "Return report server error" });
+    }
+};
+
+export const getAllReportExpenses = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------------------------------------- */
+        /* PAGINATION & FILTER PARAMS                         */
+        /* -------------------------------------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "ref";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------------------------------------- */
+        /* SEARCH SETUP                                       */
+        /* -------------------------------------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    exp."name" ILIKE $${idx + 2}
+                    OR c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR db."firstName" ILIKE $${idx + 2}
+                    OR db."lastName" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------------------------------------- */
+        /* BRANCH RESTRICTION                                 */
+        /* -------------------------------------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) branchRestriction = `AND exp."branchId" = ${branchId}`;
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND exp."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------------------------------------- */
+        /* COMMON FILTERS                                     */
+        /* -------------------------------------------------- */
+        
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${startDate && endDate ? `AND exp."expenseDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            AND (
+                exp."name" ILIKE $1
+                OR br."name" ILIKE $1
+                OR TO_CHAR(exp."expenseDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(exp."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(exp."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(exp."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(exp."expenseDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(exp."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(exp."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(exp."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------------------------------------- */
+        /* 21 TOTAL COUNT (PAGINATION)                       */
+        /* -------------------------------------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT exp.id
+                FROM "Expenses" exp
+                LEFT JOIN "Branch" br ON exp."branchId" = br.id
+                LEFT JOIN "User" c ON exp."createdBy" = c.id
+                LEFT JOIN "User" u ON exp."updatedBy" = u.id
+                LEFT JOIN "User" db ON exp."deletedBy" = db.id
+                ${commonFilters}
+                GROUP BY exp.id
+            ) AS t
+        `, ...params);
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------------------------------------- */
+        /* 3️ DATA LIST                                      */
+        /* -------------------------------------------------- */
+        const expenses: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                exp.*,
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater,
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter
+
+            FROM "Expenses" exp
+                LEFT JOIN "Branch" br ON exp."branchId" = br.id
+                LEFT JOIN "User" c ON exp."createdBy" = c.id
+                LEFT JOIN "User" u ON exp."updatedBy" = u.id
+                LEFT JOIN "User" db ON exp."deletedBy" = db.id
+                ${commonFilters}
+
+            ORDER BY exp."${sortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+        `, ...params);
+
+        const expensesSafe = expenses.map((exps: any) => ({
+            ...exps,
+            id: Number(exps.id),
+            branchId: Number(exps.branchId),
+            createdBy: exps.createdBy ? Number(exps.createdBy) : null,
+            updatedBy: exps.updatedBy ? Number(exps.updatedBy) : null,
+            deletedBy: exps.deletedBy ? Number(exps.deletedBy) : null
+        }));
+
+        // console.log("Data: ", expenses);
+        // console.log("Summary: ", summarySafe);
+
+        res.status(200).json({
+            data: expensesSafe,
+            total
+        });
+
+    } catch (error) {
+        console.error("Report expense error:", error);
+        res.status(500).json({ message: "Expense report server error" });
+    }
+};
+
+export const getAllReportIncomes = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------------------------------------- */
+        /* PAGINATION & FILTER PARAMS                         */
+        /* -------------------------------------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "ref";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------------------------------------- */
+        /* SEARCH SETUP                                       */
+        /* -------------------------------------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    inc."name" ILIKE $${idx + 2}
+                    OR c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR db."firstName" ILIKE $${idx + 2}
+                    OR db."lastName" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------------------------------------- */
+        /* BRANCH RESTRICTION                                 */
+        /* -------------------------------------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) branchRestriction = `AND inc."branchId" = ${branchId}`;
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND inc."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------------------------------------- */
+        /* COMMON FILTERS                                     */
+        /* -------------------------------------------------- */
+        
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${startDate && endDate ? `AND inc."incomeDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            AND (
+                inc."name" ILIKE $1
+                OR br."name" ILIKE $1
+                OR TO_CHAR(inc."incomeDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(inc."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(inc."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(inc."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(inc."incomeDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(inc."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(inc."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(inc."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------------------------------------- */
+        /* 21 TOTAL COUNT (PAGINATION)                       */
+        /* -------------------------------------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT inc.id
+                FROM "Incomes" inc
+                LEFT JOIN "Branch" br ON inc."branchId" = br.id
+                LEFT JOIN "User" c ON inc."createdBy" = c.id
+                LEFT JOIN "User" u ON inc."updatedBy" = u.id
+                LEFT JOIN "User" db ON inc."deletedBy" = db.id
+                ${commonFilters}
+                GROUP BY inc.id
+            ) AS t
+        `, ...params);
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------------------------------------- */
+        /* 3️ DATA LIST                                      */
+        /* -------------------------------------------------- */
+        const incomes: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                inc.*,
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater,
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter
+
+            FROM "Incomes" inc
+                LEFT JOIN "Branch" br ON inc."branchId" = br.id
+                LEFT JOIN "User" c ON inc."createdBy" = c.id
+                LEFT JOIN "User" u ON inc."updatedBy" = u.id
+                LEFT JOIN "User" db ON inc."deletedBy" = db.id
+                ${commonFilters}
+
+            ORDER BY inc."${sortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+        `, ...params);
+
+        const incomesSafe = incomes.map((incs: any) => ({
+            ...incs,
+            id: Number(incs.id),
+            branchId: Number(incs.branchId),
+            createdBy: incs.createdBy ? Number(incs.createdBy) : null,
+            updatedBy: incs.updatedBy ? Number(incs.updatedBy) : null,
+            deletedBy: incs.deletedBy ? Number(incs.deletedBy) : null
+        }));
+
+        // console.log("Data: ", incomes);
+        // console.log("Summary: ", summarySafe);
+
+        res.status(200).json({
+            data: incomesSafe,
+            total
+        });
+
+    } catch (error) {
+        console.error("Report income error:", error);
+        res.status(500).json({ message: "Income report server error" });
     }
 };

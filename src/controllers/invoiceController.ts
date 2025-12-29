@@ -21,7 +21,7 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
         const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
         const sortField = req.query.sortField ? req.query.sortField.toString() : "ref";
-        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "desc";
+        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;

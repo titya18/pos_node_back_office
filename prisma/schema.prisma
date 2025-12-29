@@ -848,6 +848,7 @@ enum StatusType {
 model StockAdjustments {
   id              Int             @id @default(autoincrement())
   branchId        Int
+  ref             String         @db.VarChar(50)
   adjustDate      DateTime        @default(now())
   StatusType      StatusType?
   AdjustMentType  AdjustMentType?
@@ -887,6 +888,7 @@ model AdjustmentDetails {
 model StockTransfers {
   id            Int             @id @default(autoincrement())
   branchId      Int
+  ref           String         @db.VarChar(50)
   transferDate  DateTime        @default(now())
   fromBranchId  Int
   toBranchId    Int
@@ -930,6 +932,7 @@ model TransferDetails {
 model StockRequests {
   id            Int             @id @default(autoincrement())
   branchId      Int
+  ref           String         @db.VarChar(50)
   requestDate   DateTime        @default(now())
   requestBy     Int
   StatusType    StatusType?
@@ -970,6 +973,7 @@ model RequestDetails {
 model StockReturns {
   id            Int             @id @default(autoincrement())
   branchId      Int
+  ref           String         @db.VarChar(50)
   returnDate    DateTime        @default(now())
   returnBy      Int
   StatusType    StatusType?
@@ -1010,6 +1014,7 @@ model ReturnDetails {
 model Expenses {
   id            Int             @id @default(autoincrement())
   branchId      Int
+  ref           String         @db.VarChar(50)
   expenseDate   DateTime        @default(now())
   name          String          @db.VarChar(200)
   amount        Decimal         @db.Decimal(10, 4)
@@ -1032,6 +1037,7 @@ model Expenses {
 model Incomes {
   id            Int             @id @default(autoincrement())
   branchId      Int
+  ref           String         @db.VarChar(50)
   incomeDate    DateTime        @default(now())
   name          String          @db.VarChar(200)
   amount        Decimal         @db.Decimal(10, 4)

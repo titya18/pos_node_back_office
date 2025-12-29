@@ -27105,3 +27105,7 @@ Unknown argument `deletedBy`. Did you mean `deletedAt`? Available options are ma
     at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
     at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
     at async deletePayment (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:478:9)
+2025-12-28 20:31:01 error: Error creating/updating transfer: From branch and To branch cannot be the same Error: From branch and To branch cannot be the same
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:138:23)
+    at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:129:24)

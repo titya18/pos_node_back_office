@@ -19,7 +19,7 @@ export const getAllStockTransfer = async (req: Request, res: Response): Promise<
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
         const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
         const sortField = req.query.sortField ? req.query.sortField.toString() : "ref";
-        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "desc";
+        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -151,6 +151,25 @@ export const upsertTransfer = async (req: Request, res: Response): Promise<void>
                 }
             }
 
+            let ref = "SRT-";
+
+            // Generate a new ref only for creation
+            if (!id) {
+                // Query for the highest ref in the same branch
+                const lastTransfer = await prisma.stockTransfers.findFirst({
+                    where: { branchId: parseInt(fromBranchId, 10) },
+                    orderBy: { id: 'desc' }, // Sort by ref in descending order
+                });
+
+                // Extract and increment the numeric part of the ref
+                if (lastTransfer && lastTransfer.ref) {
+                    const refNumber = parseInt(lastTransfer.ref.split('-')[1], 10) || 0;
+                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+                } else {
+                    ref += "00001"; // Start from 00001 if no ref exists for the branch
+                }
+            }
+
             const transfer = transferId
                 ? await tx.stockTransfers.update({
                     where: { id: transferId },
@@ -176,6 +195,7 @@ export const upsertTransfer = async (req: Request, res: Response): Promise<void>
                 : await tx.stockTransfers.create({
                     data: {
                         branchId: parseInt(fromBranchId, 10),
+                        ref,
                         note,
                         transferDate: new Date(dayjs(transferDate).format("YYYY-MM-DD")),
                         fromBranchId: parseInt(fromBranchId, 10),

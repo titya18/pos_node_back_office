@@ -21,7 +21,7 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
         const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
         const sortField = req.query.sortField ? req.query.sortField.toString() : "ref";
-        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "desc";
+        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -67,6 +67,9 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
             LEFT JOIN "User" ib ON q."invoicedBy" = ib.id
             WHERE 1=1
                 ${branchRestriction}
+                AND (
+                    q."status" IN ('PENDING', 'SENT')
+                )
                 AND (
                     q."ref" ILIKE $1
                     OR cs."name" ILIKE $1

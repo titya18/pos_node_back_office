@@ -18,8 +18,8 @@ export const getAllExpenseWithPagination = async (req: Request, res: Response): 
         const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
         const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
         const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
-        const sortField = req.query.sortField ? req.query.sortField.toString() : "name";
-        const sortOrder = req.query.sortOrder === "desc" ? "DESC" : "ASC";
+        const sortField = req.query.sortField ? req.query.sortField.toString() : "ref";
+        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -144,6 +144,25 @@ export const upsertExpense = async (req: Request, res: Response): Promise<void> 
                 }
             }
 
+            let ref = "EXP-";
+
+            // Generate a new ref only for creation
+            if (!id) {
+                // Query for the highest ref in the same branch
+                const lastExpense = await prisma.expenses.findFirst({
+                    where: { branchId: parseInt(branchId, 10) },
+                    orderBy: { id: 'desc' }, // Sort by ref in descending order
+                });
+
+                // Extract and increment the numeric part of the ref
+                if (lastExpense && lastExpense.ref) {
+                    const refNumber = parseInt(lastExpense.ref.split('-')[1], 10) || 0;
+                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+                } else {
+                    ref += "00001"; // Start from 00001 if no ref exists for the branch
+                }
+            }
+
             const expense = id
                 ? await prisma.expenses.update({
                     where: { id: expenseId },
@@ -160,6 +179,7 @@ export const upsertExpense = async (req: Request, res: Response): Promise<void> 
                 : await prisma.expenses.create({
                     data: {
                         branchId: Number(branchId),
+                        ref,
                         expenseDate: new Date(dayjs(expenseDate).format("YYYY-MM-DD")),
                         name,
                         amount,

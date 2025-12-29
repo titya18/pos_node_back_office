@@ -6,7 +6,13 @@ import {
     getAllCancelReportInvoices,
     getAllPaymentInvoices,
     getAllReportQuotations,
-    getAllReportPurchases
+    getAllReportPurchases,
+    getAllReportAdjustments,
+    getAllReportTransfers,
+    getAllReportRequests,
+    getAllReportReturns,
+    getAllReportExpenses,
+    getAllReportIncomes
 } from "../controllers/reportController";
 
 const router = express.Router();
@@ -17,4 +23,10 @@ router.route("/reportCancelInvoices").get(authorize(["Cancel-Invoice"]), getAllC
 router.route("/reportPaymentInvoices").get(authorize(["Payment-Report"]), getAllPaymentInvoices);
 router.route("/reportQuotations").get(authorize(["Quotation-Report"]), getAllReportQuotations);
 router.route("/reportPurchases").get(authorize(["Purchase-Report"]), getAllReportPurchases);
+router.route("/reportAdjustments").get(authorize(["Adjustment-Report"]), getAllReportAdjustments);
+router.route("/reportTransfers").get(authorize(["Transfer-Report"]), getAllReportTransfers);
+router.route("/reportRequests").get(authorize(["Request-Report"]), getAllReportRequests);
+router.route("/reportReturns").get(authorize(["Return-Report"]), getAllReportReturns);
+router.route("/reportExpenses").get(authorize(["Expense-Report"]), getAllReportExpenses);
+router.route("/reportIncomes").get(authorize(["Income-Report"]), getAllReportIncomes);
 export default router;
