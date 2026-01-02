@@ -97,8 +97,12 @@ app.use('/api/income', incomeRoute);
 app.use('/api/report', reportRoute);
 
 // Default route
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.send("Stock Management API is running...");
+});
+
+app.get('/api/health', (req, res) => {
+    res.status(200).json({status: 'OK'});
 });
 
 export default app;

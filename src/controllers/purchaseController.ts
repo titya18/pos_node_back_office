@@ -343,7 +343,8 @@ export const insertPurchasePayment = async (req: Request, res: Response): Promis
                     userId: loggedInUser.id,
                     amount: finalAmount,
                     createdAt: currentDate,
-                    createdBy: req.user ? req.user.id : null
+                    createdBy: req.user ? req.user.id : null,
+                    status: "PAID"
                 }
             });
 
@@ -404,7 +405,10 @@ export const getPurchasePaymentById = async (req: Request, res: Response): Promi
     const { id } = req.params;
     try {
         const purchasePayment = await prisma.purchaseOnPayments.findMany({ 
-            where: { purchaseId: parseInt(id, 10) },
+            where: { 
+                purchaseId: parseInt(id, 10),
+                status: 'PAID' 
+            },
             orderBy: { id: 'desc' },
             include: {
                 paymentMethods: {
@@ -421,6 +425,46 @@ export const getPurchasePaymentById = async (req: Request, res: Response): Promi
         res.status(500).json({ message: typedError.message });
     }
 }
+
+export const deletePayment = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { delReason } = req.body;
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const payment = await tx.purchaseOnPayments.findUnique({ 
+                where: { id: parseInt(id, 10) },
+            });
+            if (!payment) {
+                res.status(404).json({ message: "Payment not found!" });
+                return;
+            }
+            await tx.purchaseOnPayments.update({
+                where: { id: parseInt(id, 10) },
+                data: {
+                    deletedAt: currentDate,
+                    deletedBy: req.user ? req.user.id : null,
+                    delReason,
+                    status: "CANCELLED"
+                }
+            });
+
+            await tx.purchases.update({
+                where: { id: payment.purchaseId },
+                data: {
+                    paidAmount: {
+                        decrement: payment.amount.toNumber()
+                    }
+                }
+            });
+            return payment;
+        });
+        res.status(200).json(result);
+    } catch (error) {
+        logger.error("Error deleting payment:", error);
+        const typedError = error as Error;
+        res.status(500).json({ message: typedError.message });
+    }
+};
 
 export const deletePurchase = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;

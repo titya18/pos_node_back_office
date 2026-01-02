@@ -8,11 +8,31 @@ import logger from "../utils/logger";
 const prisma = new PrismaClient();
 
 const setAuthToken = (res: Response, token: string) => {
+    // // My original
+    // res.cookie("auth_token", token, {
+    //     httpOnly: true,
+    //     secure: process.env.NODE_ENV === "production",
+    //     maxAge: 86400000
+    // });
+
+    // // use it when we use https
+    // res.cookie("auth_token", token, {
+    //     httpOnly: true,
+    //     secure: true,
+    //     sameSite: "none",
+    //     path: "/",
+    //     maxAge: 24 * 60 * 60 * 1000,
+    // });
+
+    // use it when we use http
     res.cookie("auth_token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 86400000
+        secure: false,        // ❗ required for HTTP
+        sameSite: "lax",
+        path: "/",
+        maxAge: 86400000,
     });
+
 }
 
 const generateToken = (user: any): string => {

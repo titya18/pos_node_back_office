@@ -8,7 +8,8 @@ import {
     upsertPurchase,
     insertPurchasePayment,
     getPurchasePaymentById,
-    deletePurchase
+    deletePurchase,
+    deletePayment
 } from "../controllers/purchaseController";
 
 const router = express.Router();
@@ -18,5 +19,6 @@ router.route("/").get(authorize(["Purchase-View"]), getAllPurchases).post(valida
 router.route("/payment").post(authorize(["Purchase-Payment"]), insertPurchasePayment);
 router.route("/payment/:id").get(getPurchasePaymentById);
 router.route("/:id").get(authorize(["Purchase-View"]), getPurchaseById).put(authorize(["Purchase-Edit"]), validatePurchaseRequest, upsertPurchase).delete(authorize(["Purchase-Delete"]), deletePurchase);
+router.route("/delpayment/:id").delete(authorize(["Delete-Payment-Purchase"]), deletePayment);
 
 export default router;

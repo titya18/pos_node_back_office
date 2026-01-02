@@ -39,3 +39,8 @@ server.listen(PORT, () => {
 }).on("error", (err) => {
   console.error("Server failed to start:", err);
 });
+
+// // Use it when deploy on server
+// server.listen(4000, '0.0.0.0', () => {
+//   console.log('Backend server is running on port 4000');
+// });

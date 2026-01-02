@@ -94,7 +94,14 @@ io.on('connection', (socket) => {
 //   res.status(404).json({ status: 'fail', message: 'Route not found' });
 // });
 
+// Commend it when deploy on server
 const PORT = process.env.APP_PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Backend server is running at http://localhost:${PORT}`);
 });
+
+// Use it when deploy on server
+// app.listen(4000, '0.0.0.0', () => {
+//   console.log('Backend server is running on port 4000');
+// });
+

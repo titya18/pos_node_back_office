@@ -42,7 +42,12 @@ async function main() {
       { name: "Invoice" },
       { name: "Stock" },
       { name: "Adjust Stock" },
-      { name: "Stock Movement" },
+      { name: "Stock Transfer" },
+      { name: "Stock Request" },
+      { name: "Stock Return" },
+      { name: "Expense" },
+      { name: "Income" },
+      { name: "Reports" }
     ],
   });
 
@@ -101,6 +106,7 @@ async function main() {
       { name: "Purchase-Print", moduleId: 12 },
       { name: "Purchase-Receive", moduleId: 12 },
       { name: "Purchase-Payment", moduleId: 12 },
+      { name: "Delete-Payment-Purchase", moduleId: 12 },
       { name: "Payment-Method-View", moduleId: 13 },
       { name: "Payment-Method-Create", moduleId: 13 },
       { name: "Payment-Method-Edit", moduleId: 13 },
@@ -162,6 +168,7 @@ async function main() {
       { name: "Payment-Report", moduleId: 25 },
       { name: "Quotation-Report", moduleId: 25 },
       { name: "Purchase-Report", moduleId: 25 },
+      { name: "Payment-Purchase-Report", moduleId: 25 },
       { name: "Adjustment-Report", moduleId: 25 },
       { name: "Transfer-Report", moduleId: 25 },
       { name: "Request-Report", moduleId: 25 },

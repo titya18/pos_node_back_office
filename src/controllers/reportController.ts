@@ -569,6 +569,7 @@ export const getAllPaymentInvoices = async (
                 json_build_object(
                     'id', o.id,
                     'ref', o."ref",
+                    'customerId', o."customerId",
                     'orderDate', o."orderDate",
                     'OrderSaleType', o."OrderSaleType",
                     'status', o."status",
@@ -995,6 +996,207 @@ export const getAllReportPurchases = async (
 
     } catch (error) {
         console.error("Report purchase error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const getAllPaymentPurchases = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------- Pagination -------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "paymentDate";
+        const sortOrder = req.query.sortOrder === "desc" ? "asc" : "desc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const saleType = req.query.saleType as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : undefined;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------- Search Setup -------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map(
+                (_, idx) => `
+                (
+                    c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR cs."name" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                )
+            `
+            )
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------- Branch Restriction -------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) {
+                branchRestriction = `AND op."branchId" = ${branchId}`;
+            }
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND op."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------- Date Filter (PAYMENT DATE) -------------------- */
+        const dateFilter =
+            startDate && endDate
+                ? `AND op."paymentDate"::date BETWEEN '${startDate}' AND '${endDate}'`
+                : `AND op."paymentDate"::date = CURRENT_DATE`;
+
+        /* -------------------- Common Filters -------------------- */
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${saleType ? `AND op."OrderSaleType" = '${saleType}'` : ""}
+            ${status ? `AND op."status" = '${status}'` : ""}
+            ${dateFilter}
+            AND (
+                o."ref" ILIKE $1
+                OR s."name" ILIKE $1
+                OR br."name" ILIKE $1
+                OR TO_CHAR(op."paymentDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."deletedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."paymentDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(op."deletedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------- Summary (PAYMENT BASED) -------------------- */
+        const summaryResult: any = await prisma.$queryRawUnsafe(
+            `
+            SELECT
+                COUNT(op.id) AS "totalPayments",
+                COALESCE(SUM(op."amount"), 0) AS "totalPaid"
+            FROM "PurchaseOnPayments" op
+            LEFT JOIN "Purchases" o ON op."purchaseId" = o.id
+            LEFT JOIN "Suppliers" s ON o."supplierId" = s.id
+            LEFT JOIN "Branch" br ON o."branchId" = br.id
+            LEFT JOIN "User" c ON op."createdBy" = c.id
+            LEFT JOIN "User" db ON op."deletedBy" = db.id
+            ${commonFilters}
+            `,
+            ...params
+        );
+
+        const summary = {
+            totalPayments: Number(summaryResult[0]?.totalPayments || 0),
+            totalPaid: Number(summaryResult[0]?.totalPaid || 0),
+        };
+
+        /* -------------------- Total Count (Pagination) -------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(
+            `
+            SELECT COUNT(*) AS total
+            FROM "PurchaseOnPayments" op
+            LEFT JOIN "Purchases" o ON op."purchaseId" = o.id
+            LEFT JOIN "Suppliers" s ON o."supplierId" = s.id
+            LEFT JOIN "Branch" br ON o."branchId" = br.id
+            LEFT JOIN "User" c ON op."createdBy" = c.id
+            LEFT JOIN "User" db ON op."deletedBy" = db.id
+            ${commonFilters}
+            `,
+            ...params
+        );
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------- Safe Sorting -------------------- */
+        const allowedSortFields = [
+            "paymentDate",
+            "totalPaid",
+            "createdAt",
+            "deletedAt"
+        ];
+        const safeSortField = allowedSortFields.includes(sortField)
+            ? sortField
+            : "paymentDate";
+
+        /* -------------------- Data List -------------------- */
+        const payments: any = await prisma.$queryRawUnsafe(
+            `
+            SELECT
+                op.*,
+                json_build_object(
+                    'id', o.id,
+                    'ref', o."ref",
+                    'purchaseDate', o."purchaseDate",
+                    'status', o."status",
+                    'totalAmount', o."grandTotal",
+                    'paidAmount', o."paidAmount"
+                ) AS "purchase",
+                json_build_object(
+                    'id', pm.id,
+                    'name', pm."name"
+                ) AS "PaymentMethods",
+                json_build_object('id', s.id, 'name', s.name) AS supplier,
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', db.id, 'firstName', db."firstName", 'lastName', db."lastName") AS deleter
+            FROM "PurchaseOnPayments" op
+            LEFT JOIN "Purchases" o ON op."purchaseId" = o.id
+            LEFT JOIN "Suppliers" s ON o."supplierId" = s.id
+            LEFT JOIN "PaymentMethods" pm ON op."paymentMethodId" = pm.id
+            LEFT JOIN "Branch" br ON o."branchId" = br.id
+            LEFT JOIN "User" c ON op."createdBy" = c.id
+            LEFT JOIN "User" db ON op."deletedBy" = db.id
+            ${commonFilters}
+            ORDER BY op."${safeSortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+            `,
+            ...params
+        );
+
+        const paymentsSafe = payments.map((p: any) => ({
+            ...p,
+            id: Number(p.id),
+            purchaseId: Number(p.purchaseId),
+            branchId: Number(p.branchId),
+            totalPaid: Number(p.totalPaid),
+            createdBy: p.createdBy ? Number(p.createdBy) : null
+        }));
+
+        // console.log("Data: ", paymentsSafe);
+        // console.log("Summary: ", summary);
+
+
+        /* -------------------- Response -------------------- */
+        res.status(200).json({
+            data: paymentsSafe,
+            total,
+            summary,
+        });
+
+    } catch (error) {
+        console.error("Payment purchase report error:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 };

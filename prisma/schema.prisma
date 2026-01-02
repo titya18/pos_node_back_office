@@ -116,6 +116,7 @@ model User {
   receivePurchases Purchases[] @relation("PurchasesReceivedBy")
 
   createPurchaseOnPayments PurchaseOnPayments[] @relation("PurchaseOnPaymentsCreatedBy")
+  deletePurchaseOnPayments PurchaseOnPayments[] @relation("PurchaseOnPaymentsDeletedBy")
 
   creatCustomer Customer[] @relation("CustomerCreatedBy")
   updatCustomer Customer[] @relation("CustomerUpdatedBy")
@@ -561,13 +562,20 @@ model PurchaseOnPayments {
   id              Int      @id @default(autoincrement()) // Add this line for a unique identifier
   branchId        Int
   purchaseId      Int
+  paymentDate     DateTime @default(now())
   paymentMethodId Int
   userId          Int
   amount          Decimal  @db.Decimal(10, 4)
   createdAt       DateTime @default(now())
   createdBy       Int?
+  status          String?  @db.VarChar(20)
+  deletedAt       DateTime?
+  deletedBy       Int?
+  delReason       String?  @db.VarChar(2000)
+
 
   creator User? @relation("PurchaseOnPaymentsCreatedBy", fields: [createdBy], references: [id])
+  deleter User? @relation("PurchaseOnPaymentsDeletedBy", fields: [deletedBy], references: [id])
 
   paymentMethods PaymentMethods @relation("PurchasePayments", fields: [paymentMethodId], references: [id], onDelete: Cascade)
   purchases      Purchases      @relation("PurchasePayments", fields: [purchaseId], references: [id], onDelete: Cascade)
