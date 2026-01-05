@@ -27109,3 +27109,1181 @@ Unknown argument `deletedBy`. Did you mean `deletedAt`? Available options are ma
     at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:138:23)
     at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
     at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:129:24)
+2026-01-02 15:26:32 error: Error converting quotation to order: Insufficient stock for barcode: 776710223363 Error: Insufficient stock for barcode: 776710223363
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:457:27)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async convertQuotationToOrder (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:347:24)
+2026-01-02 15:26:49 error: Error converting quotation to order: Insufficient stock for barcode: 776710223363 Error: Insufficient stock for barcode: 776710223363
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:457:27)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async convertQuotationToOrder (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:347:24)
+2026-01-02 15:28:40 error: Error converting quotation to order: Insufficient stock for barcode: 776710223363 Error: Insufficient stock for barcode: 776710223363
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:457:27)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async convertQuotationToOrder (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:347:24)
+2026-01-02 15:29:38 error: Error converting quotation to order: Insufficient stock for barcode: 160437018582 Error: Insufficient stock for barcode: 160437018582
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:457:27)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async convertQuotationToOrder (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:347:24)
+2026-01-02 15:32:57 error: Error creating/updating invoice: Insufficient stock for barcode: 160437018582 Error: Insufficient stock for barcode: 160437018582
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:290:31)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:140:24)
+2026-01-05 10:29:12 error: Error creating/updating invoice: 
+Invalid `tx.order.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:168:52
+
+  165 // Generate a new ref only for creation
+  166 if (!id) {
+  167     // Query for the highest ref in the same branch
+→ 168     const lastInvoice = await tx.order.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `tx.order.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:168:52
+
+  165 // Generate a new ref only for creation
+  166 if (!id) {
+  167     // Query for the highest ref in the same branch
+→ 168     const lastInvoice = await tx.order.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:168:37)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:140:24)
+2026-01-05 10:29:54 error: Error creating/updating purchase: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:131:24)
+2026-01-05 10:31:46 error: Error creating/updating purchase: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:131:24)
+2026-01-05 10:34:34 error: Error creating/updating purchase: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:131:24)
+2026-01-05 10:36:27 error: Error creating/updating purchase: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:131:24)
+2026-01-05 10:49:35 error: Error creating/updating purchase: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:131:24)
+2026-01-05 10:51:36 error: Error creating/updating purchase: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:61
+
+  150 // Generate a new ref only for creation
+  151 if (!id) {
+  152     // Query for the highest ref in the same branch
+→ 153     const lastPurchase = await prisma.purchases.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:153:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:131:24)
+2026-01-05 11:05:16 error: Error creating/updating quotation: 
+Invalid `prisma.quotations.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:168:63
+
+  165 // Generate a new ref only for creation
+  166 if (!id) {
+  167     // Query for the highest ref in the same branch
+→ 168     const lastQuotation = await prisma.quotations.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.quotations.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:168:63
+
+  165 // Generate a new ref only for creation
+  166 if (!id) {
+  167     // Query for the highest ref in the same branch
+→ 168     const lastQuotation = await prisma.quotations.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:168:39)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertQuotation (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:146:24)
+2026-01-05 11:20:47 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:159:66
+
+  156 // Generate a new ref only for creation
+  157 if (!id) {
+  158     // Query for the highest ref in the same branch
+→ 159     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:159:66
+
+  156 // Generate a new ref only for creation
+  157 if (!id) {
+  158     // Query for the highest ref in the same branch
+→ 159     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:159:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:129:24)
+2026-01-05 11:31:28 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 11:32:02 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 11:33:01 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 13:41:35 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 13:43:46 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 13:49:50 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 13:51:21 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 13:58:02 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 13:59:50 error: Error creating/updating transfer: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing. PrismaClientValidationError: 
+Invalid `prisma.stockTransfers.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:66
+
+  157 // Generate a new ref only for creation
+  158 if (!id) {
+  159     // Query for the highest ref in the same branch
+→ 160     const lastTransfer = await prisma.stockTransfers.findFirst({
+            where: {
+          +   branchId: {
+          +     equals: Int | IntFieldRefInput,
+          +     in: Int[] | ListIntFieldRefInput,
+          +     notIn: Int[] | ListIntFieldRefInput,
+          +     lt: Int | IntFieldRefInput,
+          +     lte: Int | IntFieldRefInput,
+          +     gt: Int | IntFieldRefInput,
+          +     gte: Int | IntFieldRefInput,
+          +     not: Int | NestedIntFilter
+          +   }
+            },
+            orderBy: {
+              id: "desc"
+            }
+          })
+
+Argument `branchId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:160:38)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 14:03:01 error: Error creating/updating transfer: From branch and To branch cannot be the same Error: From branch and To branch cannot be the same
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:139:23)
+    at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 14:29:13 error: Error creating/updating transfer: From branch and To branch cannot be the same Error: From branch and To branch cannot be the same
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:139:23)
+    at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
+    at async upsertTransfer (D:\Citylink-Inventory\backend\src\controllers\stockTransferController.ts:130:24)
+2026-01-05 14:42:08 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "stf"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "stf"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:82:31)
+2026-01-05 14:42:08 error: Error fetching expenses: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "stf"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `missing FROM-clause entry for table "stf"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExpenseWithPagination (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:82:31)
+2026-01-05 14:51:39 error: Error upserting income: 
+Invalid `prisma.incomes.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:186:40
+
+  183         updatedBy: req.user ? req.user.id : null
+  184     }
+  185 })
+→ 186 : await prisma.incomes.create(
+Foreign key constraint violated: `Incomes_branchId_fkey (index)` PrismaClientKnownRequestError: 
+Invalid `prisma.incomes.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:186:40
+
+  183         updatedBy: req.user ? req.user.id : null
+  184     }
+  185 })
+→ 186 : await prisma.incomes.create(
+Foreign key constraint violated: `Incomes_branchId_fkey (index)`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:186:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertIncome (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:143:25)
+2026-01-05 14:53:04 error: Error upserting expense: 
+Invalid `prisma.expenses.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:185:41
+
+  182         updatedBy: req.user ? req.user.id : null
+  183     }
+  184 })
+→ 185 : await prisma.expenses.create(
+Foreign key constraint violated: `Expenses_branchId_fkey (index)` PrismaClientKnownRequestError: 
+Invalid `prisma.expenses.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:185:41
+
+  182         updatedBy: req.user ? req.user.id : null
+  183     }
+  184 })
+→ 185 : await prisma.expenses.create(
+Foreign key constraint violated: `Expenses_branchId_fkey (index)`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:185:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertExpense (D:\Citylink-Inventory\backend\src\controllers\expenseController.ts:142:25)
+2026-01-05 15:10:12 error: Error creating/updating adjustment: Adjustment details cannot be empty Error: Adjustment details cannot be empty
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:145:23)
+    at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
+    at async upsertAdjustment (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:127:24)
+2026-01-05 15:10:20 error: Error creating/updating adjustment: Adjustment details cannot be empty Error: Adjustment details cannot be empty
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:145:23)
+    at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
+    at async upsertAdjustment (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:127:24)
+2026-01-05 15:10:26 error: Error creating/updating adjustment: Adjustment details cannot be empty Error: Adjustment details cannot be empty
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:145:23)
+    at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
+    at async upsertAdjustment (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:127:24)

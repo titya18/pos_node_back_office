@@ -12,7 +12,7 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/all").get(authorize(["Branch-View"]), getAllBranches);
+router.route("/all").get(getAllBranches);
 router.route("/").get(authorize(["Branch-View"]), getAllBranchesWithPagination).post(authorize(["Branch-Create"]), validateBranchRequest, upsertBranch);
 router.route("/:id").get(authorize(["Branch-View"]), getBranchById).put(authorize(["Branch-Edit"]), validateBranchRequest, upsertBranch);
 

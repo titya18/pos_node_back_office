@@ -59,19 +59,23 @@ export const getAllIncomeWithPagination = async (req: Request, res: Response): P
             LEFT JOIN "Branch" br ON inc."branchId" = br.id
             LEFT JOIN "User" c ON inc."createdBy" = c.id
             LEFT JOIN "User" u ON inc."updatedBy" = u.id
-            WHERE
-                inc."name" ILIKE $1
-                OR br."name" ILIKE $1
-                OR inc."description" ILIKE $1
-                OR CAST(inc."amount" AS TEXT) ILIKE $1
-                OR TO_CHAR(inc."incomeDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."incomeDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            WHERE 1=1
+                ${branchRestriction}
+                AND (
+                    inc."name" ILIKE $1
+                    OR br."name" ILIKE $1
+                    OR inc."description" ILIKE $1
+                    OR CAST(inc."amount" AS TEXT) ILIKE $1
+                    OR TO_CHAR(inc."incomeDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."incomeDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+                )
         `, ...params.slice(0, params.length - 2));
+
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
 
@@ -85,18 +89,21 @@ export const getAllIncomeWithPagination = async (req: Request, res: Response): P
             LEFT JOIN "Branch" br ON inc."branchId" = br.id
             LEFT JOIN "User" c ON inc."createdBy" = c.id
             LEFT JOIN "User" u ON inc."updatedBy" = u.id
-            WHERE
-                inc."name" ILIKE $1
-                OR br."name" ILIKE $1
-                OR inc."description" ILIKE $1
-                OR CAST(inc."amount" AS TEXT) ILIKE $1
-                OR TO_CHAR(inc."incomeDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."incomeDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(inc."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            WHERE 1=1
+                ${branchRestriction}
+                AND (
+                    inc."name" ILIKE $1
+                    OR br."name" ILIKE $1
+                    OR inc."description" ILIKE $1
+                    OR CAST(inc."amount" AS TEXT) ILIKE $1
+                    OR TO_CHAR(inc."incomeDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."incomeDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(inc."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+                )
             ORDER BY inc."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);

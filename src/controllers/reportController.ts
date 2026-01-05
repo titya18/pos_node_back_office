@@ -1539,7 +1539,7 @@ export const getAllReportTransfers = async (
             deletedBy: adj.deletedBy ? Number(adj.deletedBy) : null
         }));
 
-        console.log("Data: ", transfers);
+        // console.log("Data: ", transfers);
         // console.log("Summary: ", summarySafe);
 
         res.status(200).json({

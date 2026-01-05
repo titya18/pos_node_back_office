@@ -13,7 +13,7 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/all").get(authorize(["Role-View"]), getAllRoles);
+router.route("/all").get(getAllRoles);
 router.route("/").get(authorize(["Role-View"]), verifyToken, getAllRoleWithPagination).post(authorize(["Role-Create"]), verifyToken, validateBranchRequest, upsertRole);
 router.route("/:id").get(authorize(["Role-View"]), verifyToken, getRoleById).put(authorize(["Role-Edit"]), verifyToken, validateBranchRequest, upsertRole).delete(authorize(["Role-Delete"]), verifyToken, deleteRole);
 

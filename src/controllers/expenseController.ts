@@ -59,19 +59,22 @@ export const getAllExpenseWithPagination = async (req: Request, res: Response): 
             LEFT JOIN "Branch" br ON ep."branchId" = br.id
             LEFT JOIN "User" c ON ep."createdBy" = c.id
             LEFT JOIN "User" u ON ep."updatedBy" = u.id
-            WHERE
-                ep."name" ILIKE $1
-                OR br."name" ILIKE $1
-                OR ep."description" ILIKE $1
-                OR CAST(ep."amount" AS TEXT) ILIKE $1
-                OR TO_CHAR(ep."expenseDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."expenseDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
-        `, ...params.slice(0, params.length - 2));
+            WHERE 1=1
+                ${branchRestriction}
+                AND (
+                    ep."name" ILIKE $1
+                    OR br."name" ILIKE $1
+                    OR ep."description" ILIKE $1
+                    OR CAST(ep."amount" AS TEXT) ILIKE $1
+                    OR TO_CHAR(ep."expenseDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."expenseDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+                )
+            `, ...params.slice(0, params.length - 2));
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
 
@@ -85,18 +88,21 @@ export const getAllExpenseWithPagination = async (req: Request, res: Response): 
             LEFT JOIN "Branch" br ON ep."branchId" = br.id
             LEFT JOIN "User" c ON ep."createdBy" = c.id
             LEFT JOIN "User" u ON ep."updatedBy" = u.id
-            WHERE
-                ep."name" ILIKE $1
-                OR br."name" ILIKE $1
-                OR ep."description" ILIKE $1
-                OR CAST(ep."amount" AS TEXT) ILIKE $1
-                OR TO_CHAR(ep."expenseDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."expenseDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(ep."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            WHERE 1=1
+                ${branchRestriction}
+                AND (
+                    ep."name" ILIKE $1
+                    OR br."name" ILIKE $1
+                    OR ep."description" ILIKE $1
+                    OR CAST(ep."amount" AS TEXT) ILIKE $1
+                    OR TO_CHAR(ep."expenseDate", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."expenseDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(ep."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+                )
             ORDER BY ep."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
