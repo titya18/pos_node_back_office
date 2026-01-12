@@ -512,6 +512,7 @@ model Purchases {
   paidAmount    Decimal?       @default(0) @db.Decimal(10, 4)
   status        PurchaseStatus
   paymentStatus PaymentStatus?
+  image         String[]       @db.VarChar(800) // Array of image URLs or paths
   note          String?        @db.VarChar(500)
   delReason     String?        @db.VarChar(1000)
   deletedAt     DateTime?

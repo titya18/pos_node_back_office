@@ -68,9 +68,6 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
             WHERE 1=1
                 ${branchRestriction}
                 AND (
-                    q."status" IN ('PENDING', 'SENT')
-                )
-                AND (
                     q."ref" ILIKE $1
                     OR cs."name" ILIKE $1
                     OR br."name" ILIKE $1
@@ -108,9 +105,6 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
             WHERE 1=1
                 ${branchRestriction}
                 AND (
-                    q."status" IN ('PENDING', 'SENT')
-                )
-                AND (
                     q."ref" ILIKE $1
                     OR cs."name" ILIKE $1
                     OR br."name" ILIKE $1
@@ -137,13 +131,42 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
     }
 };
 
+export const getNextQuotationRef = async (req: Request, res: Response): Promise<void> => {
+    const { branchId } = req.params;
+
+    if (!branchId) {
+        res.status(400).json({ message: "Branch ID is required" });
+        return;
+    }
+
+    const lastQuotation = await prisma.quotations.findFirst({
+        where: {
+            branchId: parseInt(branchId, 10),
+        },
+        orderBy: {
+            id: "desc",
+        },
+        select: {
+            ref: true,
+        },
+    });
+
+    let nextRef = "QR-00001";
+
+    if (lastQuotation?.ref) {
+        const lastNumber = parseInt(lastQuotation.ref.split("-")[1], 10) || 0;
+        nextRef = `QR-${String(lastNumber + 1).padStart(5, "0")}`;
+    }
+
+    res.json({ ref: nextRef });
+};
 
 export const upsertQuotation = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { branchId, customerId, taxRate, taxNet, discount, shipping, grandTotal, status, note, quotationDetails, quotationDate, QuoteSaleType } = req.body;
+    const { ref, branchId, customerId, taxRate, taxNet, discount, shipping, grandTotal, status, note, quotationDetails, quotationDate, QuoteSaleType } = req.body;
     
     try {
-        const result = await prisma.$transaction(async (prisma) => {
+        const result = await prisma.$transaction(async (tx) => {
             const loggedInUser = req.user; // Assuming you have a middleware that attaches the logged-in user to the request
             // Verify that loggedInUser is defined
             if (!loggedInUser) {
@@ -153,36 +176,52 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
 
             const quotationId = id ? parseInt(id, 10) : undefined;
             if (quotationId) {
-                const checkQuotation = await prisma.quotations.findUnique({ where: { id: quotationId } });
+                const checkQuotation = await tx.quotations.findUnique({ where: { id: quotationId } });
                 if (!checkQuotation) {
                     res.status(404).json({ message: "Quotation not found!" });
                     return;
                 }
             }
 
-            let ref = "QR-";
+            const checkRef = await tx.quotations.findFirst({
+                where: { 
+                    branchId: Number(branchId),
+                    ref: ref,
+                    ...(quotationId && {
+                        id: { not: quotationId }
+                    })
+                 },
+            });
 
-            // Generate a new ref only for creation
-            if (!id) {
-                // Query for the highest ref in the same branch
-                const lastQuotation = await prisma.quotations.findFirst({
-                    where: { branchId: parseInt(branchId, 10) },
-                    orderBy: { id: 'desc' }, // Sort by ref in descending order
-                });
-
-                // Extract and increment the numeric part of the ref
-                if (lastQuotation && lastQuotation.ref) {
-                    const refNumber = parseInt(lastQuotation.ref.split('-')[1], 10) || 0;
-                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
-                } else {
-                    ref += "00001"; // Start from 00001 if no ref exists for the branch
-                }
+            if (checkRef) {
+                res.status(400).json({ message: "Invoice # already exists!" });
+                return;
             }
 
+            // let ref = "QR-";
+
+            // // Generate a new ref only for creation
+            // if (!id) {
+            //     // Query for the highest ref in the same branch
+            //     const lastQuotation = await prisma.quotations.findFirst({
+            //         where: { branchId: parseInt(branchId, 10) },
+            //         orderBy: { id: 'desc' }, // Sort by ref in descending order
+            //     });
+
+            //     // Extract and increment the numeric part of the ref
+            //     if (lastQuotation && lastQuotation.ref) {
+            //         const refNumber = parseInt(lastQuotation.ref.split('-')[1], 10) || 0;
+            //         ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+            //     } else {
+            //         ref += "00001"; // Start from 00001 if no ref exists for the branch
+            //     }
+            // }
+
             const quotation = quotationId
-                ? await prisma.quotations.update({
+                ? await tx.quotations.update({
                     where: { id: quotationId },
                     data: {
+                        ref,
                         branchId: parseInt(branchId, 10),
                         customerId: parseInt(customerId, 10),
                         quotationDate: new Date(dayjs(quotationDate).format("YYYY-MM-DD")),
@@ -218,7 +257,7 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                         },
                     }
                 })
-                : await prisma.quotations.create({
+                : await tx.quotations.create({
                     data: {
                         branchId: parseInt(branchId, 10),
                         customerId: parseInt(customerId, 10),
@@ -288,6 +327,8 @@ export const getQuotationById = async (req: Request, res: Response): Promise<voi
                 },
                 customers: true, // Include related customer data
                 branch: true, // Include related branch data
+                creator: true, // Include related creator data
+                updater: true, // Include related updater data
             }, // Include related quotation details
         });
 

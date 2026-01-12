@@ -28287,3 +28287,317 @@ Foreign key constraint violated: `Expenses_branchId_fkey (index)`
     at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:145:23)
     at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
     at async upsertAdjustment (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:127:24)
+2026-01-10 10:18:58 error: Error creating/updating purchase: purchaseDetails.map is not a function TypeError: purchaseDetails.map is not a function
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:374:53)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:235:24)
+2026-01-10 10:20:04 error: Error creating/updating purchase: purchaseDetails.map is not a function TypeError: purchaseDetails.map is not a function
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:374:53)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:235:24)
+2026-01-10 10:20:43 error: Error creating/updating purchase: purchaseDetails.map is not a function TypeError: purchaseDetails.map is not a function
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:374:53)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:235:24)
+2026-01-10 10:31:19 error: Error creating/updating purchase: purchaseDetails.map is not a function TypeError: purchaseDetails.map is not a function
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:374:53)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:235:24)
+2026-01-10 10:40:34 error: Error creating/updating purchase: 
+Invalid `tx.purchases.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:362:38
+
+  359         }
+  360     }
+  361 })
+→ 362 : await tx.purchases.create({
+        data: {
+          userId: 1,
+          branchId: 2,
+          supplierId: 1,
+          ref: "PO-00011",
+          taxRate: undefined,
+          taxNet: undefined,
+          discount: undefined,
+          shipping: undefined,
+          grandTotal: "10",
+          status: "PENDING",
+          note: "saf f fdsfdsaff df fdsfasd",
+          image: [
+            "images\\productvariants\\1768016434755-852339782.jpg",
+            "images\\productvariants\\1768016434756-903211732.jpg"
+          ],
+          purchaseDate: new Date("Invalid Date"),
+                        ~~~~~~~~~~~~~~~~~~~~~~~~
+          createdAt: new Date("2026-01-10T10:39:50.000Z"),
+          updatedAt: new Date("2026-01-10T10:39:50.000Z"),
+          createdBy: 1,
+          updatedBy: 1,
+          receivedAt: null,
+          receivedBy: null,
+          purchaseDetails: {
+            create: [
+              {
+                productId: 2,
+                productVariantId: 3,
+                cost: 5,
+                taxNet: 0,
+                taxMethod: "Include",
+                discount: undefined,
+                discountMethod: "Fixed",
+                total: 10,
+                quantity: 2
+              }
+            ]
+          }
+        }
+      })
+
+Invalid value for argument `purchaseDate`: Provided Date object is invalid. Expected Date. PrismaClientValidationError: 
+Invalid `tx.purchases.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:362:38
+
+  359         }
+  360     }
+  361 })
+→ 362 : await tx.purchases.create({
+        data: {
+          userId: 1,
+          branchId: 2,
+          supplierId: 1,
+          ref: "PO-00011",
+          taxRate: undefined,
+          taxNet: undefined,
+          discount: undefined,
+          shipping: undefined,
+          grandTotal: "10",
+          status: "PENDING",
+          note: "saf f fdsfdsaff df fdsfasd",
+          image: [
+            "images\\productvariants\\1768016434755-852339782.jpg",
+            "images\\productvariants\\1768016434756-903211732.jpg"
+          ],
+          purchaseDate: new Date("Invalid Date"),
+                        ~~~~~~~~~~~~~~~~~~~~~~~~
+          createdAt: new Date("2026-01-10T10:39:50.000Z"),
+          updatedAt: new Date("2026-01-10T10:39:50.000Z"),
+          createdBy: 1,
+          updatedBy: 1,
+          receivedAt: null,
+          receivedBy: null,
+          purchaseDetails: {
+            create: [
+              {
+                productId: 2,
+                productVariantId: 3,
+                cost: 5,
+                taxNet: 0,
+                taxMethod: "Include",
+                discount: undefined,
+                discountMethod: "Fixed",
+                total: 10,
+                quantity: 2
+              }
+            ]
+          }
+        }
+      })
+
+Invalid value for argument `purchaseDate`: Provided Date object is invalid. Expected Date.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at e.throwValidationError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:10206)
+    at sa (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:7746)
+    at aa (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:8908)
+    at sa (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:8439)
+    at aa (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:8908)
+    at mr (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:6037)
+    at vn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:5902)
+    at D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:10186
+    at Object.runInChildSpan (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:1509)
+2026-01-10 11:15:43 error: unhandledRejection: Unexpected non-whitespace character after JSON at position 4 (line 1 column 5)
+SyntaxError: Unexpected non-whitespace character after JSON at position 4 (line 1 column 5)
+    at JSON.parse (<anonymous>)
+    at upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:237:45)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:213:9)
+    at done (D:\Citylink-Inventory\backend\node_modules\multer\lib\make-middleware.js:45:7)
+    at indicateDone (D:\Citylink-Inventory\backend\node_modules\multer\lib\make-middleware.js:49:68)
+    at D:\Citylink-Inventory\backend\node_modules\multer\lib\make-middleware.js:155:11
+    at WriteStream.<anonymous> (D:\Citylink-Inventory\backend\node_modules\multer\storage\disk.js:43:9)
+    at WriteStream.emit (node:events:519:35) SyntaxError: Unexpected non-whitespace character after JSON at position 4 (line 1 column 5)
+    at JSON.parse (<anonymous>)
+    at upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:237:45)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:213:9)
+    at done (D:\Citylink-Inventory\backend\node_modules\multer\lib\make-middleware.js:45:7)
+    at indicateDone (D:\Citylink-Inventory\backend\node_modules\multer\lib\make-middleware.js:49:68)
+    at D:\Citylink-Inventory\backend\node_modules\multer\lib\make-middleware.js:155:11
+    at WriteStream.<anonymous> (D:\Citylink-Inventory\backend\node_modules\multer\storage\disk.js:43:9)
+    at WriteStream.emit (node:events:519:35)
+2026-01-12 15:37:54 error: Error creating/updating purchase: 
+Invalid `tx.stocks.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:59
+
+  425 // If status is Received update stock
+  426 if (status === "RECEIVED") {
+  427     for (const detail of purchaseDetails) {
+→ 428         const existingStock = await tx.stocks.findFirst({
+                where: {
+                  branchId: 1,
+              +   productVariantId: {
+              +     equals: Int | IntFieldRefInput,
+              +     in: Int[] | ListIntFieldRefInput,
+              +     notIn: Int[] | ListIntFieldRefInput,
+              +     lt: Int | IntFieldRefInput,
+              +     lte: Int | IntFieldRefInput,
+              +     gt: Int | IntFieldRefInput,
+              +     gte: Int | IntFieldRefInput,
+              +     not: Int | NestedIntFilter
+              +   }
+                }
+              })
+
+Argument `productVariantId` is missing. PrismaClientValidationError: 
+Invalid `tx.stocks.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:59
+
+  425 // If status is Received update stock
+  426 if (status === "RECEIVED") {
+  427     for (const detail of purchaseDetails) {
+→ 428         const existingStock = await tx.stocks.findFirst({
+                where: {
+                  branchId: 1,
+              +   productVariantId: {
+              +     equals: Int | IntFieldRefInput,
+              +     in: Int[] | ListIntFieldRefInput,
+              +     notIn: Int[] | ListIntFieldRefInput,
+              +     lt: Int | IntFieldRefInput,
+              +     lte: Int | IntFieldRefInput,
+              +     gt: Int | IntFieldRefInput,
+              +     gte: Int | IntFieldRefInput,
+              +     not: Int | NestedIntFilter
+              +   }
+                }
+              })
+
+Argument `productVariantId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:43)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:271:24)
+2026-01-12 15:39:57 error: Error creating/updating purchase: 
+Invalid `tx.stocks.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:59
+
+  425 // If status is Received update stock
+  426 if (status === "RECEIVED") {
+  427     for (const detail of purchaseDetails) {
+→ 428         const existingStock = await tx.stocks.findFirst({
+                where: {
+                  branchId: 1,
+              +   productVariantId: {
+              +     equals: Int | IntFieldRefInput,
+              +     in: Int[] | ListIntFieldRefInput,
+              +     notIn: Int[] | ListIntFieldRefInput,
+              +     lt: Int | IntFieldRefInput,
+              +     lte: Int | IntFieldRefInput,
+              +     gt: Int | IntFieldRefInput,
+              +     gte: Int | IntFieldRefInput,
+              +     not: Int | NestedIntFilter
+              +   }
+                }
+              })
+
+Argument `productVariantId` is missing. PrismaClientValidationError: 
+Invalid `tx.stocks.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:59
+
+  425 // If status is Received update stock
+  426 if (status === "RECEIVED") {
+  427     for (const detail of purchaseDetails) {
+→ 428         const existingStock = await tx.stocks.findFirst({
+                where: {
+                  branchId: 1,
+              +   productVariantId: {
+              +     equals: Int | IntFieldRefInput,
+              +     in: Int[] | ListIntFieldRefInput,
+              +     notIn: Int[] | ListIntFieldRefInput,
+              +     lt: Int | IntFieldRefInput,
+              +     lte: Int | IntFieldRefInput,
+              +     gt: Int | IntFieldRefInput,
+              +     gte: Int | IntFieldRefInput,
+              +     not: Int | NestedIntFilter
+              +   }
+                }
+              })
+
+Argument `productVariantId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:43)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:271:24)
+2026-01-12 15:40:03 error: Error creating/updating purchase: 
+Invalid `tx.stocks.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:59
+
+  425 // If status is Received update stock
+  426 if (status === "RECEIVED") {
+  427     for (const detail of purchaseDetails) {
+→ 428         const existingStock = await tx.stocks.findFirst({
+                where: {
+                  branchId: 1,
+              +   productVariantId: {
+              +     equals: Int | IntFieldRefInput,
+              +     in: Int[] | ListIntFieldRefInput,
+              +     notIn: Int[] | ListIntFieldRefInput,
+              +     lt: Int | IntFieldRefInput,
+              +     lte: Int | IntFieldRefInput,
+              +     gt: Int | IntFieldRefInput,
+              +     gte: Int | IntFieldRefInput,
+              +     not: Int | NestedIntFilter
+              +   }
+                }
+              })
+
+Argument `productVariantId` is missing. PrismaClientValidationError: 
+Invalid `tx.stocks.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:59
+
+  425 // If status is Received update stock
+  426 if (status === "RECEIVED") {
+  427     for (const detail of purchaseDetails) {
+→ 428         const existingStock = await tx.stocks.findFirst({
+                where: {
+                  branchId: 1,
+              +   productVariantId: {
+              +     equals: Int | IntFieldRefInput,
+              +     in: Int[] | ListIntFieldRefInput,
+              +     notIn: Int[] | ListIntFieldRefInput,
+              +     lt: Int | IntFieldRefInput,
+              +     lte: Int | IntFieldRefInput,
+              +     gt: Int | IntFieldRefInput,
+              +     gte: Int | IntFieldRefInput,
+              +     not: Int | NestedIntFilter
+              +   }
+                }
+              })
+
+Argument `productVariantId` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:43)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:271:24)

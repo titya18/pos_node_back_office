@@ -55,6 +55,12 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
             branchRestriction = `AND rd."branchId" = ${loggedInUser.branchId}`;
         }
 
+        // If we want to use this AND condition, we need to copy it and past below WHERE 1=1 ${branchRestriction}
+        // AND (
+        //             rd."status" NOT IN ('COMPLETED', 'CANCELLED')
+        //             OR rd."orderDate"::date >= CURRENT_DATE
+        //         )
+
         // ----- 1) COUNT -----
         const totalResult: any = await prisma.$queryRawUnsafe(`
             SELECT COUNT(*) AS total
@@ -66,10 +72,6 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
             LEFT JOIN "User" ab ON rd."approvedBy" = ab.id
             WHERE 1=1
                 ${branchRestriction}
-                AND (
-                    rd."status" NOT IN ('COMPLETED', 'CANCELLED')
-                    OR rd."orderDate"::date >= CURRENT_DATE
-                )
                 AND (
                     rd."ref" ILIKE $1
                     OR cs."name" ILIKE $1
@@ -87,6 +89,11 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
 
+        // If we want to use this AND condition, we need to copy it and past below WHERE 1=1 ${branchRestriction}
+        // AND (
+        //     rd."status" NOT IN ('COMPLETED', 'CANCELLED')
+        //     OR rd."orderDate"::date >= CURRENT_DATE
+        // )
         // ----- 2) DATA FETCH -----
         const invoices: any = await prisma.$queryRawUnsafe(`
             SELECT rd.*,
@@ -103,10 +110,6 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
             LEFT JOIN "User" ab ON rd."approvedBy" = ab.id
             WHERE 1=1
                 ${branchRestriction}
-                AND (
-                    rd."status" NOT IN ('COMPLETED', 'CANCELLED')
-                    OR rd."orderDate"::date >= CURRENT_DATE
-                )
                 AND (
                     rd."ref" ILIKE $1
                     OR cs."name" ILIKE $1
@@ -132,9 +135,39 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
     }
 };
 
+export const getNextInvoiceRef = async (req: Request, res: Response): Promise<void> => {
+    const { branchId } = req.params;
+
+    if (!branchId) {
+        res.status(400).json({ message: "Branch ID is required" });
+        return;
+    }
+
+    const lastInvoice = await prisma.order.findFirst({
+        where: {
+            branchId: parseInt(branchId, 10),
+        },
+        orderBy: {
+            id: "desc",
+        },
+        select: {
+            ref: true,
+        },
+    });
+
+    let nextRef = "INV-00001";
+
+    if (lastInvoice?.ref) {
+        const lastNumber = parseInt(lastInvoice.ref.split("-")[1], 10) || 0;
+        nextRef = `INV-${String(lastNumber + 1).padStart(5, "0")}`;
+    }
+
+    res.json({ ref: nextRef });
+};
+
 export const upsertInvoice = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { branchId, customerId, taxRate, taxNet, discount, shipping, totalAmount, status, note, items, orderDate, OrderSaleType } = req.body;
+    const { ref, branchId, customerId, taxRate, taxNet, discount, shipping, totalAmount, status, note, items, orderDate, OrderSaleType } = req.body;
     
     try {
         const result = await prisma.$transaction(async (tx) => {
@@ -160,29 +193,45 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                 return;
             }
 
-            let ref = "INV-";
+            const checkRef = await tx.order.findFirst({
+                where: { 
+                    branchId: Number(branchId),
+                    ref: ref,
+                    ...(invoiceId && {
+                        id: { not: invoiceId }
+                    })
+                 },
+            });
 
-            // Generate a new ref only for creation
-            if (!id) {
-                // Query for the highest ref in the same branch
-                const lastInvoice = await tx.order.findFirst({
-                    where: { branchId: parseInt(branchId, 10) },
-                    orderBy: { id: 'desc' }, // Sort by ref in descending order
-                });
-
-                // Extract and increment the numeric part of the ref
-                if (lastInvoice && lastInvoice.ref) {
-                    const refNumber = parseInt(lastInvoice.ref.split('-')[1], 10) || 0;
-                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
-                } else {
-                    ref += "00001"; // Start from 00001 if no ref exists for the branch
-                }
+            if (checkRef) {
+                res.status(400).json({ message: "Invoice # already exists!" });
+                return;
             }
+
+            // let ref = "INV-";
+
+            // // Generate a new ref only for creation
+            // if (!id) {
+            //     // Query for the highest ref in the same branch
+            //     const lastInvoice = await tx.order.findFirst({
+            //         where: { branchId: parseInt(branchId, 10) },
+            //         orderBy: { id: 'desc' }, // Sort by ref in descending order
+            //     });
+
+            //     // Extract and increment the numeric part of the ref
+            //     if (lastInvoice && lastInvoice.ref) {
+            //         const refNumber = parseInt(lastInvoice.ref.split('-')[1], 10) || 0;
+            //         ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+            //     } else {
+            //         ref += "00001"; // Start from 00001 if no ref exists for the branch
+            //     }
+            // }
 
             const invoice = invoiceId
                 ? await tx.order.update({
                     where: { id: invoiceId },
                     data: {
+                        ref,
                         branchId: parseInt(branchId, 10),
                         customerId: parseInt(customerId, 10),
                         orderDate: new Date(dayjs(orderDate).format("YYYY-MM-DD")),
@@ -428,6 +477,9 @@ export const getInvoiceById = async (req: Request, res: Response): Promise<void>
                 },
                 customer: true, // Include related customer data
                 branch: true, // Include related branch data
+                creator: true, // Include related creator data
+                updater: true, // Include related updater data
+                approver: true,
             }, // Include related quotation details
         });
 

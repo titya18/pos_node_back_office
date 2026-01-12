@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { DateTime } from "luxon";
 import logger from "../utils/logger";
@@ -6,6 +6,9 @@ import { Decimal } from "@prisma/client/runtime/library"
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import multer from "multer";
+import path from "path";
+import fs from "fs"; // Import fs module to delete file
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -66,9 +69,6 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
             WHERE 1=1
                 ${branchRestriction}
                 AND (
-                    p."status" NOT IN ('COMPLETED', 'CANCELLED')
-                )
-                AND (
                     p."ref" ILIKE $1
                     OR su."name" ILIKE $1
                     OR br."name" ILIKE $1
@@ -98,9 +98,6 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
             WHERE 1=1
                 ${branchRestriction}
                 AND (
-                    p."status" NOT IN ('COMPLETED', 'CANCELLED')
-                )
-                AND (
                     p."ref" ILIKE $1
                     OR su."name" ILIKE $1
                     OR br."name" ILIKE $1
@@ -123,12 +120,149 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
     }
 };
 
+export const getNextPurchaseRef = async (req: Request, res: Response): Promise<void> => {
+    const { branchId } = req.params;
+
+    if (!branchId) {
+        res.status(400).json({ message: "Branch ID is required" });
+        return;
+    }
+
+    const lastPurchase = await prisma.purchases.findFirst({
+        where: {
+            branchId: parseInt(branchId, 10),
+        },
+        orderBy: {
+            id: "desc",
+        },
+        select: {
+            ref: true,
+        },
+    });
+
+    let nextRef = "PO-00001";
+
+    if (lastPurchase?.ref) {
+        const lastNumber = parseInt(lastPurchase.ref.split("-")[1], 10) || 0;
+        nextRef = `PO-${String(lastNumber + 1).padStart(5, "0")}`;
+    }
+
+    res.json({ ref: nextRef });
+};
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "public/images/purchases/");
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileExtension = path.extname(file.originalname);
+        const uniqueName = `${uniqueSuffix}${fileExtension}`;
+        cb(null, uniqueName);
+    }
+});
+
+export const fileFilter = async (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    // const variantId = req.params.id ? parseInt(req.params.id, 10) : undefined;
+
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.pdf', '.JPG', '.JPEG', '.PNG', '.WEBP', '.GIF', '.SVG', '.PDF'];
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (!allowedExtensions.includes(ext)) {
+        return cb(new Error("Invalid file type. Only JPG, PNG, WEBP, GIF, SVG, and PDF are allowed."));
+    }
+
+    // Check for file size here as well (besides multer's built-in fileSize limit)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+        return cb(new multer.MulterError('LIMIT_FILE_SIZE', 'File is too large')); // Explicitly reject file
+    }
+
+    const filePath = path.join("public/images/purchases/", file.originalname);
+
+    if (fs.existsSync(filePath)) {
+        console.log(`File ${file.originalname} already exists in the directory. Skipping upload.`);
+        return cb(null, false); // Reject upload
+    }
+
+    cb(null, true); // Accept upload
+};
+
+export const uploadImage = (req: Request, res: Response, next: NextFunction) => {
+    const upload = multer({
+        storage: storage,
+        fileFilter: fileFilter,
+        limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5 MB
+    }).array("images[]", 10); // Limit to 10 images
+
+    upload(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+                return res.status(400).json({ message: "File too large. Maximum size is 5 MB." });
+            }
+            return res.status(400).json({ message: `Multer error: ${err.message}` });
+        } else if (err) {
+            return res.status(500).json({ message: `Unexpected error: ${err.message}` });
+        }
+        next(); // Proceed to the next middleware
+    });
+};
+
+const moveFile = (src: string, dest: string) => {
+    if (fs.existsSync(src)) fs.renameSync(src, dest);
+};
+
 export const upsertPurchase = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { branchId, supplierId, taxRate, taxNet, discount, shipping, grandTotal, status, note, purchaseDetails, purchaseDate } = req.body;
+    const { ref, branchId, supplierId, taxRate, taxNet, discount, shipping, grandTotal, status, note, purchaseDetails, purchaseDate, imagesToDelete } = req.body;
+
+    // --- Parse purchaseDetails safely ---
+    let parsedPurchaseDetails: any[] = [];
+    if (purchaseDetails) {
+      if (typeof purchaseDetails === "string") {
+        try {
+          parsedPurchaseDetails = JSON.parse(purchaseDetails);
+        } catch {
+          throw new Error("purchaseDetails is not valid JSON");
+        }
+      } else if (Array.isArray(purchaseDetails)) {
+        parsedPurchaseDetails = purchaseDetails;
+      } else {
+        throw new Error("purchaseDetails must be an array or JSON string");
+      }
+    }
+
+    // --- Parse purchaseDate safely ---
+    let finalPurchaseDate: Date;
+    if (purchaseDate) {
+      const cleanedDate =
+        typeof purchaseDate === "string" && purchaseDate.startsWith('"') && purchaseDate.endsWith('"')
+          ? purchaseDate.slice(1, -1)
+          : purchaseDate;
+
+      finalPurchaseDate = new Date(cleanedDate);
+      if (isNaN(finalPurchaseDate.getTime())) {
+        throw new Error("Invalid purchaseDate");
+      }
+    } else {
+      finalPurchaseDate = new Date();
+    }
+
+    // Validate
+    if (isNaN(finalPurchaseDate.getTime())) {
+        throw new Error("Invalid purchaseDate");
+    }
+
+    const uploadedImages = req.files ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, "")) : [];
+    // Temporary trash folder for reversible deletion
+    const trashDir = path.join("public", "trash");
+    if (!fs.existsSync(trashDir)) fs.mkdirSync(trashDir, { recursive: true });
+
+    // Keep track of moved files for rollback
+    const movedToTrash: { original: string; temp: string }[] = [];
     
     try {
-        const result = await prisma.$transaction(async (prisma) => {
+        const result = await prisma.$transaction(async (tx) => {
             const loggedInUser = req.user; // Assuming you have a middleware that attaches the logged-in user to the request
             // Verify that loggedInUser is defined
             if (!loggedInUser) {
@@ -138,42 +272,83 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
 
             const purchaseId = id ? parseInt(id, 10) : undefined;
             if (purchaseId) {
-                const checkPurchase = await prisma.purchases.findUnique({ where: { id: purchaseId } });
+                const checkPurchase = await tx.purchases.findUnique({ where: { id: purchaseId } });
                 if (!checkPurchase) {
                     res.status(404).json({ message: "Purchase not found!" });
                     return;
                 }
             }
 
-            let ref = "PR-";
+            const checkRef = await tx.purchases.findFirst({
+                where: {
+                    branchId: Number(branchId),
+                    ref: ref,
+                    ...(purchaseId && {
+                        id: { not: purchaseId }
+                    }),
+                },
+            });
 
-            // Generate a new ref only for creation
-            if (!id) {
-                // Query for the highest ref in the same branch
-                const lastPurchase = await prisma.purchases.findFirst({
-                    where: { branchId: parseInt(branchId, 10) },
-                    orderBy: { id: 'desc' }, // Sort by ref in descending order
-                });
-
-                // Extract and increment the numeric part of the ref
-                if (lastPurchase && lastPurchase.ref) {
-                    const refNumber = parseInt(lastPurchase.ref.split('-')[1], 10) || 0;
-                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
-                } else {
-                    ref += "00001"; // Start from 00001 if no ref exists for the branch
-                }
+            if (checkRef) {
+                res.status(400).json({ message: "Purchase # already exists!" });
+                return;
             }
 
-            console.log("Date: ", purchaseDate);
+            // let ref = "PR-";
+
+            // // Generate a new ref only for creation
+            // if (!id) {
+            //     // Query for the highest ref in the same branch
+            //     const lastPurchase = await prisma.purchases.findFirst({
+            //         where: { branchId: parseInt(branchId, 10) },
+            //         orderBy: { id: 'desc' }, // Sort by ref in descending order
+            //     });
+
+            //     // Extract and increment the numeric part of the ref
+            //     if (lastPurchase && lastPurchase.ref) {
+            //         const refNumber = parseInt(lastPurchase.ref.split('-')[1], 10) || 0;
+            //         ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+            //     } else {
+            //         ref += "00001"; // Start from 00001 if no ref exists for the branch
+            //     }
+            // }
+
+            // Fetch existing variant images
+            let existingImages: string[] = [];
+            if (id) {
+                const existingPurchase = await tx.purchases.findUnique({ where: { id: Number(id) } });
+                if (!existingPurchase) throw new Error("Purchase not found!");
+                existingImages = existingPurchase.image || [];
+            }
+
+            // Parse imagesToDelete and move to trash
+            let parsedImagesToDelete: string[] = [];
+            if (imagesToDelete) {
+                parsedImagesToDelete = typeof imagesToDelete === "string" ? JSON.parse(imagesToDelete) : imagesToDelete;
+                if (!Array.isArray(parsedImagesToDelete)) parsedImagesToDelete = [];
+
+                parsedImagesToDelete.forEach(imagePath => {
+                    const src = path.join("public", imagePath);
+                    const dest = path.join(trashDir, path.basename(imagePath));
+                    if (fs.existsSync(src)) {
+                        moveFile(src, dest);
+                        movedToTrash.push({ original: src, temp: dest });
+                    }
+                });
+            }
+
+            // Combine remaining existing images with newly uploaded ones
+            const updatedImages = [...existingImages.filter(img => !parsedImagesToDelete.includes(img)), ...uploadedImages];
 
             const purchase = purchaseId
-                ? await prisma.purchases.update({
+                ? await tx.purchases.update({
                     where: { id: purchaseId },
                     data: {
+                        ref,
                         userId: loggedInUser.id,
                         branchId: parseInt(branchId, 10),
                         supplierId: parseInt(supplierId, 10),
-                        purchaseDate: new Date(dayjs(purchaseDate).format("YYYY-MM-DD")),
+                        purchaseDate: new Date(dayjs(finalPurchaseDate).format("YYYY-MM-DD")),
                         taxRate,
                         taxNet,
                         discount,
@@ -181,6 +356,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         grandTotal,
                         status,
                         note,
+                        image: updatedImages,
                         updatedAt: currentDate,
                         updatedBy: req.user ? req.user.id : null,
                         receivedAt: status === "RECEIVED" ? currentDate : null,
@@ -189,7 +365,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                             deleteMany: {
                                 purchaseId: purchaseId   // MUST include a filter
                             }, // Delete existing purchase details
-                            create: purchaseDetails.map((detail: any) => ({
+                            create: parsedPurchaseDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
                                 productVariantId: parseInt(detail.productVariantId, 10),
                                 cost: parseFloat(detail.cost),
@@ -200,10 +376,10 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                                 total: parseFloat(detail.total),
                                 quantity: parseInt(detail.quantity, 10),
                             })),
-                        },
+                        }
                     }
                 })
-                : await prisma.purchases.create({
+                : await tx.purchases.create({
                     data: {
                         userId: loggedInUser.id,
                         branchId: parseInt(branchId, 10),
@@ -216,7 +392,8 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         grandTotal,
                         status,
                         note,
-                        purchaseDate: new Date(dayjs(purchaseDate).format("YYYY-MM-DD")),
+                        image: updatedImages,
+                        purchaseDate: new Date(dayjs(finalPurchaseDate).format("YYYY-MM-DD")),
                         createdAt: currentDate,
                         updatedAt: currentDate,
                         createdBy: req.user ? req.user.id : null,
@@ -224,7 +401,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         receivedAt: status === "RECEIVED" ? currentDate : null,
                         receivedBy: status === "RECEIVED" ? req.user ? req.user.id : null : null,
                         purchaseDetails: {
-                            create: purchaseDetails.map((detail: any) => ({
+                            create: parsedPurchaseDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
                                 productVariantId: parseInt(detail.productVariantId, 10),
                                 cost: parseFloat(detail.cost),
@@ -241,8 +418,8 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
             
             // If status is Received update stock
             if (status === "RECEIVED") {
-                for (const detail of purchaseDetails) {
-                    const existingStock = await prisma.stocks.findFirst({
+                for (const detail of parsedPurchaseDetails) {
+                    const existingStock = await tx.stocks.findFirst({
                         where: {
                             branchId: parseInt(branchId, 10),
                             productVariantId: parseInt(detail.productVariantId, 10),
@@ -251,7 +428,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
 
                     if (existingStock) {
                         // Update the existing stock
-                        await prisma.stocks.update({
+                        await tx.stocks.update({
                             where: { id: existingStock.id },
                             data: {
                                 quantity: { increment: new Decimal(detail.quantity) },
@@ -261,7 +438,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         });
                     } else {
                         // Insert new stock
-                        await prisma.stocks.create({
+                        await tx.stocks.create({
                             data: {
                                 branchId: parseInt(branchId, 10),
                                 productVariantId: parseInt(detail.productVariantId, 10),
@@ -378,6 +555,8 @@ export const getPurchaseById = async (req: Request, res: Response): Promise<void
                 },
                 suppliers: true, // Include related supplier data
                 branch: true, // Include related branch data
+                creator: true, // Include related creator data
+                updater: true, // Include related updater data
             }, // Include related purchase details
         });
 
