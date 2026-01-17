@@ -52,7 +52,10 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
         // Branch restriction
         let branchRestriction = "";
         if (loggedInUser.roleType === "USER" && loggedInUser.branchId) {
-            branchRestriction = `AND q."branchId" = ${loggedInUser.branchId}`;
+            branchRestriction = `
+                AND q."branchId" = ${loggedInUser.branchId}
+                AND q."createdBy" = ${loggedInUser.id}
+            `;
         }
 
         // ----- 1) COUNT -----

@@ -55,7 +55,10 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
         // Branch restriction
         let branchRestriction = "";
         if (loggedInUser.roleType === "USER" && loggedInUser.branchId) {
-            branchRestriction = `AND p."branchId" = ${loggedInUser.branchId}`;
+            branchRestriction = `
+                AND p."branchId" = ${loggedInUser.branchId}
+                AND p."createdBy" = ${loggedInUser.id}
+            `;
         }
 
         // ----- 1) COUNT -----
@@ -213,6 +216,12 @@ const moveFile = (src: string, dest: string) => {
 };
 
 export const upsertPurchase = async (req: Request, res: Response): Promise<void> => {
+    const loggedInUser = req.user;
+    if (!loggedInUser) {
+        res.status(401).json({ message: "User is not authenticated." });
+        return;
+    }
+
     const { id } = req.params;
     const { ref, branchId, supplierId, taxRate, taxNet, discount, shipping, grandTotal, status, note, purchaseDetails, purchaseDate, imagesToDelete } = req.body;
 
@@ -251,6 +260,19 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
     // Validate
     if (isNaN(finalPurchaseDate.getTime())) {
         throw new Error("Invalid purchaseDate");
+    }
+
+    const getPurchaseAmountAuthorize = await prisma.purchaseAmountAuthorize.findFirst();
+    if (loggedInUser.roleType !== "ADMIN") {
+        if (status === "APPROVED" || status === "RECEIVED" || status === "COMPLETED") {
+            if (getPurchaseAmountAuthorize) {
+                const { amount } = getPurchaseAmountAuthorize;
+                if (grandTotal > amount) {
+                    res.status(400).json({ message: "Purchase amount exceeds authorized limit." });
+                    return;
+                }
+            }
+        }
     }
 
     const uploadedImages = req.files ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, "")) : [];
@@ -472,7 +494,7 @@ export const insertPurchasePayment = async (req: Request, res: Response): Promis
                 return;
             }
 
-            const { branchId, purchaseId, paymentMethodId, amount, due_balance } = req.body;
+            const { branchId, purchaseId, paymentMethodId, amount, receive_usd, receive_khr, exchangerate, due_balance } = req.body;
 
             // Fetch the purchase to get the grandTotal
             const purchase = await prisma.purchases.findUnique({
@@ -519,6 +541,9 @@ export const insertPurchasePayment = async (req: Request, res: Response): Promis
                     paymentMethodId: parseInt(paymentMethodId, 10),
                     userId: loggedInUser.id,
                     amount: finalAmount,
+                    receive_usd,
+                    receive_khr,
+                    exchangerate,
                     createdAt: currentDate,
                     createdBy: req.user ? req.user.id : null,
                     status: "PAID"
@@ -671,5 +696,39 @@ export const deletePurchase = async (req: Request, res: Response): Promise<void>
         logger.error("Error deleting purchase:", error);
         const typedError = error as Error;
         res.status(500).json({ message: typedError.message });
+    }
+};
+
+export const getAmountPurchasings = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const amountPurchasing = await prisma.purchaseAmountAuthorize.findFirst({
+            include: { 
+                creator: { select: { id: true, firstName: true, lastName: true } },
+                updater: { select: { id: true, firstName: true, lastName: true } }
+            }
+        });
+        res.status(200).json(amountPurchasing);
+    } catch (error) {
+        logger.error("Error fetching amount purchasing:", error);
+        res.status(500).json({ message: (error as Error).message });
+    }
+};
+
+export const updateAmountPurchasing = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { amount } = req.body;
+    try {
+        const result = await prisma.purchaseAmountAuthorize.update({
+            where: { id: parseInt(id, 10) },
+            data: {
+                amount: amount,
+                updatedAt: currentDate,
+                updatedBy: req.user ? req.user.id : null
+            }
+        });
+        res.status(200).json(result);
+    } catch (error) {
+        logger.error("Error updating amount purchasing:", error);   
+        res.status(500).json({ message: (error as Error).message });
     }
 };

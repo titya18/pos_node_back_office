@@ -52,7 +52,10 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
         // Branch restriction
         let branchRestriction = "";
         if (loggedInUser.roleType === "USER" && loggedInUser.branchId) {
-            branchRestriction = `AND rd."branchId" = ${loggedInUser.branchId}`;
+            branchRestriction = `
+                AND rd."branchId" = ${loggedInUser.branchId}
+                AND rd."createdBy" = ${loggedInUser.id}
+            `;
         }
 
         // If we want to use this AND condition, we need to copy it and past below WHERE 1=1 ${branchRestriction}
@@ -387,7 +390,7 @@ export const insertInvoicePayment = async (req: Request, res: Response): Promise
                 return;
             }
 
-            const { branchId, orderId, paymentMethodId, totalPaid, due_balance } = req.body;
+            const { branchId, orderId, paymentMethodId, totalPaid, receive_usd, receive_khr, exchangerate, due_balance } = req.body;
 
             // Fetch the purchase to get the grandTotal
             const invoice = await prisma.order.findUnique({
@@ -438,6 +441,9 @@ export const insertInvoicePayment = async (req: Request, res: Response): Promise
                     paymentMethodId: parseInt(paymentMethodId, 10),
                     paymentDate: currentDate,
                     totalPaid: finalAmount,
+                    receive_usd,
+                    receive_khr,
+                    exchangerate,
                     createdAt: currentDate,
                     createdBy: req.user ? req.user.id : null,
                     updatedAt: currentDate,

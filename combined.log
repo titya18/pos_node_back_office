@@ -28601,3 +28601,258 @@ Argument `productVariantId` is missing.
     at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:428:43)
     at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:271:24)
+2026-01-14 14:38:28 error: Error updating amount purchasing: [DecimalError] Invalid argument: undefined Error: [DecimalError] Invalid argument: undefined
+    at new i (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:21:31836)
+    at updateAmountPurchasing (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:702:25)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at <anonymous> (D:\Citylink-Inventory\backend\src\middlewares\auth.ts:123:20)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at D:\Citylink-Inventory\backend\node_modules\express\lib\router\index.js:284:15
+2026-01-14 14:39:25 error: Error updating amount purchasing: [DecimalError] Invalid argument: undefined Error: [DecimalError] Invalid argument: undefined
+    at new i (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:21:31836)
+    at updateAmountPurchasing (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:703:25)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at <anonymous> (D:\Citylink-Inventory\backend\src\middlewares\auth.ts:123:20)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at D:\Citylink-Inventory\backend\node_modules\express\lib\router\index.js:284:15
+2026-01-14 14:40:15 error: Error updating amount purchasing: [DecimalError] Invalid argument: undefined Error: [DecimalError] Invalid argument: undefined
+    at new i (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:21:31836)
+    at updateAmountPurchasing (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:703:25)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at <anonymous> (D:\Citylink-Inventory\backend\src\middlewares\auth.ts:123:20)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at D:\Citylink-Inventory\backend\node_modules\express\lib\router\index.js:284:15
+2026-01-14 14:43:06 error: Error updating amount purchasing: [DecimalError] Invalid argument: undefined Error: [DecimalError] Invalid argument: undefined
+    at new i (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:21:31836)
+    at updateAmountPurchasing (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:703:25)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at <anonymous> (D:\Citylink-Inventory\backend\src\middlewares\auth.ts:123:20)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (D:\Citylink-Inventory\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (D:\Citylink-Inventory\backend\node_modules\express\lib\router\layer.js:95:5)
+    at D:\Citylink-Inventory\backend\node_modules\express\lib\router\index.js:284:15
+2026-01-14 15:27:38 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-14 15:27:38 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-14 15:28:13 error: Error upserting exchange rate: 
+Invalid `tx.exchangeRates.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:123:42
+
+  120         updatedBy: req.user ? req.user.id : null
+  121     }
+  122 })
+→ 123 : await tx.exchangeRates.create({
+        data: {
+          amount: "4000",
+                  ~~~~~~
+          createdAt: new Date("2026-01-14T14:53:58.000Z"),
+          createdBy: 1,
+          updatedAt: new Date("2026-01-14T14:53:58.000Z"),
+          updatedBy: 1
+        }
+      })
+
+Argument `amount`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `tx.exchangeRates.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:123:42
+
+  120         updatedBy: req.user ? req.user.id : null
+  121     }
+  122 })
+→ 123 : await tx.exchangeRates.create({
+        data: {
+          amount: "4000",
+                  ~~~~~~
+          createdAt: new Date("2026-01-14T14:53:58.000Z"),
+          createdBy: 1,
+          updatedAt: new Date("2026-01-14T14:53:58.000Z"),
+          updatedBy: 1
+        }
+      })
+
+Argument `amount`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:123:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertExchangeRate (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:105:25)
+2026-01-14 15:30:01 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-14 15:30:01 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.name does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-14 15:31:17 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42883`. Message: `ERROR: operator does not exist: integer ~~* text
+HINT: No operator matches the given name and argument types. You might need to add explicit type casts.` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42883`. Message: `ERROR: operator does not exist: integer ~~* text
+HINT: No operator matches the given name and argument types. You might need to add explicit type casts.`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-14 15:31:17 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42883`. Message: `ERROR: operator does not exist: integer ~~* text
+HINT: No operator matches the given name and argument types. You might need to add explicit type casts.` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42883`. Message: `ERROR: operator does not exist: integer ~~* text
+HINT: No operator matches the given name and argument types. You might need to add explicit type casts.`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-14 15:32:46 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.address does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.address does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-14 15:32:46 error: Error fetching exchanges: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.address does not exist` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42703`. Message: `column ecr.address does not exist`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllExchangesWithPagination (D:\Citylink-Inventory\backend\src\controllers\exchangeRateController.ts:43:34)
+2026-01-15 09:09:33 error: Login error 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`. PrismaClientInitializationError: 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7615)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async signIn (D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:22)
+2026-01-16 08:24:23 error: Error inserting purchase payment: 
+Invalid `prisma.purchaseOnPayments.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:537:69
+
+  534 const finalAmount = dueNum <= 0
+  535                         ? new Decimal(amountNum).plus(dueNum)
+  536                         : new Decimal(amountNum);
+→ 537 const purchasePayment = await prisma.purchaseOnPayments.create(
+Foreign key constraint violated: `PurchaseOnPayments_paymentMethodId_fkey (index)` PrismaClientKnownRequestError: 
+Invalid `prisma.purchaseOnPayments.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:537:69
+
+  534 const finalAmount = dueNum <= 0
+  535                         ? new Decimal(amountNum).plus(dueNum)
+  536                         : new Decimal(amountNum);
+→ 537 const purchasePayment = await prisma.purchaseOnPayments.create(
+Foreign key constraint violated: `PurchaseOnPayments_paymentMethodId_fkey (index)`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:537:37)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async insertPurchasePayment (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:489:24)

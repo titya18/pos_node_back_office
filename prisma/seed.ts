@@ -47,7 +47,8 @@ async function main() {
       { name: "Stock Return" },
       { name: "Expense" },
       { name: "Income" },
-      { name: "Reports" }
+      { name: "Reports" },
+      { name: "Settings" },
     ],
   });
 
@@ -175,6 +176,11 @@ async function main() {
       { name: "Return-Report", moduleId: 25 },
       { name: "Expense-Report", moduleId: 25 },
       { name: "Income-Report", moduleId: 25 },
+      { name: "Amount-Purchase-View", moduleId: 26 },
+      { name: "Amount-Purchase-Edit", moduleId: 26 },
+      { name: "Exchange-Rate-View", moduleId: 26 },
+      { name: "Exchange-Rate-Create", moduleId: 26 },
+      { name: "Exchange-Rate-Edit", moduleId: 26 },
     ],
   });
 
@@ -446,6 +452,13 @@ async function main() {
       },
     },
   });
+
+  await prisma.purchaseAmountAuthorize.create({
+    data: {
+      amount: 500,
+    },
+  });
+
   console.log("✅ Users Order created successfully!");
 
   console.log("✅ Database seeding completed!");

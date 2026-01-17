@@ -56,6 +56,7 @@ model User {
   phoneNumber String    @db.VarChar(50)
   email       String    @unique @db.VarChar(50)
   password    String
+  show_pass   String?   @db.VarChar(50)
   roleType    UserType  @default(ADMIN)
   status      Int       @default(1) // 1=Active and 0=Dis-Active
   createdAt   DateTime  @default(now())
@@ -174,6 +175,12 @@ model User {
   createIncome Incomes[] @relation("IncomeCreatedBy")
   updateIncome Incomes[] @relation("IncomeUpdatedBy")
   deleteIncome Incomes[] @relation("IncomeDeletedBy")
+
+  createPurchaseAmountAuthorize PurchaseAmountAuthorize[] @relation("PurchaseAmountAuthorizeCreatedBy")
+  updatePurchaseAmountAuthorize PurchaseAmountAuthorize[] @relation("PurchaseAmountAuthorizeUpdatedBy")
+
+  createExchangeRate ExchangeRates[] @relation("ExchangeRatesCreatedBy")
+  updateExchangeRate ExchangeRates[] @relation("ExchangeRatesUpdatedBy")
 
   purchases Purchases[]
   roles     RoleOnUser[] @relation("UserRoles")
@@ -480,6 +487,12 @@ model Suppliers {
 enum PurchaseStatus {
   /// Order created but not yet processed
   PENDING
+  
+  /// Request for the purchase over amount setting
+  REQUESTED
+
+  /// Approved by admin, ready to receive items
+  APPROVED
 
   /// Items physically received at branch/warehouse
   RECEIVED
@@ -567,6 +580,9 @@ model PurchaseOnPayments {
   paymentMethodId Int
   userId          Int
   amount          Decimal  @db.Decimal(10, 4)
+  receive_usd     Decimal? @db.Decimal(10, 4)
+  receive_khr     Int?
+  exchangerate    Int?
   createdAt       DateTime @default(now())
   createdBy       Int?
   status          String?  @db.VarChar(20)
@@ -587,6 +603,18 @@ model PurchaseOnPayments {
   // we need to commend this line (id                Int            @id @default(autoincrement())), 
   // but want to use this line (id                Int            @id @default(autoincrement())), 
   // we nee to commend this line @@id([paymentMethodId, purchaseId, userId])
+}
+
+model PurchaseAmountAuthorize {
+  id            Int             @id @default(autoincrement())
+  amount        Decimal         @db.Decimal(10, 4)
+  createdAt     DateTime        @default(now())
+  createdBy     Int?
+  updatedAt     DateTime?
+  updatedBy     Int?
+
+  creator User? @relation("PurchaseAmountAuthorizeCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("PurchaseAmountAuthorizeUpdatedBy", fields: [updatedBy], references: [id])
 }
 
 enum ItemType {
@@ -795,6 +823,9 @@ model OrderOnPayments {
   paymentDate     DateTime    @default(now())
   paymentMethodId Int
   totalPaid       Decimal     @db.Decimal(10, 4)
+  receive_usd     Decimal? @db.Decimal(10, 4)
+  receive_khr     Int?
+  exchangerate    Int?
   createdAt       DateTime    @default(now())
   createdBy       Int?
   updatedAt       DateTime    @updatedAt
@@ -1064,6 +1095,18 @@ model Incomes {
   deleter User? @relation("IncomeDeletedBy", fields: [deletedBy], references: [id])
 
   branch Branch @relation(fields: [branchId], references: [id])
+}
+
+model ExchangeRates {
+  id            Int             @id @default(autoincrement())
+  amount        Int
+  createdAt     DateTime        @default(now())
+  createdBy     Int?
+  updatedAt     DateTime?
+  updatedBy     Int?
+
+  creator User? @relation("ExchangeRatesCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("ExchangeRatesUpdatedBy", fields: [updatedBy], references: [id])
 }
 
 // How to run the Prisma Migrate

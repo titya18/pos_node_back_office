@@ -171,6 +171,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
                 phoneNumber,
                 email,
                 password: hashedPassword,
+                show_pass: password,
                 roleType: userType,
                 status: 1,
                 roles: {
@@ -251,6 +252,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         if (password) {
             // Hash the new password if provided
             updateData.password = await bcrypt.hash(password, 10);
+            updateData.show_pass = password;
         }
 
         // Update user and manage role connections
