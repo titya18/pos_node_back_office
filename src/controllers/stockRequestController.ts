@@ -247,6 +247,7 @@ export const upsertRequest = async (req: Request, res: Response): Promise<void> 
                             productVariantId: Number(detail.productVariantId),
                             branchId: Number(branchId),
                             type: "REQUEST",
+                            status: 'APPROVED',
                             quantity: signedQuantity,
                             note,
                             createdBy: req.user ? req.user.id : null,

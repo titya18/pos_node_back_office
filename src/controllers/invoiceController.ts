@@ -211,25 +211,6 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                 return;
             }
 
-            // let ref = "INV-";
-
-            // // Generate a new ref only for creation
-            // if (!id) {
-            //     // Query for the highest ref in the same branch
-            //     const lastInvoice = await tx.order.findFirst({
-            //         where: { branchId: parseInt(branchId, 10) },
-            //         orderBy: { id: 'desc' }, // Sort by ref in descending order
-            //     });
-
-            //     // Extract and increment the numeric part of the ref
-            //     if (lastInvoice && lastInvoice.ref) {
-            //         const refNumber = parseInt(lastInvoice.ref.split('-')[1], 10) || 0;
-            //         ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
-            //     } else {
-            //         ref += "00001"; // Start from 00001 if no ref exists for the branch
-            //     }
-            // }
-
             const invoice = invoiceId
                 ? await tx.order.update({
                     where: { id: invoiceId },
@@ -246,6 +227,8 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         totalAmount,
                         status,
                         note,
+                        approvedAt: status === "APPROVED" ? currentDate : null,
+                        approvedBy: status === "APPROVED" ? loggedInUser.id : null,
                         updatedAt: currentDate,
                         updatedBy: req.user ? req.user.id : null,
                         items: {
@@ -294,6 +277,8 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         updatedAt: currentDate,
                         createdBy: req.user ? req.user.id : null,
                         updatedBy: req.user ? req.user.id : null,
+                        approvedAt: status === "APPROVED" ? currentDate : null,
+                        approvedBy: status === "APPROVED" ? loggedInUser.id : null,
                         items: {
                             create: items.map((detail: any) => ({
                                 productId: detail.productId ? parseInt(detail.productId, 10) : null,
@@ -342,28 +327,61 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         throw new Error("Insufficient stock for barcode: " + item.productvariants?.barcode);
                     }
 
-                    // Update stock
-                    await tx.stocks.update({
-                        where: { id: stock.id },
-                        data: {
-                            quantity: {
-                                decrement: item.quantity,
-                            },
-                            updatedAt: currentDate,
-                            updatedBy: req.user ? req.user.id : null,
-                        },
-                    });
-
-                    // Insert stock movement
-                    await tx.stockMovements.create({
-                        data: {
+                    // FIFO logic: fetch oldest IN batches
+                    let qtyToSell = new Decimal(item.quantity);
+                    const fifoBatches = await tx.stockMovements.findMany({
+                        where: {
                             productVariantId: item.productVariantId,
                             branchId: invoice.branchId,
-                            type: "ORDER",
-                            quantity: item.quantity,
-                            note: `Invoice #${invoice.ref}`,
-                            createdBy: req.user ? req.user.id : null,
-                            createdAt: currentDate
+                            type: { in: ['PURCHASE', 'RETURN', 'ADJUSTMENT'] },
+                            AdjustMentType: 'POSITIVE',
+                            status: 'APPROVED',
+                            remainingQty: { gt: 0 },
+                        },
+                        orderBy: { createdAt: 'asc' },
+                    });
+
+                    for (const batch of fifoBatches) {
+                        if (qtyToSell.lte(0)) break;
+
+                        const consumeQty = Decimal.min(batch.remainingQty!, qtyToSell);
+
+                        // 1️⃣ Insert OUT movement with FIFO cost
+                        await tx.stockMovements.create({
+                            data: {
+                                productVariantId: item.productVariantId,
+                                branchId: invoice.branchId,
+                                type: 'ORDER',
+                                status: 'APPROVED',
+                                quantity: consumeQty.neg(),
+                                unitCost: batch.unitCost,
+                                sourceMovementId: batch.id,
+                                note: `Invoice #${invoice.ref}`,
+                                createdBy: loggedInUser.id,
+                                createdAt: currentDate
+                            },
+                        });
+
+                        // 2️⃣ Update remainingQty in IN batch
+                        await tx.stockMovements.update({
+                            where: { id: batch.id },
+                            data: { remainingQty: batch.remainingQty!.minus(consumeQty) },
+                        });
+
+                        qtyToSell = qtyToSell.minus(consumeQty);
+                    }
+
+                    if (qtyToSell.gt(0)) {
+                        throw new Error(`Not enough stock (FIFO) for product variant ID: ${item.productVariantId}`);
+                    }
+
+                    // Update total stock
+                    await tx.stocks.update({
+                            where: { id: stock.id },
+                            data: {
+                            quantity: { decrement: item.quantity },
+                            updatedAt: new Date(),
+                            updatedBy: loggedInUser.id,
                         },
                     });
                 }

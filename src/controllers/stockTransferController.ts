@@ -253,6 +253,7 @@ export const upsertTransfer = async (req: Request, res: Response): Promise<void>
                             productVariantId: Number(detail.productVariantId),
                             branchId: Number(fromBranchId),
                             type: "TRANSFER",
+                            status: 'APPROVED',
                             quantity: -qty,
                             note,
                             createdBy: loggedInUser.id,

@@ -17,16 +17,16 @@ export const getAllReportInvoices = async (
     res: Response
 ): Promise<void> => {
     try {
-        /* -------------------------------------------------- */
-        /* PAGINATION & FILTER PARAMS                         */
-        /* -------------------------------------------------- */
+        /* ------------------------ */
+        /* PAGINATION & FILTERS    */
+        /* ------------------------ */
         const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
         const pageNumber = parseInt(req.query.page as string, 10) || 1;
         const offset = (pageNumber - 1) * pageSize;
 
         const searchTerm = ((req.query.searchTerm as string) || "").trim();
         const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -42,30 +42,27 @@ export const getAllReportInvoices = async (
             return;
         }
 
-        /* -------------------------------------------------- */
-        /* SEARCH SETUP                                       */
-        /* -------------------------------------------------- */
+        /* ------------------------ */
+        /* SEARCH SETUP            */
+        /* ------------------------ */
         const likeTerm = `%${searchTerm}%`;
         const searchWords = searchTerm.split(/\s+/).filter(Boolean);
 
         const fullNameConditions = searchWords
-            .map((_, idx) => `
-                (
-                    c."firstName" ILIKE $${idx + 2}
-                    OR c."lastName" ILIKE $${idx + 2}
-                    OR u."firstName" ILIKE $${idx + 2}
-                    OR u."lastName" ILIKE $${idx + 2}
-                    OR cs."name" ILIKE $${idx + 2}
-                    OR br."name" ILIKE $${idx + 2}
-                )
-            `)
-            .join(" AND ");
+            .map((_, idx) => `(
+                c."firstName" ILIKE $${idx + 2}
+                OR c."lastName" ILIKE $${idx + 2}
+                OR u."firstName" ILIKE $${idx + 2}
+                OR u."lastName" ILIKE $${idx + 2}
+                OR cs."name" ILIKE $${idx + 2}
+                OR br."name" ILIKE $${idx + 2}
+            )`).join(" AND ");
 
         const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
 
-        /* -------------------------------------------------- */
-        /* BRANCH RESTRICTION                                 */
-        /* -------------------------------------------------- */
+        /* ------------------------ */
+        /* BRANCH RESTRICTION       */
+        /* ------------------------ */
         let branchRestriction = "";
         if (loggedInUser.roleType === "ADMIN") {
             if (branchId) branchRestriction = `AND rd."branchId" = ${branchId}`;
@@ -77,10 +74,9 @@ export const getAllReportInvoices = async (
             branchRestriction = `AND rd."branchId" = ${loggedInUser.branchId}`;
         }
 
-        /* -------------------------------------------------- */
-        /* COMMON FILTERS                                     */
-        /* -------------------------------------------------- */
-        
+        /* ------------------------ */
+        /* COMMON FILTERS           */
+        /* ------------------------ */
         const commonFilters = `
             WHERE 1=1
             ${branchRestriction}
@@ -96,48 +92,52 @@ export const getAllReportInvoices = async (
                 OR TO_CHAR(rd."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(rd."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(rd."approvedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(rd."orderDate", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(rd."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(rd."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
-                OR TO_CHAR(rd."approvedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
             )
         `;
 
-        /* -------------------------------------------------- */
-        /* 1️ SUMMARY TOTALS                                   */
-        /* -------------------------------------------------- */
+        /* ------------------------ */
+        /* SUMMARY TOTALS (Profit) */
+        /* ------------------------ */
         const summary: any = await prisma.$queryRawUnsafe(`
+            WITH order_totals AS (
+                SELECT
+                    o.id,
+                    o."totalAmount",
+                    o."paidAmount"
+                FROM "Order" o
+                WHERE o.status != 'CANCELLED'
+                ${branchId ? `AND o."branchId" = ${branchId}` : ''}
+                ${startDate && endDate ? `AND o."orderDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ''}
+                ${saleType ? `AND o."OrderSaleType" = '${saleType}'` : ''}
+            ),
+            profit_calc AS (
+                SELECT
+                    o.id AS "orderId",
+                    SUM(ABS(sm.quantity) * (oi.price - sm."unitCost")) AS profit
+                FROM "Order" o
+                JOIN "OrderItem" oi ON oi."orderId" = o.id
+                JOIN "StockMovements" sm
+                    ON sm.type = 'ORDER'
+                AND sm.status = 'APPROVED'
+                AND sm."productVariantId" = oi."productVariantId"
+                AND sm.note LIKE '%' || o."ref" || '%'
+                WHERE o.status != 'CANCELLED'
+                ${branchId ? `AND o."branchId" = ${branchId}` : ''}
+                ${startDate && endDate ? `AND o."orderDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ''}
+                ${saleType ? `AND o."OrderSaleType" = '${saleType}'` : ''}
+                GROUP BY o.id
+            )
             SELECT
-                COUNT(DISTINCT rd.id) AS "totalInvoice",
-                COALESCE(SUM(rd."totalAmount"), 0) AS "totalAmount",
-                COALESCE(SUM(rd."paidAmount"), 0) AS "totalReceivedAmount",
-                COALESCE(SUM(rd."totalAmount" - rd."paidAmount"), 0) AS "totalRemainAmount",
-                COALESCE(SUM(order_profit), 0) AS "totalProfit"
-            FROM "Order" rd
-            LEFT JOIN (
-                SELECT oi."orderId",
-                    SUM(
-                        CASE
-                            WHEN oi."ItemType" = 'PRODUCT'
-                            THEN (oi.price - COALESCE(pv."purchasePrice", 0)) * oi.quantity
-                            ELSE 0
-                        END
-                    ) AS order_profit
-                FROM "OrderItem" oi
-                LEFT JOIN "ProductVariants" pv ON pv.id = oi."productVariantId"
-                GROUP BY oi."orderId"
-            ) AS profits ON profits."orderId" = rd.id
-            LEFT JOIN "Customer" cs ON rd."customerId" = cs.id
-            LEFT JOIN "Branch" br ON rd."branchId" = br.id
-            LEFT JOIN "User" c ON rd."createdBy" = c.id
-            LEFT JOIN "User" u ON rd."updatedBy" = u.id
-            LEFT JOIN "User" ab ON rd."approvedBy" = ab.id
-            LEFT JOIN "User" db ON rd."deletedBy" = db.id
-            ${commonFilters}
-        `, ...params);
+            COUNT(*) AS "totalInvoice",
+            SUM(ot."totalAmount") AS "totalAmount",
+            SUM(ot."paidAmount") AS "totalReceivedAmount",
+            SUM(ot."totalAmount" - ot."paidAmount") AS "totalRemainAmount",
+            COALESCE(SUM(pc.profit), 0) AS "totalProfit"
+            FROM order_totals ot
+            LEFT JOIN profit_calc pc ON pc."orderId" = ot.id;
+        `);
 
-        /* Convert BigInt in summary */
         const summarySafe = {
             totalInvoice: Number(summary[0]?.totalInvoice || 0),
             totalAmount: Number(summary[0]?.totalAmount || 0),
@@ -146,9 +146,9 @@ export const getAllReportInvoices = async (
             totalProfit: Number(summary[0]?.totalProfit || 0),
         };
 
-        /* -------------------------------------------------- */
-        /* 2️ TOTAL COUNT (PAGINATION)                       */
-        /* -------------------------------------------------- */
+        /* ------------------------ */
+        /* TOTAL COUNT FOR PAGINATION */
+        /* ------------------------ */
         const totalResult: any = await prisma.$queryRawUnsafe(`
             SELECT COUNT(*) AS total
             FROM (
@@ -165,9 +165,9 @@ export const getAllReportInvoices = async (
 
         const total = Number(totalResult[0]?.total || 0);
 
-        /* -------------------------------------------------- */
-        /* 3️ DATA LIST                                      */
-        /* -------------------------------------------------- */
+        /* ------------------------ */
+        /* FETCH DATA LIST          */
+        /* ------------------------ */
         const invoices: any = await prisma.$queryRawUnsafe(`
             SELECT rd.*,
                 json_build_object('id', cs.id, 'name', cs.name) AS customer,
@@ -202,14 +202,13 @@ export const getAllReportInvoices = async (
             grandTotal: Number(inv.totalAmount),
         }));
 
-        // console.log("Data: ", invoicesSafe);
-        // console.log("Summary: ", summarySafe);
-
         res.status(200).json({
             data: invoicesSafe,
             total,
             summary: summarySafe,
         });
+
+        // console.log("Data: ", summarySafe);
 
     } catch (error) {
         console.error("Report invoice error:", error);

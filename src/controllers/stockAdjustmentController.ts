@@ -243,6 +243,7 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                             productVariantId: Number(detail.productVariantId),
                             branchId: Number(branchId),
                             type: "ADJUSTMENT",
+                            status: 'APPROVED',
                             quantity: signedQuantity,
                             note,
                             createdBy: req.user ? req.user.id : null,

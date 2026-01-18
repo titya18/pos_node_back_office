@@ -307,14 +307,14 @@ async function main() {
 
   console.log("✅ Product Variant Values linked!");
 
-  await prisma.stocks.create({
-    data: {
-      productVariantId: variant1.id,
-      quantity: 100.0,
-      branchId: branch1.id
-    }
-  });
-  console.log("✅ Users Stock created successfully!");
+  // await prisma.stocks.create({
+  //   data: {
+  //     productVariantId: variant1.id,
+  //     quantity: 100.0,
+  //     branchId: branch1.id
+  //   }
+  // });
+  // console.log("✅ Users Stock created successfully!");
 
   // Create Suppliers
   const supplier1 = await prisma.suppliers.create({
@@ -335,77 +335,77 @@ async function main() {
   });
   console.log("✅ Users Payment Method created successfully!");
 
-  const purchase1 = await prisma.purchases.create({
-    data: {
-      userId: adminUser.id,
-      branchId: branch1.id,
-      supplierId: supplier1.id,
-      ref: 'PUR-0001',
-      purchaseDate: new Date('2025-05-15'),
-      taxRate: 0.1,
-      taxNet: 10,
-      discount: 5,
-      shipping: 3,
-      grandTotal: 200,
-      paidAmount: 150,
-      status: 'COMPLETED',
-      paymentStatus: 'PARTIAL',
-      note: 'First purchase',
-      createdAt: now,
-      updatedAt: now,
-      purchaseDetails: {
-        create: [
-          {
-            productId: product1.id,
-            productVariantId: variant1.id,
-            cost: 10,
-            taxNet: 1,
-            taxMethod: 'inclusive',
-            discount: 0,
-            discountMethod: 'none',
-            total: 10,
-            quantity: 10,
-            createdAt: now,
-            updatedAt: now,
-          },
-        ],
-      },
-      payments: {
-        create: [
-          {
-            branchId: branch1.id,
-            paymentMethodId: 1, // Cash
-            userId: adminUser.id,
-            amount: 100,
-            createdAt: now,
-          },
-          {
-            branchId: branch1.id,
-            paymentMethodId: 2, // Credit Card
-            userId: adminUser.id,
-            amount: 50,
-            createdAt: now,
-          },
-        ],
-      },
-    },
-  });
-  console.log("✅ Users Purchase created successfully!");
+  // const purchase1 = await prisma.purchases.create({
+  //   data: {
+  //     userId: adminUser.id,
+  //     branchId: branch1.id,
+  //     supplierId: supplier1.id,
+  //     ref: 'PUR-0001',
+  //     purchaseDate: new Date('2025-05-15'),
+  //     taxRate: 0.1,
+  //     taxNet: 10,
+  //     discount: 5,
+  //     shipping: 3,
+  //     grandTotal: 200,
+  //     paidAmount: 150,
+  //     status: 'COMPLETED',
+  //     paymentStatus: 'PARTIAL',
+  //     note: 'First purchase',
+  //     createdAt: now,
+  //     updatedAt: now,
+  //     purchaseDetails: {
+  //       create: [
+  //         {
+  //           productId: product1.id,
+  //           productVariantId: variant1.id,
+  //           cost: 10,
+  //           taxNet: 1,
+  //           taxMethod: 'inclusive',
+  //           discount: 0,
+  //           discountMethod: 'none',
+  //           total: 10,
+  //           quantity: 10,
+  //           createdAt: now,
+  //           updatedAt: now,
+  //         },
+  //       ],
+  //     },
+  //     payments: {
+  //       create: [
+  //         {
+  //           branchId: branch1.id,
+  //           paymentMethodId: 1, // Cash
+  //           userId: adminUser.id,
+  //           amount: 100,
+  //           createdAt: now,
+  //         },
+  //         {
+  //           branchId: branch1.id,
+  //           paymentMethodId: 2, // Credit Card
+  //           userId: adminUser.id,
+  //           amount: 50,
+  //           createdAt: now,
+  //         },
+  //       ],
+  //     },
+  //   },
+  // });
+  // console.log("✅ Users Purchase created successfully!");
 
-  // Seed StockMovements
-  await prisma.stockMovements.create({
-    data: {
-      productVariantId: variant1.id,
-      branchId: branch1.id,
-      type: 'ADJUSTMENT',
-      AdjustMentType: 'POSITIVE',
-      status: 'APPROVED',
-      quantity: 10,
-      note: 'Initial stock added',
-      createdAt: now,
-    },
-  });
-  console.log("✅ Users Stock Movement created successfully!");
+  // // Seed StockMovements
+  // await prisma.stockMovements.create({
+  //   data: {
+  //     productVariantId: variant1.id,
+  //     branchId: branch1.id,
+  //     type: 'ADJUSTMENT',
+  //     AdjustMentType: 'POSITIVE',
+  //     status: 'APPROVED',
+  //     quantity: 10,
+  //     note: 'Initial stock added',
+  //     createdAt: now,
+  //   },
+  // });
+  // console.log("✅ Users Stock Movement created successfully!");
 
   // Seed Customer
   const customer1 = await prisma.customer.create({
@@ -419,47 +419,45 @@ async function main() {
   });
   console.log("✅ Users Customer created successfully!");
 
-  // Seed Order with OrderItems and Sale
-  const order1 = await prisma.order.create({
-    data: {
-      branchId: branch1.id,
-      ref: 'INV-0001',
-      OrderSaleType: 'RETAIL',
-      customerId: customer1.id,
-      orderDate: now,
-      status: 'PENDING',
-      totalAmount: 150,
-      items: {
-        create: [
-          {
-            productId: product1.id,
-            productVariantId: variant1.id,
-            serviceId: null,
-            ItemType: 'PRODUCT',
-            quantity: 5,
-            price: 15,
-            total: 75,
-          },
-        ],
-      },
-      orderOnPayments: {
-        create: {
-          branchId: branch1.id,
-          paymentDate: now,
-          paymentMethodId: 1,
-          totalPaid: 150,
-        },
-      },
-    },
-  });
+  // // Seed Order with OrderItems and Sale
+  // const order1 = await prisma.order.create({
+  //   data: {
+  //     branchId: branch1.id,
+  //     ref: 'INV-0001',
+  //     OrderSaleType: 'RETAIL',
+  //     customerId: customer1.id,
+  //     orderDate: now,
+  //     status: 'PENDING',
+  //     totalAmount: 150,
+  //     items: {
+  //       create: [
+  //         {
+  //           productId: product1.id,
+  //           productVariantId: variant1.id,
+  //           serviceId: null,
+  //           ItemType: 'PRODUCT',
+  //           quantity: 5,
+  //           price: 15,
+  //           total: 75,
+  //         },
+  //       ],
+  //     },
+  //     orderOnPayments: {
+  //       create: {
+  //         branchId: branch1.id,
+  //         paymentDate: now,
+  //         paymentMethodId: 1,
+  //         totalPaid: 150,
+  //       },
+  //     },
+  //   },
+  // });
 
   await prisma.purchaseAmountAuthorize.create({
     data: {
       amount: 500,
     },
   });
-
-  console.log("✅ Users Order created successfully!");
 
   console.log("✅ Database seeding completed!");
 }

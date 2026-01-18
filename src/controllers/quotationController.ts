@@ -501,28 +501,61 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
                     throw new Error("Insufficient stock for barcode: " + item.productvariants?.barcode);
                 }
 
-                // Update stock
-                await tx.stocks.update({
-                    where: { id: stock.id },
-                    data: {
-                        quantity: {
-                            decrement: item.quantity,
-                        },
-                        updatedAt: currentDate,
-                        updatedBy: req.user ? req.user.id : null,
-                    },
-                });
-
-                // Insert stock movement
-                await tx.stockMovements.create({
-                    data: {
+                // FIFO logic: fetch oldest IN batches
+                let qtyToSell = new Decimal(item.quantity);
+                const fifoBatches = await tx.stockMovements.findMany({
+                    where: {
                         productVariantId: item.productVariantId,
                         branchId: quotation.branchId,
-                        type: "QUOATETOINV",
-                        quantity: item.quantity,
-                        note: `Order #${ref}`,
-                        createdBy: req.user ? req.user.id : null,
-                        createdAt: currentDate
+                        type: { in: ['PURCHASE', 'RETURN', 'ADJUSTMENT'] },
+                        AdjustMentType: 'POSITIVE',
+                        status: 'APPROVED',
+                        remainingQty: { gt: 0 },
+                    },
+                    orderBy: { createdAt: 'asc' },
+                });
+
+                for (const batch of fifoBatches) {
+                    if (qtyToSell.lte(0)) break;
+
+                    const consumeQty = Decimal.min(batch.remainingQty!, qtyToSell);
+
+                    // 1️⃣ Insert OUT movement with FIFO cost
+                    await tx.stockMovements.create({
+                        data: {
+                            productVariantId: item.productVariantId,
+                            branchId: quotation.branchId,
+                            type: 'ORDER',
+                            status: 'APPROVED',
+                            quantity: consumeQty.neg(),
+                            unitCost: batch.unitCost,
+                            sourceMovementId: batch.id,
+                            note: `Invoice #${ref}`,
+                            createdBy: req.user ? req.user.id : null,
+                            createdAt: currentDate
+                        },
+                    });
+
+                    // 2️⃣ Update remainingQty in IN batch
+                    await tx.stockMovements.update({
+                        where: { id: batch.id },
+                        data: { remainingQty: batch.remainingQty!.minus(consumeQty) },
+                    });
+
+                    qtyToSell = qtyToSell.minus(consumeQty);
+                }
+
+                if (qtyToSell.gt(0)) {
+                    throw new Error(`Not enough stock (FIFO) for product variant ID: ${item.productVariantId}`);
+                }
+
+                // Update total stock
+                await tx.stocks.update({
+                        where: { id: stock.id },
+                        data: {
+                        quantity: { decrement: item.quantity },
+                        updatedAt: currentDate,
+                        updatedBy: req.user ? req.user.id : null,
                     },
                 });
             }

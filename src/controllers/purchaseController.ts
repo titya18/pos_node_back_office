@@ -470,6 +470,27 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                             }
                         });
                     }
+
+                    await tx.stockMovements.create({
+                        data: {
+                            productVariantId: parseInt(detail.productVariantId, 10),
+                            branchId: parseInt(branchId, 10),
+
+                            type: 'PURCHASE',
+                            AdjustMentType: 'POSITIVE',
+                            status: 'APPROVED',
+
+                            quantity: parseInt(detail.quantity, 10),
+                            remainingQty: parseInt(detail.quantity, 10),
+                            unitCost: parseFloat(detail.cost),
+
+                            note: `Purchase Received #${purchase.ref}`,
+                            createdAt: currentDate,
+                            createdBy: req.user?.id ?? null,
+                            approvedAt: currentDate,
+                            approvedBy: req.user?.id ?? null,
+                        }
+                    });
                 }
             }
 

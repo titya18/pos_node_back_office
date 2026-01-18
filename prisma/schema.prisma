@@ -700,6 +700,7 @@ enum MovementType {
   RETURN
   ADJUSTMENT
   TRANSFER
+  PURCHASE
 }
 
 enum AdjustMentType {
@@ -721,6 +722,14 @@ model StockMovements {
   AdjustMentType   AdjustMentType?
   status           MoveStatusType?
   quantity         Decimal      @db.Decimal(10, 4)
+
+  /// REQUIRED FOR INVENTORY COST
+  unitCost         Decimal? @db.Decimal(10,4)
+
+  /// FIFO linkage
+  sourceMovementId Int?
+  remainingQty     Decimal?  @db.Decimal(10,4)
+
   note             String?      @db.VarChar(200)
   createdAt        DateTime     @default(now())
   createdBy        Int?

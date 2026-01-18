@@ -28856,3 +28856,15 @@ Foreign key constraint violated: `PurchaseOnPayments_paymentMethodId_fkey (index
     at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:537:37)
     at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async insertPurchasePayment (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:489:24)
+2026-01-18 11:55:15 error: Error creating/updating invoice: Insufficient stock for barcode: 337907367586 Error: Insufficient stock for barcode: 337907367586
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:342:31)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:176:24)
+2026-01-18 11:55:48 error: Error creating/updating invoice: Insufficient stock for barcode: 337907367586 Error: Insufficient stock for barcode: 337907367586
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:342:31)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:176:24)
+2026-01-18 14:54:44 error: Error creating/updating invoice: Insufficient stock for barcode: 270394548751 Error: Insufficient stock for barcode: 270394548751
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:323:31)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:176:24)
