@@ -53,6 +53,7 @@ export const searchProducts = async (req: Request, res: Response) => {
                 OR: [
                     { name: { contains: searchTerm as string, mode: "insensitive" } },
                     { barcode: { contains: searchTerm as string, mode: "insensitive" } },
+                    { sku: { contains: searchTerm as string, mode: "insensitive" } },
                 ]
             },
             select: {
@@ -60,6 +61,7 @@ export const searchProducts = async (req: Request, res: Response) => {
                 productId: true,
                 name: true,
                 barcode: true,
+                sku: true,
                 purchasePrice: true,
                 retailPrice: true,
                 wholeSalePrice: true,
@@ -71,6 +73,9 @@ export const searchProducts = async (req: Request, res: Response) => {
                 }
             }
         });
+
+        console.log(productVariants);
+
 
         res.status(200).json(productVariants);
     } catch (error) {
