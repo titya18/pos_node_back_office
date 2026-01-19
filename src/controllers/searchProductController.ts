@@ -73,10 +73,6 @@ export const searchProducts = async (req: Request, res: Response) => {
                 }
             }
         });
-
-        console.log(productVariants);
-
-
         res.status(200).json(productVariants);
     } catch (error) {
         console.error("Error fetching products:", error);

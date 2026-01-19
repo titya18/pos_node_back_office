@@ -17,12 +17,12 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").get(authorize(["Invoice-View"]), getAllInvoices).post(validateInvoiceRequest, upsertInvoice);
-router.route("/payment").post(authorize(["Invoice-Payment"]), insertInvoicePayment);
+router.route("/").get(authorize(["Sale-View"]), getAllInvoices).post(validateInvoiceRequest, upsertInvoice);
+router.route("/payment").post(authorize(["Sale-Payment"]), insertInvoicePayment);
 router.route("/payment/:id").get(getInvoicePaymentById);
 router.route("/next-ref/:branchId").get(getNextInvoiceRef);
-router.route("/:id").get(authorize(["Invoice-View"]), getInvoiceById).put(authorize(["Invoice-Edit"]), validateInvoiceRequest, upsertInvoice).delete(authorize(["Invoice-Delete"]), deleteInvoice);
-router.route("/approve/:id").get(authorize(["Invoice-Approve"]), approveInvoice);
-router.route("/delpayment/:id").delete(authorize(["Delete-Payment-Invoice"]), deletePayment);
+router.route("/:id").get(authorize(["Sale-View"]), getInvoiceById).put(authorize(["Sale-Edit"]), validateInvoiceRequest, upsertInvoice).delete(authorize(["Sale-Delete"]), deleteInvoice);
+router.route("/approve/:id").get(authorize(["Sale-Approve"]), approveInvoice);
+router.route("/delpayment/:id").delete(authorize(["Delete-Payment-Sale"]), deletePayment);
 
 export default router;
