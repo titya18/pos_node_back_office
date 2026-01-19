@@ -7,6 +7,7 @@ import app from "./app"; // Import the Express app
 // For Socket IO
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
+  path: "/inventory/socket.io",
   cors: {
     origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST"],
