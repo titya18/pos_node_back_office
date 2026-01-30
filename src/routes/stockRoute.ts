@@ -3,7 +3,7 @@ import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
     stockSummary
-} from "../controllers/stcokController";
+} from "../controllers/stockController";
 
 const router = express.Router();
 

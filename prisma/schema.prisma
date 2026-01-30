@@ -42,6 +42,7 @@ model Branch {
   stockTransfers StockTransfers[]
   expense Expenses[]
   income Incomes[]
+  saleReturn SaleReturns[]
 
   outgoingTransfers StockTransfers[] @relation("FromBranch")
   incomingTransfers StockTransfers[] @relation("ToBranch")
@@ -167,6 +168,10 @@ model User {
   deleteStockReturn StockReturns[] @relation("ReturnDeletedBy")
   approveStockReturn StockReturns[] @relation("ReturnApprovedBy")
   returnStockBy StockReturns[] @relation("ReturnBy")
+
+  createSaleReturn SaleReturns[] @relation("SaleReturnCreatedBy")
+  updateSaleReturn SaleReturns[] @relation("SaleReturnUpdatedBy")
+  deleteSaleReturn SaleReturns[] @relation("SaleReturnDeletedBy")
 
   createExpense Expenses[] @relation("ExpenseCreatedBy")
   updateExpense Expenses[] @relation("ExpenseUpdatedBy")
@@ -342,6 +347,7 @@ model Products {
   requestDetails   RequestDetails[]
   returnDetails    ReturnDetails[]
   transferDetails  TransferDetails[]
+  saleReturnItems  SaleReturnItems[]
 }
 
 // VARIANT ATTRIBUTE (e.g., Color, Size)
@@ -411,6 +417,7 @@ model ProductVariants {
   stockReturns         ReturnDetails[]
   stockTransfers       TransferDetails[]
   stockRequests        RequestDetails[]
+  saleReturnItems      SaleReturnItems[]
 
   @@index([productId])
 }
@@ -570,6 +577,8 @@ model PurchaseDetails {
   purchases       Purchases       @relation(fields: [purchaseId], references: [id])
   products        Products        @relation(fields: [productId], references: [id])
   productvariants ProductVariants @relation(fields: [productVariantId], references: [id])
+
+  stockMovements  StockMovements[]
 }
 
 model PurchaseOnPayments {
@@ -701,6 +710,7 @@ enum MovementType {
   ADJUSTMENT
   TRANSFER
   PURCHASE
+  SALE_RETURN
 }
 
 enum AdjustMentType {
@@ -726,6 +736,15 @@ model StockMovements {
   /// REQUIRED FOR INVENTORY COST
   unitCost         Decimal? @db.Decimal(10,4)
 
+  /// DOCUMENT REFERENCES (ONLY ONE USED PER ROW)
+  orderItemId        Int?
+  purchaseDetailId   Int?
+  adjustmentDetailId Int?
+  transferDetailId   Int?
+  requestDetailId    Int?
+  returnDetailId     Int?
+  saleReturnItemId   Int?
+
   /// FIFO linkage
   sourceMovementId Int?
   remainingQty     Decimal?  @db.Decimal(10,4)
@@ -739,6 +758,16 @@ model StockMovements {
   cancelledBy      Int?
   updatedAt        DateTime?
   updatedBy        Int?
+
+  /// RELATIONS
+  orderItem        OrderItem?         @relation(fields: [orderItemId], references: [id])
+  purchaseDetail   PurchaseDetails?   @relation(fields: [purchaseDetailId], references: [id])
+  adjustmentDetail AdjustmentDetails? @relation(fields: [adjustmentDetailId], references: [id])
+
+  transferDetail   TransferDetails?  @relation(fields: [transferDetailId], references: [id])
+  requestDetail    RequestDetails?   @relation(fields: [requestDetailId], references: [id])
+  returnDetail     ReturnDetails?    @relation(fields: [returnDetailId], references: [id])
+  saleReturnItem   SaleReturnItems? @relation(fields: [saleReturnItemId], references: [id])
 
   creator User? @relation("StockMovementsCreatedBy", fields: [createdBy], references: [id])
   updater User? @relation("StockMovementsUpdatedBy", fields: [updatedBy], references: [id])
@@ -765,6 +794,7 @@ model Customer {
   updater User? @relation("CustomerUpdatedBy", fields: [updatedBy], references: [id])
 
   quotations Quotations[]
+  saleReturn SaleReturns[]
 }
 
 model Order {
@@ -775,6 +805,7 @@ model Order {
   ref           String         @db.VarChar(50)
   orderDate     DateTime       @default(now())
   status        OrderStatus    @default(PENDING)
+  returnstatus  Int?  // <- 1 = for return, 0 = for sale
   taxRate       Decimal?       @default(0) @db.Decimal(10, 4)
   taxNet        Decimal?       @default(0) @db.Decimal(10, 4)
   discount      Decimal?       @default(0) @db.Decimal(10, 4)
@@ -801,6 +832,8 @@ model Order {
   customer        Customer?        @relation(fields: [customerId], references: [id])
   items           OrderItem[]
   orderOnPayments OrderOnPayments[] @relation("OrderPayments")
+
+  saleReturn  SaleReturns[]
 }
 
 model OrderItem {
@@ -823,6 +856,8 @@ model OrderItem {
   products        Products?        @relation(fields: [productId], references: [id])
   productvariants ProductVariants? @relation(fields: [productVariantId], references: [id])
   services        Services?        @relation(fields: [serviceId], references: [id])
+
+  stockMovements  StockMovements[]
 }
 
 model OrderOnPayments {
@@ -884,13 +919,14 @@ model Services {
   deleter User? @relation("ServiceDeletedBy", fields: [deletedBy], references: [id])
 
   quotationDetails QuotationDetails[]
-
   orderItems OrderItem[]
+  saleReturnItems   SaleReturnItems[]
 }
 
 enum StatusType {
   PENDING
   APPROVED
+  COMPLETED
   CANCELLED
 }
 
@@ -932,6 +968,8 @@ model AdjustmentDetails {
   stockadjustments      StockAdjustments       @relation(fields: [adjustmentId], references: [id])
   products              Products?              @relation(fields: [productId], references: [id])
   productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+
+  stockMovements  StockMovements[]
 }
 
 model StockTransfers {
@@ -976,6 +1014,8 @@ model TransferDetails {
   stocktransfers        StockTransfers         @relation(fields: [transferId], references: [id])
   products              Products?              @relation(fields: [productId], references: [id])
   productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+
+  stockMovements  StockMovements[]
 }
 
 model StockRequests {
@@ -1017,6 +1057,8 @@ model RequestDetails {
   stockrequests         StockRequests          @relation(fields: [requestId], references: [id])
   products              Products?              @relation(fields: [productId], references: [id])
   productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+
+  stockMovements  StockMovements[]
 }
 
 model StockReturns {
@@ -1058,6 +1100,8 @@ model ReturnDetails {
   stockreturns          StockReturns          @relation(fields: [returnId], references: [id])
   products              Products?              @relation(fields: [productId], references: [id])
   productvariants       ProductVariants?       @relation(fields: [productVariantId], references: [id])
+
+  stockMovements  StockMovements[]
 }
 
 model Expenses {
@@ -1117,6 +1161,62 @@ model ExchangeRates {
   creator User? @relation("ExchangeRatesCreatedBy", fields: [createdBy], references: [id])
   updater User? @relation("ExchangeRatesUpdatedBy", fields: [updatedBy], references: [id])
 }
+
+model SaleReturns {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  orderId   Int
+  ref       String
+  customerId Int?
+  status    StatusType
+  taxRate       Decimal?       @default(0) @db.Decimal(10, 4)
+  taxNet        Decimal?       @default(0) @db.Decimal(10, 4)
+  discount      Decimal?       @default(0) @db.Decimal(10, 4)
+  shipping      Decimal?       @default(0) @db.Decimal(10, 4)
+  totalAmount   Decimal?       @default(0) @db.Decimal(10, 4)
+  note      String?
+  createdAt DateTime @default(now())
+  createdBy Int?
+  updatedAt DateTime?
+  updatedBy Int?
+  deletedAt DateTime?
+  deletedBy Int?
+
+  creator User? @relation("SaleReturnCreatedBy", fields: [createdBy], references: [id])
+  updater User? @relation("SaleReturnUpdatedBy", fields: [updatedBy], references: [id])
+  deleter User? @relation("SaleReturnDeletedBy", fields: [deletedBy], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+
+  SaleReturns SaleReturnItems[]
+  order Order @relation(fields: [orderId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+}
+
+model SaleReturnItems {
+  id               Int     @id @default(autoincrement())
+  saleReturnId     Int
+  saleItemId       Int
+  productId        Int?
+  serviceId        Int?
+  productVariantId Int?
+  ItemType         ItemType?
+  quantity         Int
+  price            Decimal @db.Decimal(10, 4)
+  taxNet           Decimal?  @default(0) @db.Decimal(10, 4)
+  taxMethod        String?   @db.VarChar(15)
+  discount         Decimal?  @default(0) @db.Decimal(10, 4)
+  discountMethod   String?   @db.VarChar(15)
+  total            Decimal   @db.Decimal(10, 4)
+  
+  products        Products?        @relation(fields: [productId], references: [id])
+  productvariants ProductVariants? @relation(fields: [productVariantId], references: [id])
+  services        Services?        @relation(fields: [serviceId], references: [id])
+
+  saleReturn     SaleReturns     @relation(fields: [saleReturnId], references: [id])
+
+  stockMovements  StockMovements[]
+}
+
 
 // How to run the Prisma Migrate
 // npx prisma migrate dev --name init or npx prisma migrate deploy

@@ -165,7 +165,6 @@ export const getAllProductVariant = async (req: Request, res: Response): Promise
     }
 };
 
-
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, "public/images/productvariants/");

@@ -71,7 +71,10 @@ export const getAllReportInvoices = async (
                 res.status(403).json({ message: "Branch not assigned." });
                 return;
             }
-            branchRestriction = `AND rd."branchId" = ${loggedInUser.branchId}`;
+            branchRestriction = `
+                AND rd."branchId" = ${loggedInUser.branchId}
+                AND rd."createdBy" = ${loggedInUser.id}
+            `;
         }
 
         /* ------------------------ */
@@ -80,7 +83,7 @@ export const getAllReportInvoices = async (
         const commonFilters = `
             WHERE 1=1
             ${branchRestriction}
-            AND rd."status" != 'CANCELLED'
+            AND rd."status" IN ('APPROVED', 'COMPLETED')
             ${startDate && endDate ? `AND rd."orderDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
             ${saleType ? `AND rd."OrderSaleType" = '${saleType}'` : ""}
             ${status ? `AND rd."status" = '${status}'` : ""}
@@ -100,43 +103,47 @@ export const getAllReportInvoices = async (
         /* SUMMARY TOTALS (Profit) */
         /* ------------------------ */
         const summary: any = await prisma.$queryRawUnsafe(`
-            WITH order_totals AS (
-                SELECT
-                    o.id,
-                    o."totalAmount",
-                    o."paidAmount"
-                FROM "Order" o
-                WHERE o.status != 'CANCELLED'
-                ${branchId ? `AND o."branchId" = ${branchId}` : ''}
-                ${startDate && endDate ? `AND o."orderDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ''}
-                ${saleType ? `AND o."OrderSaleType" = '${saleType}'` : ''}
+            WITH filtered_orders AS (
+                SELECT rd.id, rd."totalAmount", rd."paidAmount"
+                FROM "Order" rd
+                LEFT JOIN "Customer" cs ON rd."customerId" = cs.id
+                LEFT JOIN "Branch" br ON rd."branchId" = br.id
+                LEFT JOIN "User" c ON rd."createdBy" = c.id
+                LEFT JOIN "User" u ON rd."updatedBy" = u.id
+                ${commonFilters}
+                GROUP BY rd.id
             ),
             profit_calc AS (
                 SELECT
-                    o.id AS "orderId",
-                    SUM(ABS(sm.quantity) * (oi.price - sm."unitCost")) AS profit
-                FROM "Order" o
-                JOIN "OrderItem" oi ON oi."orderId" = o.id
+                    rd.id AS "orderId",
+                    SUM(
+                        CASE
+                            WHEN sm.type = 'ORDER' THEN
+                                ABS(sm.quantity) * (oi.price - sm."unitCost")
+                            WHEN sm.type = 'SALE_RETURN' THEN
+                                -ABS(sm.quantity) * (oi.price - sm."unitCost")
+                            ELSE 0
+                        END
+                    ) AS profit
+                FROM "Order" rd
+                JOIN "OrderItem" oi
+                    ON oi."orderId" = rd.id
+                    AND oi."ItemType" = 'PRODUCT'
                 JOIN "StockMovements" sm
-                    ON sm.type = 'ORDER'
-                AND sm.status = 'APPROVED'
-                AND sm."productVariantId" = oi."productVariantId"
-                AND sm.note LIKE '%' || o."ref" || '%'
-                WHERE o.status != 'CANCELLED'
-                ${branchId ? `AND o."branchId" = ${branchId}` : ''}
-                ${startDate && endDate ? `AND o."orderDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ''}
-                ${saleType ? `AND o."OrderSaleType" = '${saleType}'` : ''}
-                GROUP BY o.id
+                    ON sm."orderItemId" = oi.id
+                    AND sm.status = 'APPROVED'
+                    AND sm.type IN ('ORDER', 'SALE_RETURN')
+                GROUP BY rd.id
             )
             SELECT
-            COUNT(*) AS "totalInvoice",
-            SUM(ot."totalAmount") AS "totalAmount",
-            SUM(ot."paidAmount") AS "totalReceivedAmount",
-            SUM(ot."totalAmount" - ot."paidAmount") AS "totalRemainAmount",
-            COALESCE(SUM(pc.profit), 0) AS "totalProfit"
-            FROM order_totals ot
-            LEFT JOIN profit_calc pc ON pc."orderId" = ot.id;
-        `);
+                COUNT(fo.id) AS "totalInvoice",
+                COALESCE(SUM(fo."totalAmount"), 0) AS "totalAmount",
+                COALESCE(SUM(fo."paidAmount"), 0) AS "totalReceivedAmount",
+                COALESCE(SUM(fo."totalAmount" - fo."paidAmount"), 0) AS "totalRemainAmount",
+                COALESCE(SUM(pc.profit), 0) AS "totalProfit"
+            FROM filtered_orders fo
+            LEFT JOIN profit_calc pc ON pc."orderId" = fo.id
+        `, ...params);
 
         const summarySafe = {
             totalInvoice: Number(summary[0]?.totalInvoice || 0),

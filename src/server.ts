@@ -7,7 +7,7 @@ import app from "./app"; // Import the Express app
 // For Socket IO
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
-  path: "/inventory/socket.io",
+  path: "/socket.io",
   cors: {
     origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST"],
@@ -33,15 +33,15 @@ io.on("connection", (socket) => {
 });
 // End Socket IO Events
 
-// // Start the server
-// const PORT = process.env.APP_PORT || 4000;
-// server.listen(PORT, () => {
-//   console.log(`Backend server is running at http://localhost:${PORT}`);
-// }).on("error", (err) => {
-//   console.error("Server failed to start:", err);
-// });
-
-// Use it when deploy on server
-server.listen(4000, '0.0.0.0', () => {
-  console.log('Backend server is running on port 4000');
+// Start the server
+const PORT = process.env.APP_PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Backend server is running at http://localhost:${PORT}`);
+}).on("error", (err) => {
+  console.error("Server failed to start:", err);
 });
+
+// // Use it when deploy on server
+// server.listen(4000, '0.0.0.0', () => {
+//   console.log('Backend server is running on port 4000');
+// });

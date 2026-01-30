@@ -197,7 +197,7 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
             });
 
             if (checkRef) {
-                res.status(400).json({ message: "Invoice # already exists!" });
+                res.status(400).json({ message: "Quotation # already exists!" });
                 return;
             }
 
@@ -389,7 +389,9 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
     const { id } = req.params;
     try {
         const result = await prisma.$transaction(async (tx) => {
-            // 1 Fetch quotation with details
+            /* ------------------------------------------------ */
+            /* 1️ FETCH QUOTATION WITH DETAILS                  */
+            /* ------------------------------------------------ */
             const quotation = await tx.quotations.findUnique({
                 where: { id: Number(id) },
                 include: {
@@ -409,7 +411,9 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
                 throw new Error("Quotation already converted to order");
             }
 
-            // Generate a new ref only for creation
+            /* ------------------------------------------------ */
+            /* 2️ GENERATE ORDER REF                           */
+            /* ------------------------------------------------ */
             // Query for the highest ref in the same branch
             const lastOrder = await prisma.order.findFirst({
                 where: { branchId: quotation.branchId },
@@ -425,13 +429,15 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
                 ref += "00001"; // Start from 00001 if no ref exists for the branch
             }
 
-            // 2️ Create Order
+            /* ------------------------------------------------ */
+            /* 3️ CREATE ORDER + ITEMS (RETURN ITEMS!)         */
+            /* ------------------------------------------------ */
             const order = await tx.order.create({
                 data: {
                     branchId: quotation.branchId,
                     customerId: quotation.customerId,
                     ref,
-                    orderDate: new Date(),
+                    orderDate: currentDate,
                     OrderSaleType: quotation.QuoteSaleType,
                     taxRate: quotation.taxRate,
                     taxNet: quotation.taxNet,
@@ -447,72 +453,80 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
                     items: {
                         create: quotation.quotationDetails.map((item) => {
                             const base = {
-                            ItemType: item.ItemType,
-                            taxNet: Number(item.taxNet),
-                            taxMethod: item.taxMethod,
-                            discount: item.discount,
-                            discountMethod: item.discountMethod,
-                            total: Number(item.total),
-                            quantity: item.quantity,
-                            price: Number(item.cost),
+                                ItemType: item.ItemType,
+                                taxNet: Number(item.taxNet),
+                                taxMethod: item.taxMethod,
+                                discount: item.discount,
+                                discountMethod: item.discountMethod,
+                                total: Number(item.total),
+                                quantity: item.quantity,
+                                price: Number(item.cost),
+                                productVariantId: item.productVariantId,
+                                productId: item.productId,
+                                serviceId: item.serviceId,
                             };
 
-                            // PRODUCT
-                            if (item.ItemType === "PRODUCT") {
-                                return {
-                                    ...base,
-                                    products: {
-                                    connect: { id: item.productId! },
-                                    },
-                                    productvariants: {
-                                    connect: { id: item.productVariantId! },
-                                    },
-                                };
-                            }
-
-                            // SERVICE
-                            return {
-                                ...base,
-                                services: {
-                                    connect: { id: item.serviceId! },
-                                },
-                            };
+                            return base;
                         }),
                     },
                 },
+                include: {
+                    items: true,
+                },
             });
 
+            // Create a map of productVariantId to orderItemId for quick lookup, not from quotation details
+            /* ------------------------------------------------ */
+            /* 4️ MAP productVariantId → OrderItem.id          */
+            /* ------------------------------------------------ */
+            const orderItemMap = new Map<number, number>();
 
-            // 3️ Cut stock for PRODUCT items
-            for (const item of quotation.quotationDetails) {
-                if (item.ItemType !== "PRODUCT" || !item.productVariantId) continue;
+            for (const oi of order.items) {
+                if (oi.productVariantId) {
+                    orderItemMap.set(oi.productVariantId, oi.id);
+                }
+            }
 
-                // Get stock row
+            /* ------------------------------------------------ */
+            /* 5️ CUT STOCK (FIFO)                             */
+            /* ------------------------------------------------ */
+            for (const qd of quotation.quotationDetails) {
+                if (qd.ItemType !== "PRODUCT" || !qd.productVariantId) continue;
+
+                const orderItemId = orderItemMap.get(qd.productVariantId);
+                if (!orderItemId) {
+                    throw new Error(
+                        `OrderItem not found for productVariantId ${qd.productVariantId}`
+                    );
+                }
+
                 const stock = await tx.stocks.findUnique({
                     where: {
                         productVariantId_branchId: {
-                            productVariantId: item.productVariantId,
+                            productVariantId: qd.productVariantId,
                             branchId: quotation.branchId,
                         },
                     },
                 });
 
-                if (!stock || stock.quantity.toNumber() < item.quantity) {
-                    throw new Error("Insufficient stock for barcode: " + item.productvariants?.barcode);
+                if (!stock || stock.quantity.toNumber() < qd.quantity) {
+                    throw new Error(
+                        `Insufficient stock for barcode: ${qd.productvariants?.barcode}`
+                    );
                 }
 
-                // FIFO logic: fetch oldest IN batches
-                let qtyToSell = new Decimal(item.quantity);
+                let qtyToSell = new Decimal(qd.quantity);
+
                 const fifoBatches = await tx.stockMovements.findMany({
                     where: {
-                        productVariantId: item.productVariantId,
+                        productVariantId: qd.productVariantId,
                         branchId: quotation.branchId,
-                        type: { in: ['PURCHASE', 'RETURN', 'ADJUSTMENT'] },
-                        AdjustMentType: 'POSITIVE',
-                        status: 'APPROVED',
+                        type: { in: ["PURCHASE", "RETURN", "ADJUSTMENT"] },
+                        AdjustMentType: "POSITIVE",
+                        status: "APPROVED",
                         remainingQty: { gt: 0 },
                     },
-                    orderBy: { createdAt: 'asc' },
+                    orderBy: { createdAt: "asc" },
                 });
 
                 for (const batch of fifoBatches) {
@@ -520,52 +534,59 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
 
                     const consumeQty = Decimal.min(batch.remainingQty!, qtyToSell);
 
-                    // 1️⃣ Insert OUT movement with FIFO cost
+                    // CREATE ORDER STOCK MOVEMENT
                     await tx.stockMovements.create({
                         data: {
-                            productVariantId: item.productVariantId,
+                            productVariantId: qd.productVariantId,
                             branchId: quotation.branchId,
-                            type: 'ORDER',
-                            status: 'APPROVED',
+                            orderItemId: orderItemId, // REAL ID
+                            type: "ORDER",
+                            status: "APPROVED",
                             quantity: consumeQty.neg(),
                             unitCost: batch.unitCost,
                             sourceMovementId: batch.id,
                             note: `Invoice #${ref}`,
-                            createdBy: req.user ? req.user.id : null,
-                            createdAt: currentDate
+                            createdBy: req.user?.id ?? null,
+                            createdAt: currentDate,
                         },
                     });
 
-                    // 2️⃣ Update remainingQty in IN batch
+                    // UPDATE FIFO BATCH
                     await tx.stockMovements.update({
                         where: { id: batch.id },
-                        data: { remainingQty: batch.remainingQty!.minus(consumeQty) },
+                        data: {
+                            remainingQty: batch.remainingQty!.minus(consumeQty),
+                        },
                     });
 
                     qtyToSell = qtyToSell.minus(consumeQty);
                 }
 
                 if (qtyToSell.gt(0)) {
-                    throw new Error(`Not enough stock (FIFO) for product variant ID: ${item.productVariantId}`);
+                    throw new Error(
+                        `Not enough FIFO stock for productVariantId ${qd.productVariantId}`
+                    );
                 }
 
-                // Update total stock
+                // UPDATE TOTAL STOCK
                 await tx.stocks.update({
-                        where: { id: stock.id },
-                        data: {
-                        quantity: { decrement: item.quantity },
+                    where: { id: stock.id },
+                    data: {
+                        quantity: { decrement: qd.quantity },
                         updatedAt: currentDate,
-                        updatedBy: req.user ? req.user.id : null,
+                        updatedBy: req.user?.id ?? null,
                     },
                 });
             }
 
-            // 4️ Update quotation status
+            /* ------------------------------------------------ */
+            /* 6️ UPDATE QUOTATION STATUS                     */
+            /* ------------------------------------------------ */
             await tx.quotations.update({
                 where: { id: quotation.id },
                 data: {
                     invoicedAt: currentDate,
-                    invoicedBy: req.user ? req.user.id : null,
+                    invoicedBy: req.user?.id ?? null,
                     status: "INVOICED",
                 },
             });

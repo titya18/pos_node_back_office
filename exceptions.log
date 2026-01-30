@@ -1375,3 +1375,37 @@ Error: Route.get() requires a callback function but got a [object Undefined]
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
     at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
     at Module.require (node:internal/modules/cjs/loader:1449:12)
+2026-01-23 10:30:17 error: uncaughtException: Cannot find module '../controllers/stcokController'
+Require stack:
+- D:\Citylink-Inventory\backend\src\routes\stockRoute.ts
+- D:\Citylink-Inventory\backend\src\app.ts
+- D:\Citylink-Inventory\backend\src\server.ts
+Error: Cannot find module '../controllers/stcokController'
+Require stack:
+- D:\Citylink-Inventory\backend\src\routes\stockRoute.ts
+- D:\Citylink-Inventory\backend\src\app.ts
+- D:\Citylink-Inventory\backend\src\server.ts
+    at node:internal/modules/cjs/loader:1369:15
+    at nextResolveSimple (D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:3:942)
+    at D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:2:2550
+    at D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:2:1624
+    at resolveTsPaths (D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:3:760)
+    at D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:3:1038
+    at m._resolveFilename (file:///D:/Citylink-Inventory/backend/node_modules/tsx/dist/register-RyGUjI6j.mjs:1:789)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1179:37) Error: Cannot find module '../controllers/stcokController'
+Require stack:
+- D:\Citylink-Inventory\backend\src\routes\stockRoute.ts
+- D:\Citylink-Inventory\backend\src\app.ts
+- D:\Citylink-Inventory\backend\src\server.ts
+    at node:internal/modules/cjs/loader:1369:15
+    at nextResolveSimple (D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:3:942)
+    at D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:2:2550
+    at D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:2:1624
+    at resolveTsPaths (D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:3:760)
+    at D:\Citylink-Inventory\backend\node_modules\tsx\dist\register-DCnOAxY2.cjs:3:1038
+    at m._resolveFilename (file:///D:/Citylink-Inventory/backend/node_modules/tsx/dist/register-RyGUjI6j.mjs:1:789)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Module._load (node:internal/modules/cjs/loader:1179:37)

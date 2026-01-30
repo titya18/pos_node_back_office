@@ -134,6 +134,8 @@ async function main() {
       { name: "Sale-Print", moduleId: 17 },
       { name: "Sale-Approve", moduleId: 17 },
       { name: "Sale-Payment", moduleId: 17 },
+      { name: "Sale-Return", moduleId: 17 },
+      { name: "Sale-Return-Print", moduleId: 17 },
       { name: "Delete-Payment-Sale", moduleId: 17 },
       { name: "Check-Stock", moduleId: 18 },
       { name: "Adjust-Stock-View", moduleId: 19 },

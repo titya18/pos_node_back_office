@@ -351,6 +351,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                             data: {
                                 productVariantId: item.productVariantId,
                                 branchId: invoice.branchId,
+                                orderItemId: item.id,
                                 type: 'ORDER',
                                 status: 'APPROVED',
                                 quantity: consumeQty.neg(),
