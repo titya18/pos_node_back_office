@@ -581,50 +581,150 @@ export const insertPurchasePayment = async (req: Request, res: Response): Promis
     }
 }
 
-export const getPurchaseById = async (req: Request, res: Response): Promise<void> => {
+export const getPurchaseById = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
+
     try {
+        /* ---------------------------------- */
+        /* 1️⃣ GET PURCHASE (BASE DATA)       */
+        /* ---------------------------------- */
         const purchase = await prisma.purchases.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: { 
+            where: { id: Number(id) },
+            include: {
+                branch: true,
+                suppliers: true,
+                creator: true,
+                updater: true,
                 purchaseDetails: {
                     include: {
-                        products: true, // Include related products data
+                        products: true,
                         productvariants: {
                             select: {
-                                name: true, // Select the `name` field from `productVariant`
+                                id: true,
+                                name: true,
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                     },
                 },
-                suppliers: true, // Include related supplier data
-                branch: true, // Include related branch data
-                creator: true, // Include related creator data
-                updater: true, // Include related updater data
-            }, // Include related purchase details
+            },
         });
-
-        // Transform data to flatten `name` into `purchaseDetails`
-        if (purchase) {
-            purchase.purchaseDetails = purchase.purchaseDetails.map((detail: any) => ({
-                ...detail,
-                name: detail.productvariants.name, // Add `name` directly
-            }));
-        }
 
         if (!purchase) {
             res.status(404).json({ message: "Purchase not found!" });
             return;
         }
+
+        /* ---------------------------------- */
+        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
+        /* ---------------------------------- */
+        const branchId = purchase.branchId;
+
+        const variantIds = purchase.purchaseDetails.map(
+            (detail) => detail.productVariantId
+        );
+
+        /* ---------------------------------- */
+        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
+        /* ---------------------------------- */
+        const stocks = await prisma.stocks.findMany({
+            where: {
+                branchId,
+                productVariantId: {
+                    in: variantIds,
+                },
+            },
+            select: {
+                productVariantId: true,
+                quantity: true,
+            },
+        });
+
+        /* ---------------------------------- */
+        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
+        /* ---------------------------------- */
+        const stockMap = new Map<number, number>(
+            stocks.map((s) => [
+                s.productVariantId,
+                Number(s.quantity),
+            ])
+        );
+
+        /* ---------------------------------- */
+        /* 5️⃣ MERGE STOCK INTO DETAILS       */
+        /* ---------------------------------- */
+        purchase.purchaseDetails = purchase.purchaseDetails.map(
+            (detail: any) => ({
+                ...detail,
+                name: detail.productvariants.name,
+                barcode: detail.productvariants.barcode,
+                sku: detail.productvariants.sku,
+                stocks:
+                    stockMap.get(detail.productVariantId) ?? 0,
+            })
+        );
+
+        /* ---------------------------------- */
+        /* 6️⃣ SEND RESPONSE                  */
+        /* ---------------------------------- */
         res.status(200).json(purchase);
     } catch (error) {
-        logger.error("Error fetching purchase by ID:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        console.error("Error fetching purchase by ID:", error);
+        res.status(500).json({
+            message: "Error fetching purchase by ID",
+        });
     }
 };
+
+// export const getPurchaseById = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params;
+//     try {
+//         const purchase = await prisma.purchases.findUnique({
+//             where: { id: parseInt(id, 10) },
+//             include: { 
+//                 purchaseDetails: {
+//                     include: {
+//                         products: true, // Include related products data
+//                         productvariants: {
+//                             select: {
+//                                 name: true, // Select the `name` field from `productVariant`
+//                                 barcode: true,
+//                                 sku: true
+//                             },
+//                         },
+//                     },
+//                 },
+//                 suppliers: true, // Include related supplier data
+//                 branch: true, // Include related branch data
+//                 creator: true, // Include related creator data
+//                 updater: true, // Include related updater data
+//             }, // Include related purchase details
+//         });
+
+//         // Transform data to flatten `name` into `purchaseDetails`
+//         if (purchase) {
+//             purchase.purchaseDetails = purchase.purchaseDetails.map((detail: any) => ({
+//                 ...detail,
+//                 name: detail.productvariants.name, // Add `name` directly
+//             }));
+//         }
+
+//         if (!purchase) {
+//             res.status(404).json({ message: "Purchase not found!" });
+//             return;
+//         }
+//         res.status(200).json(purchase);
+//     } catch (error) {
+//         logger.error("Error fetching purchase by ID:", error);
+//         const typedError = error as Error;
+//         res.status(500).json({ message: typedError.message });
+//     }
+// };
 
 export const getPurchasePaymentById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;

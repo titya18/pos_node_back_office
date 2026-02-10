@@ -384,8 +384,9 @@ model ProductVariants {
   id             Int       @id @default(autoincrement())
   productId      Int
   unitId         Int?
-  sku            String    @unique
-  barcode        String?   @unique // New field for barcode/QR
+  productType    String    @default("New") // New or SecondHand
+  sku            String
+  barcode        String?
   stockAlert     Int?      @default(0) @db.SmallInt
   name           String    @db.VarChar(200)
   image          String[]  @db.VarChar(200) // Array of image URLs or paths
@@ -420,6 +421,8 @@ model ProductVariants {
   saleReturnItems      SaleReturnItems[]
 
   @@index([productId])
+  @@unique([productType, sku])
+  @@unique([productType, barcode])
 }
 
 // Join table for many-to-many relationship between ProductVariants and VariantValue

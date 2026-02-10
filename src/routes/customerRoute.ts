@@ -12,7 +12,7 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/all").get(authorize(["Customer-View"]), getAllCustomers);
+router.route("/all").get(getAllCustomers);
 router.route("/").get(authorize(["Customer-View"]), getAllCustomersWithPagination).post(authorize(["Customer-Create"]), validateCategoryRequest, upsertCustomer);
 router.route("/:id").get(authorize(["Customer-View"]), getCustomerById).put(authorize(["Customer-Edit"]), validateCategoryRequest, upsertCustomer);
 

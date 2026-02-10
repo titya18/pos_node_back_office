@@ -138,34 +138,82 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
     }
 };
 
-export const getNextInvoiceRef = async (req: Request, res: Response): Promise<void> => {
-    const { branchId } = req.params;
+// export const getNextInvoiceRef = async (req: Request, res: Response): Promise<void> => {
+//     const { branchId } = req.params;
 
-    if (!branchId) {
-        res.status(400).json({ message: "Branch ID is required" });
-        return;
+//     if (!branchId) {
+//         res.status(400).json({ message: "Branch ID is required" });
+//         return;
+//     }
+
+//     const lastInvoice = await prisma.order.findFirst({
+//         where: {
+//             branchId: parseInt(branchId, 10),
+//         },
+//         orderBy: {
+//             id: "desc",
+//         },
+//         select: {
+//             ref: true,
+//         },
+//     });
+
+//     let nextRef = "ZM2026-00001";
+
+//     if (lastInvoice?.ref) {
+//         const year = new Date().getFullYear();
+//         const lastNumber = parseInt(lastInvoice.ref.split("-")[1], 10) || 0;
+//         nextRef = `ZM${year}-${String(lastNumber + 1).padStart(5, "0")}`;
+//     }
+
+//     res.json({ ref: nextRef });
+// };
+
+export const getNextInvoiceRef = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const { branchId } = req.params;
+
+        if (!branchId) {
+            res.status(400).json({ message: "Branch ID is required" });
+            return;
+        }
+
+        const year = new Date().getFullYear(); // 2026, 2027, etc
+        const prefix = `ZM${year}-`;
+
+        // Find last invoice of THIS YEAR only
+        const lastInvoice = await prisma.order.findFirst({
+            where: {
+                branchId: Number(branchId),
+                ref: {
+                    startsWith: prefix, // ZM2026-
+                },
+            },
+            orderBy: {
+                id: "desc",
+            },
+            select: {
+                ref: true,
+            },
+        });
+
+        let nextNumber = 1;
+
+        if (lastInvoice?.ref) {
+            const lastPart = lastInvoice.ref.split("-")[1]; // 0001
+            nextNumber = parseInt(lastPart, 10) + 1;
+        }
+
+        const nextRef = `${prefix}${String(nextNumber).padStart(4, "0")}`;
+
+        res.json({ ref: nextRef });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to generate invoice ref" });
     }
-
-    const lastInvoice = await prisma.order.findFirst({
-        where: {
-            branchId: parseInt(branchId, 10),
-        },
-        orderBy: {
-            id: "desc",
-        },
-        select: {
-            ref: true,
-        },
-    });
-
-    let nextRef = "INV-00001";
-
-    if (lastInvoice?.ref) {
-        const lastNumber = parseInt(lastInvoice.ref.split("-")[1], 10) || 0;
-        nextRef = `INV-${String(lastNumber + 1).padStart(5, "0")}`;
-    }
-
-    res.json({ ref: nextRef });
 };
 
 export const upsertInvoice = async (req: Request, res: Response): Promise<void> => {
@@ -481,44 +529,158 @@ export const insertInvoicePayment = async (req: Request, res: Response): Promise
     }
 }
 
-export const getInvoiceById = async (req: Request, res: Response): Promise<void> => {
+export const getInvoiceById = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
+
     try {
+        /* ---------------------------------- */
+        /* 1️⃣ GET ORDER (BASE DATA)       */
+        /* ---------------------------------- */
         const order = await prisma.order.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: { 
+            where: { id: Number(id) },
+            include: {
+                branch: true,
+                creator: true,
+                updater: true,
                 items: {
                     include: {
-                        products: true, // Include related products data
+                        products: true,
                         productvariants: {
                             select: {
-                                name: true, // Select the `name` field from `productVariant`
+                                id: true,
+                                name: true,
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                         services: true, // Include related services data
                     },
                 },
-                customer: true, // Include related customer data
-                branch: true, // Include related branch data
-                creator: true, // Include related creator data
-                updater: true, // Include related updater data
-                approver: true,
-            }, // Include related quotation details
+            },
         });
 
         if (!order) {
-            res.status(404).json({ message: "Invoice not found!" });
+            res.status(404).json({ message: "Order not found!" });
             return;
         }
+
+        /* ---------------------------------- */
+        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
+        /* ---------------------------------- */
+        const branchId = order.branchId;
+
+        const variantIds = order.items
+            .filter(detail => detail.ItemType === "PRODUCT")
+            .map(detail => detail.productVariantId)
+            .filter((id): id is number => id != null);
+
+        /* ---------------------------------- */
+        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
+        /* ---------------------------------- */
+        const stocks = await prisma.stocks.findMany({
+            where: {
+                branchId,
+                productVariantId: {
+                    in: variantIds,
+                },
+            },
+            select: {
+                productVariantId: true,
+                quantity: true,
+            },
+        });
+
+        /* ---------------------------------- */
+        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
+        /* ---------------------------------- */
+        const stockMap = new Map<number, number>(
+            stocks.map((s) => [
+                s.productVariantId,
+                Number(s.quantity),
+            ])
+        );
+
+        /* ---------------------------------- */
+        /* 5️⃣ MERGE STOCK INTO DETAILS       */
+        /* ---------------------------------- */
+        order.items = order.items.map(
+            (detail: any) => {
+                if (detail.ItemType === "PRODUCT") {
+                    return {
+                        ...detail,
+                        name: detail.productvariants?.name ?? "",
+                        barcode: detail.productvariants?.barcode ?? null,
+                        sku: detail.productvariants?.sku ?? null,
+                        stocks:
+                            stockMap.get(detail.productVariantId) ?? 0,
+                    };
+                }
+
+                // SERVICE item (no stock)
+                return {
+                    ...detail,
+                    name: detail.services?.name ?? "",
+                    barcode: null,
+                    sku: null,
+                    stocks: null,
+                };
+            }
+        );
+
+        /* ---------------------------------- */
+        /* 6️⃣ SEND RESPONSE                  */
+        /* ---------------------------------- */
         res.status(200).json(order);
     } catch (error) {
-        logger.error("Error fetching invoice by ID:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        console.error("Error fetching order by ID:", error);
+        res.status(500).json({
+            message: "Error fetching order by ID",
+        });
     }
 };
+
+// export const getInvoiceById = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params;
+//     try {
+//         const order = await prisma.order.findUnique({
+//             where: { id: parseInt(id, 10) },
+//             include: { 
+//                 items: {
+//                     include: {
+//                         products: true, // Include related products data
+//                         productvariants: {
+//                             select: {
+//                                 name: true, // Select the `name` field from `productVariant`
+//                                 barcode: true,
+//                                 sku: true
+//                             },
+//                         },
+//                         services: true, // Include related services data
+//                     },
+//                 },
+//                 customer: true, // Include related customer data
+//                 branch: true, // Include related branch data
+//                 creator: true, // Include related creator data
+//                 updater: true, // Include related updater data
+//                 approver: true,
+//             }, // Include related quotation details
+//         });
+
+//         if (!order) {
+//             res.status(404).json({ message: "Invoice not found!" });
+//             return;
+//         }
+//         res.status(200).json(order);
+//     } catch (error) {
+//         logger.error("Error fetching invoice by ID:", error);
+//         const typedError = error as Error;
+//         res.status(500).json({ message: typedError.message });
+//     }
+// };
 
 export const getInvoicePaymentById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;

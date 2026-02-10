@@ -2222,3 +2222,172 @@ export const getAllReportIncomes = async (
         res.status(500).json({ message: "Income report server error" });
     }
 };
+
+export const getAllReportSalesReturns = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        /* -------------------------------------------------- */
+        /* PAGINATION & FILTER PARAMS                         */
+        /* -------------------------------------------------- */
+        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const offset = (pageNumber - 1) * pageSize;
+
+        const searchTerm = ((req.query.searchTerm as string) || "").trim();
+        const sortField = (req.query.sortField as string) || "ref";
+        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const saleType = req.query.saleType as string | undefined;
+        const status = req.query.status as string | undefined;
+        const branchId = req.query.branchId
+            ? parseInt(req.query.branchId as string, 10)
+            : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        /* -------------------------------------------------- */
+        /* SEARCH SETUP                                       */
+        /* -------------------------------------------------- */
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    c."firstName" ILIKE $${idx + 2}
+                    OR c."lastName" ILIKE $${idx + 2}
+                    OR u."firstName" ILIKE $${idx + 2}
+                    OR u."lastName" ILIKE $${idx + 2}
+                    OR cs."name" ILIKE $${idx + 2}
+                    OR br."name" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
+
+        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+
+        /* -------------------------------------------------- */
+        /* BRANCH RESTRICTION                                 */
+        /* -------------------------------------------------- */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) branchRestriction = `AND sr."branchId" = ${branchId}`;
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND sr."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        /* -------------------------------------------------- */
+        /* COMMON FILTERS                                     */
+        /* -------------------------------------------------- */
+        const commonFilters = `
+            WHERE 1=1
+            ${branchRestriction}
+            ${startDate && endDate ? `AND sr."createdAt"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            AND (
+                sr."ref" ILIKE $1
+                OR cs."name" ILIKE $1
+                OR br."name" ILIKE $1
+                OR TO_CHAR(sr."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sr."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sr."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(sr."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `;
+
+        /* -------------------------------------------------- */
+        /* 1️ SUMMARY TOTALS                                   */
+        /* -------------------------------------------------- */
+        const summary: any = await prisma.$queryRawUnsafe(`
+            SELECT
+                COUNT(DISTINCT sr.id) AS "totalNumberSaleReturn",
+                COALESCE(SUM(sr."totalAmount"), 0) AS "totalAmount"
+            FROM "SaleReturns" sr
+            LEFT JOIN "Customer" cs ON sr."customerId" = cs.id
+            LEFT JOIN "Branch" br ON sr."branchId" = br.id
+            LEFT JOIN "User" c ON sr."createdBy" = c.id
+            LEFT JOIN "User" u ON sr."updatedBy" = u.id
+            ${commonFilters}
+        `, ...params);
+
+        /* Convert BigInt in summary */
+        const summarySafe = {
+            totalNumberSaleReturn: Number(summary[0]?.totalNumberSaleReturn || 0),
+            totalAmount: Number(summary[0]?.totalAmount || 0),
+        };
+
+        /* -------------------------------------------------- */
+        /* 2️ TOTAL COUNT (PAGINATION)                       */
+        /* -------------------------------------------------- */
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM (
+                SELECT sr.id
+                FROM "SaleReturns" sr
+                LEFT JOIN "Customer" cs ON sr."customerId" = cs.id
+                LEFT JOIN "Branch" br ON sr."branchId" = br.id
+                LEFT JOIN "User" c ON sr."createdBy" = c.id
+                LEFT JOIN "User" u ON sr."updatedBy" = u.id
+                ${commonFilters}
+                GROUP BY sr.id
+            ) AS t
+        `, ...params);
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        /* -------------------------------------------------- */
+        /* 3️ DATA LIST                                      */
+        /* -------------------------------------------------- */
+        const saleReturns: any = await prisma.$queryRawUnsafe(`
+            SELECT sr.*,
+                json_build_object('id', cs.id, 'name', cs.name) AS customer,
+                json_build_object('id', br.id, 'name', br.name) AS branch,
+                json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                json_build_object('id', u.id, 'firstName', u."firstName", 'lastName', u."lastName") AS updater
+            FROM "SaleReturns" sr
+            LEFT JOIN "Customer" cs ON sr."customerId" = cs.id
+            LEFT JOIN "Branch" br ON sr."branchId" = br.id
+            LEFT JOIN "User" c ON sr."createdBy" = c.id
+            LEFT JOIN "User" u ON sr."updatedBy" = u.id
+            ${commonFilters}
+            ORDER BY sr."${sortField}" ${sortOrder}
+            LIMIT ${pageSize} OFFSET ${offset}
+        `, ...params);
+
+        const saleReturnSafe = saleReturns.map((srt: any) => ({
+            ...srt,
+            id: Number(srt.id),
+            branchId: Number(srt.branchId),
+            customerId: srt.customerId ? Number(srt.customerId) : null,
+            createdBy: srt.createdBy ? Number(srt.createdBy) : null,
+            updatedBy: srt.updatedBy ? Number(srt.updatedBy) : null,
+            totalAmount: Number(srt.totalAmount),
+            grandTotal: Number(srt.totalAmount),
+        }));
+
+        // console.log("Data: ", saleReturnSafe);
+        // console.log("Summary: ", summarySafe);
+
+        res.status(200).json({
+            data: saleReturnSafe,
+            total,
+            summary: summarySafe,
+        });
+
+    } catch (error) {
+        console.error("Report sale return error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

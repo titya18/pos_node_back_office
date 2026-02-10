@@ -159,7 +159,7 @@ export const createSaleReturn = async (
         const result = await prisma.$transaction(async (tx) => {
 
             /* -------------------------------------------------------
-            1️⃣ LOAD ORDER
+            1️ LOAD ORDER
             ------------------------------------------------------- */
             const order = await tx.order.findUnique({
                 where: { id: orderId },
@@ -173,7 +173,7 @@ export const createSaleReturn = async (
             if (!order) throw new Error("Order not found");
 
             /* -------------------------------------------------------
-            2️⃣ GENERATE RETURN REF
+            2️ GENERATE RETURN REF
             ------------------------------------------------------- */
             let ref = "SR-00001";
 
@@ -188,7 +188,7 @@ export const createSaleReturn = async (
             }
 
             /* -------------------------------------------------------
-            3️⃣ RETURN ITEMS SUBTOTAL
+            3️ RETURN ITEMS SUBTOTAL
             ------------------------------------------------------- */
             let itemsSubtotal = 0;
 
@@ -207,7 +207,7 @@ export const createSaleReturn = async (
             }
 
             /* -------------------------------------------------------
-            4️⃣ FULL ORDER SUBTOTAL
+            4️ FULL ORDER SUBTOTAL
             ------------------------------------------------------- */
             const orderItemsAgg = await tx.orderItem.aggregate({
                 where: { orderId },
@@ -220,7 +220,7 @@ export const createSaleReturn = async (
             }
 
             /* -------------------------------------------------------
-            5️⃣ PRORATE DISCOUNT & TAX
+            5️ PRORATE DISCOUNT & TAX
             ------------------------------------------------------- */
             const returnRatio = itemsSubtotal / invoiceSubtotal;
 
@@ -233,7 +233,7 @@ export const createSaleReturn = async (
                 taxableAmount * (Number(order.taxRate || 0) / 100);
 
             /* -------------------------------------------------------
-            6️⃣ PREVIOUS RETURNS (DISCOUNT + TAX)
+            6️ PREVIOUS RETURNS (DISCOUNT + TAX)
             ------------------------------------------------------- */
             const previousReturns = await tx.saleReturns.aggregate({
                 where: { orderId },
@@ -274,7 +274,7 @@ export const createSaleReturn = async (
                 returnTax;
 
             /* -------------------------------------------------------
-            7️⃣ CREATE SALE RETURN
+            7️ CREATE SALE RETURN
             ------------------------------------------------------- */
             const saleReturn = await tx.saleReturns.create({
                 data: {
@@ -297,7 +297,7 @@ export const createSaleReturn = async (
             });
 
             /* -------------------------------------------------------
-            8️⃣ PROCESS RETURN ITEMS
+            8️ PROCESS RETURN ITEMS
             ------------------------------------------------------- */
             for (const item of items) {
 
@@ -417,8 +417,32 @@ export const createSaleReturn = async (
                 }
             }
 
+            /* ------------------------------------------------------- 
+            9️ PAYMENT REVERSAL (REFUND) 
+            ------------------------------------------------------- */ 
+            const payments = await tx.orderOnPayments.findMany({ where: { orderId }, }); 
+            
+            for (const pay of payments) { 
+                if (Number(pay.totalPaid) > 0) { 
+                    await tx.orderOnPayments.create({ 
+                        data: { 
+                            branchId, 
+                            orderId, 
+                            paymentDate: now, 
+                            paymentMethodId: pay.paymentMethodId, 
+                            totalPaid: new Decimal(-Number(pay.totalPaid)), 
+                            receive_usd: pay.receive_usd ? new Decimal(-Number(pay.receive_usd)) : null, 
+                            receive_khr: pay.receive_khr ? -Number(pay.receive_khr) : null, 
+                            exchangerate: pay.exchangerate, 
+                            status: "REFUND", 
+                            createdBy: userId 
+                        }, 
+                    }); 
+                }
+            }
+
             /* -------------------------------------------------------
-            9️⃣ UPDATE ORDER TOTAL
+            10 UPDATE ORDER TOTAL
             ------------------------------------------------------- */
             await tx.order.update({
                 where: { id: orderId },

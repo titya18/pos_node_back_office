@@ -28932,3 +28932,101 @@ Please make sure your database server is running at `localhost:5432`.
     at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:145:23)
     at Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8006)
     at async upsertAdjustment (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:127:24)
+2026-02-03 10:34:05 error: Login error 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`. PrismaClientInitializationError: 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7615)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async signIn (D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:22)
+2026-02-10 12:14:34 error: Error upserting product: Product's barcode must be unique Error: Product's barcode must be unique
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:271:40)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:184:24)
+2026-02-10 12:52:53 error: Error upserting product: Product's barcode must be unique Error: Product's barcode must be unique
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:275:40)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:184:24)
+2026-02-10 12:54:37 error: Error upserting product: 
+Invalid `tx.productVariants.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:312:61
+
+  309         where: { productVariantId: variantId }
+  310     });
+  311 } else {
+→ 312     const newVariant = await tx.productVariants.create(
+Unique constraint failed on the fields: (`barcode`) PrismaClientKnownRequestError: 
+Invalid `tx.productVariants.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:312:61
+
+  309         where: { productVariantId: variantId }
+  310     });
+  311 } else {
+→ 312     const newVariant = await tx.productVariants.create(
+Unique constraint failed on the fields: (`barcode`)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:312:36)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:184:24)
+2026-02-10 13:41:07 error: Error upserting product: 
+Invalid `tx.productVariants.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:312:61
+
+  309         where: { productVariantId: variantId }
+  310     });
+  311 } else {
+→ 312     const newVariant = await tx.productVariants.create(
+Unique constraint failed on the fields: (`barcode`) PrismaClientKnownRequestError: 
+Invalid `tx.productVariants.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:312:61
+
+  309         where: { productVariantId: variantId }
+  310     });
+  311 } else {
+→ 312     const newVariant = await tx.productVariants.create(
+Unique constraint failed on the fields: (`barcode`)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:312:36)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:184:24)
+2026-02-10 13:50:41 error: Error upserting product: Barcode already exists for this product type Error: Barcode already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:258:60)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:200:24)
+2026-02-10 13:52:01 error: Error upserting product: Barcode already exists for this product type Error: Barcode already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:299:59)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:200:24)
+2026-02-10 13:59:57 error: Error upserting product: Barcode already exists for this product type Error: Barcode already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:258:60)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:200:24)
+2026-02-10 15:54:47 error: Error upserting product: SKU already exists for this product type Error: SKU already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:257:52)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:200:24)

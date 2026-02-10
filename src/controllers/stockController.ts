@@ -71,6 +71,7 @@ export const stockSummary = async (req: Request, res: Response) => {
 
                 pv.id AS "variantId",
                 pv.name AS "variantName",
+                pv."productType" AS "productType",
                 pv.sku,
                 pv.barcode,
 
@@ -164,6 +165,7 @@ export const stockSummary = async (req: Request, res: Response) => {
 
             variantId: r.variantId,
             variantName: r.variantName,
+            productType: r.productType,
             sku: r.sku,
             barcode: r.barcode,
 

@@ -13,7 +13,7 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/all").get(authorize(["Supplier-View"]), getAllSuppliers);
+router.route("/all").get(getAllSuppliers);
 router.route("/").get(authorize(["Supplier-View"]), getAllSuppliersWithPagination).post(authorize(["Supplier-Create"]), validateSupplierRequest, upsertSupplier);
 router.route("/:id").get(authorize(["Supplier-View"]), getSupplierById).put(authorize(["Supplier-Edit"]), validateSupplierRequest, upsertSupplier).delete(authorize(["Supplier-Delete"]), deleteSupplier);
 

@@ -309,51 +309,165 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
     }
 };
 
-export const getQuotationById = async (req: Request, res: Response): Promise<void> => {
+export const getQuotationById = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
+
     try {
+        /* ---------------------------------- */
+        /* 1️⃣ GET QUOTATION (BASE DATA)       */
+        /* ---------------------------------- */
         const quotation = await prisma.quotations.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: { 
+            where: { id: Number(id) },
+            include: {
+                branch: true,
+                creator: true,
+                updater: true,
                 quotationDetails: {
                     include: {
-                        products: true, // Include related products data
+                        products: true,
                         productvariants: {
                             select: {
-                                name: true, // Select the `name` field from `productVariant`
+                                id: true,
+                                name: true,
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                         services: true, // Include related services data
                     },
                 },
-                customers: true, // Include related customer data
-                branch: true, // Include related branch data
-                creator: true, // Include related creator data
-                updater: true, // Include related updater data
-            }, // Include related quotation details
+            },
         });
-
-        // Transform data to flatten `name` into `quotationDetails`
-        // if (quotation) {
-        //     quotation.quotationDetails = quotation.quotationDetails.map((detail: any) => ({
-        //         ...detail,
-        //         name: detail.ItemType === "PRODUCT" ? detail.productvariants.name : detail.services.name, // Add `name` directly
-        //     }));
-        // }
 
         if (!quotation) {
             res.status(404).json({ message: "Quotation not found!" });
             return;
         }
+
+        /* ---------------------------------- */
+        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
+        /* ---------------------------------- */
+        const branchId = quotation.branchId;
+
+        const variantIds = quotation.quotationDetails
+            .filter(detail => detail.ItemType === "PRODUCT")
+            .map(detail => detail.productVariantId)
+            .filter((id): id is number => id != null);
+
+        /* ---------------------------------- */
+        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
+        /* ---------------------------------- */
+        const stocks = await prisma.stocks.findMany({
+            where: {
+                branchId,
+                productVariantId: {
+                    in: variantIds,
+                },
+            },
+            select: {
+                productVariantId: true,
+                quantity: true,
+            },
+        });
+
+        /* ---------------------------------- */
+        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
+        /* ---------------------------------- */
+        const stockMap = new Map<number, number>(
+            stocks.map((s) => [
+                s.productVariantId,
+                Number(s.quantity),
+            ])
+        );
+
+        /* ---------------------------------- */
+        /* 5️⃣ MERGE STOCK INTO DETAILS       */
+        /* ---------------------------------- */
+        quotation.quotationDetails = quotation.quotationDetails.map(
+            (detail: any) => {
+                if (detail.ItemType === "PRODUCT") {
+                    return {
+                        ...detail,
+                        name: detail.productvariants?.name ?? "",
+                        barcode: detail.productvariants?.barcode ?? null,
+                        sku: detail.productvariants?.sku ?? null,
+                        stocks:
+                            stockMap.get(detail.productVariantId) ?? 0,
+                    };
+                }
+
+                // SERVICE item (no stock)
+                return {
+                    ...detail,
+                    name: detail.services?.name ?? "",
+                    barcode: null,
+                    sku: null,
+                    stocks: null,
+                };
+            }
+        );
+
+        /* ---------------------------------- */
+        /* 6️⃣ SEND RESPONSE                  */
+        /* ---------------------------------- */
         res.status(200).json(quotation);
     } catch (error) {
-        logger.error("Error fetching quotation by ID:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        console.error("Error fetching quotation by ID:", error);
+        res.status(500).json({
+            message: "Error fetching quotation by ID",
+        });
     }
 };
+
+// export const getQuotationById = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params;
+//     try {
+//         const quotation = await prisma.quotations.findUnique({
+//             where: { id: parseInt(id, 10) },
+//             include: { 
+//                 quotationDetails: {
+//                     include: {
+//                         products: true, // Include related products data
+//                         productvariants: {
+//                             select: {
+//                                 name: true, // Select the `name` field from `productVariant`
+//                                 barcode: true,
+//                                 sku: true
+//                             },
+//                         },
+//                         services: true, // Include related services data
+//                     },
+//                 },
+//                 customers: true, // Include related customer data
+//                 branch: true, // Include related branch data
+//                 creator: true, // Include related creator data
+//                 updater: true, // Include related updater data
+//             }, // Include related quotation details
+//         });
+
+//         // Transform data to flatten `name` into `quotationDetails`
+//         // if (quotation) {
+//         //     quotation.quotationDetails = quotation.quotationDetails.map((detail: any) => ({
+//         //         ...detail,
+//         //         name: detail.ItemType === "PRODUCT" ? detail.productvariants.name : detail.services.name, // Add `name` directly
+//         //     }));
+//         // }
+
+//         if (!quotation) {
+//             res.status(404).json({ message: "Quotation not found!" });
+//             return;
+//         }
+//         res.status(200).json(quotation);
+//     } catch (error) {
+//         logger.error("Error fetching quotation by ID:", error);
+//         const typedError = error as Error;
+//         res.status(500).json({ message: typedError.message });
+//     }
+// };
 
 export const deleteQuotation = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
