@@ -22,7 +22,7 @@ export const upsertVariantAttribute = async (req: Request, res: Response): Promi
 
     try {
         const result = await prisma.$transaction(async (prisma) => {
-            const variantAttributeId = id ? parseInt(id, 10) : undefined;
+            const variantAttributeId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
             // ============================
             // FETCH EXISTING DATA
@@ -31,7 +31,7 @@ export const upsertVariantAttribute = async (req: Request, res: Response): Promi
 
             if (variantAttributeId) {
                 const data = await prisma.variantAttribute.findUnique({
-                    where: { id: variantAttributeId },
+                    where: { id: Number(variantAttributeId) },
                     include: { values: true }
                 });
 
@@ -50,7 +50,7 @@ export const upsertVariantAttribute = async (req: Request, res: Response): Promi
             // CHECK UNIQUE NAME
             // ============================
             const checkName = await prisma.variantAttribute.findFirst({
-                where: { name, id: { not: variantAttributeId } }
+                where: { name, id: { not: Number(variantAttributeId) } }
             });
 
             if (checkName) {
@@ -96,7 +96,7 @@ export const upsertVariantAttribute = async (req: Request, res: Response): Promi
 
             if (variantAttributeId) {
                 updatedAttribute = await prisma.variantAttribute.update({
-                    where: { id: variantAttributeId },
+                    where: { id: Number(variantAttributeId) },
                     data: {
                         name,
                         updatedAt: currentDate,
@@ -275,9 +275,10 @@ export const getAllVariantAttributes = async (req: Request, res: Response): Prom
 // Get Module by ID
 export const getVariantAttributeById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const attributeId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const variantAttribute = await prisma.variantAttribute.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(attributeId) },
             include: { values: true }
         });
 
@@ -296,17 +297,17 @@ export const getVariantAttributeById = async (req: Request, res: Response): Prom
 // Delete a Module
 export const deleteVariantAttribute = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const attributeId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
-        const attributeId = parseInt(id, 10);
 
         // Delete VariantValues first
         await prisma.variantValue.deleteMany({
-        where: { variantAttributeId: attributeId }
+        where: { variantAttributeId: Number(attributeId) }
         });
 
         // Then delete the VariantAttribute
         await prisma.variantAttribute.update({
-            where: { id: attributeId },
+            where: { id: Number(attributeId) },
             data: { deletedAt: currentDate, deletedBy: req.user ? req.user.id : null }
         });
 

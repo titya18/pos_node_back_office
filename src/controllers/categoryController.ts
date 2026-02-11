@@ -47,13 +47,15 @@ export const getAllCategoriesWithPagination = async (req: Request, res: Response
             FROM "Categories" cg
             LEFT JOIN "User" c ON cg."createdBy" = c.id
             LEFT JOIN "User" u ON cg."updatedBy" = u.id
-            WHERE
+            WHERE cg."deletedAt" IS NULL
+            AND (
                 cg."name" ILIKE $1
                 OR TO_CHAR(cg."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(cg."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(cg."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(cg."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
         `, ...params.slice(0, params.length - 2));
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
@@ -66,13 +68,15 @@ export const getAllCategoriesWithPagination = async (req: Request, res: Response
             FROM "Categories" cg
             LEFT JOIN "User" c ON cg."createdBy" = c.id
             LEFT JOIN "User" u ON cg."updatedBy" = u.id
-            WHERE
+            WHERE cg."deletedAt" IS NULL
+            AND (
                 cg."name" ILIKE $1
                 OR TO_CHAR(cg."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(cg."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(cg."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(cg."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
             ORDER BY cg."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
@@ -108,10 +112,10 @@ export const upsertCategory = async (req: Request, res: Response): Promise<void>
     const { code, name } = req.body;
     
     try {
-        const restult = await prisma.$transaction(async (prisma) => {
-            const categoryId = id ? parseInt(id, 10) : undefined;
+        const result = await prisma.$transaction(async (prisma) => {
+            const categoryId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (categoryId) {
-                const checkCategory = await prisma.categories.findUnique({ where: { id: categoryId } });
+                const checkCategory = await prisma.categories.findUnique({ where: { id: Number(categoryId) } });
                 if (!checkCategory) {
                     res.status(404).json({ message: "Category not found!" });
                     return;
@@ -121,7 +125,7 @@ export const upsertCategory = async (req: Request, res: Response): Promise<void>
             const checkExisting = await prisma.categories.findFirst({
                 where: {
                     code,
-                    id: { not: categoryId }
+                    id: { not: Number(categoryId) }
                 }
             });
             if (checkExisting) {
@@ -131,7 +135,7 @@ export const upsertCategory = async (req: Request, res: Response): Promise<void>
 
             const category = id
                 ? await prisma.categories.update({
-                    where: { id: categoryId },
+                    where: { id: Number(categoryId) },
                     data: {
                         code,
                         name,
@@ -151,7 +155,7 @@ export const upsertCategory = async (req: Request, res: Response): Promise<void>
                 });
             return category;
         });
-        res.status(id ? 200 : 201).json(restult);
+        res.status(id ? 200 : 201).json(result);
     } catch (error) {
         logger.error("Error upserting category:", error);
         const typedError = error as Error;
@@ -162,11 +166,12 @@ export const upsertCategory = async (req: Request, res: Response): Promise<void>
 export const getCategoryById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     try {
+        const categoryId = id ? (Array.isArray(id) ? id[0] : id) : 0;
         const category = await prisma.categories.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(categoryId) },
         });
         if (!category) {
-            res.status(404).json({ messate: "Category not found!" });
+            res.status(404).json({ message: "Category not found!" });
             return;
         }
         res.status(200).json(category);
@@ -181,13 +186,14 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     const utcNow = DateTime.now().setZone('Asia/Phnom_Penh').toUTC();
     try {
-        const category = await prisma.categories.findUnique({ where: { id: parseInt(id, 10) } });
+        const categoryId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+        const category = await prisma.categories.findUnique({ where: { id: Number(categoryId) } });
         if (!category) {
             res.status(404).json({ message: "Category not found!" });
             return;
         }
         await prisma.categories.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(categoryId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null

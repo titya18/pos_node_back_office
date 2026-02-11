@@ -28,6 +28,8 @@ export const getAllProductVariant = async (req: Request, res: Response): Promise
         const offset = (pageNumber - 1) * pageSize;
 
         const { id } = req.params;
+        const productVariantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
         if (!id) {
             res.status(400).json({ message: "Product ID is required" });
             return;
@@ -49,7 +51,7 @@ export const getAllProductVariant = async (req: Request, res: Response): Promise
             .join(" OR ");
 
         // Build params dynamically
-        const params = [parseInt(id, 10), likeTerm, ...searchWords.map(w => `%${w}%`), pageSize, offset];
+        const params = [productVariantId, likeTerm, ...searchWords.map(w => `%${w}%`), pageSize, offset];
 
         // 1️ Count total variants matching search
         const totalResult: any = await prisma.$queryRawUnsafe(`
@@ -242,7 +244,7 @@ export const upsertProductVariant = async (req: Request, res: Response): Promise
 
     const uploadedImages = req.files ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, "")) : [];
     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
-    const variantId = id ? parseInt(id, 10) : undefined;
+    const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
     // Temporary trash folder for reversible deletion
     const trashDir = path.join("public", "trash");
@@ -255,19 +257,19 @@ export const upsertProductVariant = async (req: Request, res: Response): Promise
         const variant = await prisma.$transaction(async (tx) => {
             // Check uniqueness
             const existingBarcode = await tx.productVariants.findFirst({
-                where: { barcode, id: { not: variantId } },
+                where: { barcode, id: { not: Number(variantId) } },
             });
             if (existingBarcode) throw new Error("Variant's barcode must be unique");
 
             const existingSKU = await tx.productVariants.findFirst({
-                where: { sku, id: { not: variantId } },
+                where: { sku, id: { not: Number(variantId) } },
             });
             if (existingSKU) throw new Error("Variant's SKU must be unique");
 
             // Fetch existing variant images
             let existingVariantImages: string[] = [];
             if (variantId) {
-                const existingVariant = await tx.productVariants.findUnique({ where: { id: variantId } });
+                const existingVariant = await tx.productVariants.findUnique({ where: { id: Number(variantId) } });
                 if (!existingVariant) throw new Error("Variant not found!");
                 existingVariantImages = existingVariant.image || [];
             }
@@ -294,7 +296,7 @@ export const upsertProductVariant = async (req: Request, res: Response): Promise
             // Upsert variant
             if (variantId) {
                 const updatedVariant = await tx.productVariants.update({
-                    where: { id: variantId },
+                    where: { id: Number(variantId) },
                     data: {
                         productId: Number(productId),
                         unitId: unitId ? Number(unitId) : null,
@@ -312,14 +314,14 @@ export const upsertProductVariant = async (req: Request, res: Response): Promise
 
                 // DELETE old join rows
                 await tx.productVariantValues.deleteMany({
-                    where: { productVariantId: variantId }
+                    where: { productVariantId: Number(variantId) }
                 });
 
                 // INSERT new join rows
                 if (parsedVariantValueIds.length > 0) {
                     await tx.productVariantValues.createMany({
                         data: parsedVariantValueIds.map((vId: any) => ({
-                            productVariantId: variantId,
+                            productVariantId: Number(variantId),
                             variantValueId: Number(vId),
                         })),
                     });
@@ -392,7 +394,7 @@ export const upsertProductVariant = async (req: Request, res: Response): Promise
 
 //     try {
 //         const result = await prisma.$transaction(async (tx) => {
-//             const variantId = id ? parseInt(id, 10) : undefined;
+//             const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
 //             const existingBarcode = await tx.productVariants.findFirst({
 //                 where: {
@@ -509,9 +511,10 @@ export const upsertProductVariant = async (req: Request, res: Response): Promise
 
 export const getProductVariantById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const productVariantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const variant = await prisma.productVariants.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(productVariantId) }
         });
         if (!variant) {
             res.status(404).json({ message: "Variant not found!" });
@@ -527,15 +530,16 @@ export const getProductVariantById = async (req: Request, res: Response): Promis
 
 export const deleteProductVaraint = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const productVariantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
     try {
-        const variant = await prisma.productVariants.findUnique({ where: { id: parseInt(id, 10) } });
+        const variant = await prisma.productVariants.findUnique({ where: { id: Number(productVariantId) } });
         if (!variant) {
             res.status(404).json({ message: "Variant not found!" });
             return;
         }
         await prisma.productVariants.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(productVariantId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null
@@ -550,12 +554,13 @@ export const deleteProductVaraint = async (req: Request, res: Response): Promise
 };
 
 export const statusVariant = async (req: Request, res: Response): Promise<void> => {
-    const variantId = parseInt(req.params.id, 10); // Parse user ID from request params
+    const { id } = req.params;
+    const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
     try {
         // Find the user by ID
         const variant = await prisma.productVariants.findUnique({
-            where: { id: variantId },
+            where: { id: Number(variantId) },
         });
 
         if (!variant) {
@@ -565,7 +570,7 @@ export const statusVariant = async (req: Request, res: Response): Promise<void> 
 
         // Toggle the user's status
         const updatedVariant = await prisma.productVariants.update({
-            where: { id: variantId },
+            where: { id: Number(variantId) },
             data: { 
                 isActive: variant.isActive === 1 ? 0 : 1,
                 updatedAt: currentDate,
@@ -575,7 +580,7 @@ export const statusVariant = async (req: Request, res: Response): Promise<void> 
 
         res.status(200).json(updatedVariant);
     } catch (error) {
-        logger.error("Error toggling user status:", error);
+        logger.error("Error toggling variant status:", error);
         const typedError = error as Error; // Type assertion
         res.status(500).json({ message: typedError.message });
     }

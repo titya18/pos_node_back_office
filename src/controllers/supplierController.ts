@@ -47,7 +47,8 @@ export const getAllSuppliersWithPagination = async (req: Request, res: Response)
             FROM "Suppliers" s
             LEFT JOIN "User" c ON s."createdBy" = c.id
             LEFT JOIN "User" u ON s."updatedBy" = u.id
-            WHERE
+            WHERE s."deletedAt" IS NULL
+            AND (
                 s."name" ILIKE $1
                 OR s."phone" ILIKE $1
                 OR s."email" ILIKE $1
@@ -57,6 +58,7 @@ export const getAllSuppliersWithPagination = async (req: Request, res: Response)
                 OR TO_CHAR(s."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(s."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
         `, ...params.slice(0, params.length - 2));
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
@@ -69,7 +71,8 @@ export const getAllSuppliersWithPagination = async (req: Request, res: Response)
             FROM "Suppliers" s
             LEFT JOIN "User" c ON s."createdBy" = c.id
             LEFT JOIN "User" u ON s."updatedBy" = u.id
-            WHERE
+            WHERE s."deletedAt" IS NULL
+            AND (
                 s."name" ILIKE $1
                 OR s."phone" ILIKE $1
                 OR s."email" ILIKE $1
@@ -79,6 +82,7 @@ export const getAllSuppliersWithPagination = async (req: Request, res: Response)
                 OR TO_CHAR(s."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(s."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
             ORDER BY s."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
@@ -113,9 +117,9 @@ export const upsertSupplier = async (req: Request, res: Response): Promise<void>
 
     try {
         const result = await prisma.$transaction(async (prisma) => {
-            const supplierId = id ? parseInt(id, 10) : undefined;
+            const supplierId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (supplierId) {
-                const checkSupplier = await prisma.suppliers.findUnique({ where: { id: supplierId } });
+                const checkSupplier = await prisma.suppliers.findUnique({ where: { id: Number(supplierId) } });
                 if (!checkSupplier) {
                     res.status(404).json({ message: "Supplier not found!" });
                     return;
@@ -125,7 +129,7 @@ export const upsertSupplier = async (req: Request, res: Response): Promise<void>
             const checkExisting = await prisma.suppliers.findFirst({
                 where: {
                     phone,
-                    id: { not: supplierId }
+                    id: { not: Number(supplierId) }
                 }
             });
             if (checkExisting) {
@@ -135,7 +139,7 @@ export const upsertSupplier = async (req: Request, res: Response): Promise<void>
 
             const supplier = id
                 ? await prisma.suppliers.update({
-                    where: { id: supplierId },
+                    where: { id: Number(supplierId) },
                     data: {
                         name,
                         phone,
@@ -171,8 +175,9 @@ export const upsertSupplier = async (req: Request, res: Response): Promise<void>
 
 export const getSupplierById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const supplierId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
-        const supplier = await prisma.suppliers.findUnique({ where: { id: parseInt(id, 10) } });
+        const supplier = await prisma.suppliers.findUnique({ where: { id: Number(supplierId) } });
         if (!supplier) {
             res.status(404).json({ message: "Supplier not found!" });
             return;
@@ -187,15 +192,16 @@ export const getSupplierById = async (req: Request, res: Response): Promise<void
 
 export const deleteSupplier = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const supplierId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
     try {
-        const supplier = await prisma.suppliers.findUnique({ where: { id: parseInt(id, 10) } });
+        const supplier = await prisma.suppliers.findUnique({ where: { id: Number(supplierId) } });
         if (!supplier) {
             res.status(404).json({ message: "Supplier not found!" });
             return;
         }
         await prisma.suppliers.update({
-            where: { id: parseInt(id, 10 )},
+            where: { id: Number(supplierId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null

@@ -110,14 +110,14 @@ export const upsertCustomer = async (req: Request, res: Response): Promise<void>
 
     try {
         const result = await prisma.$transaction(async (prisma) => {
-            const customerId = id ? parseInt(id, 10) : undefined;
+            const customerId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             // console.log("Upsert Customer - Received Data:", { id, name, phone, email, address });
 
             const checkExisting = await prisma.customer.findFirst({
                 where: {
                     phone,
                     email,
-                    id: { not: customerId }
+                    id: { not: Number(customerId) }
                 }
             });
 
@@ -127,7 +127,7 @@ export const upsertCustomer = async (req: Request, res: Response): Promise<void>
             }
 
             if (customerId) {
-                const checkCustomer = await prisma.customer.findUnique({ where: { id: customerId } });
+                const checkCustomer = await prisma.customer.findUnique({ where: { id: Number(customerId) } });
                 if (!checkCustomer) {
                     res.status(404).json({ message: "Customer not found!" });
                     return;
@@ -136,7 +136,7 @@ export const upsertCustomer = async (req: Request, res: Response): Promise<void>
 
             const customer = id
                 ? await prisma.customer.update({
-                    where: { id: customerId },
+                    where: { id: Number(customerId) },
                     data: {
                         name,
                         phone,
@@ -173,8 +173,9 @@ export const upsertCustomer = async (req: Request, res: Response): Promise<void>
 export const getCustomerById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     try {
+        const customerId = id ? (Array.isArray(id) ? id[0] : id) : 0;
         const customer = await prisma.customer.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(customerId) }
         });
         if (!customer) {
             res.status(404).json({ message: "Customer not found!" });

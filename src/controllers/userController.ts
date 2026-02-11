@@ -122,9 +122,11 @@ export const getAllUser = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const user = await prisma.user.findUnique({ 
-            where: { id: parseInt(req.params.id, 10) }, 
+            where: { id: Number(userId) }, 
             include: { roles: true }
         });
         if (!user) {
@@ -207,6 +209,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; // Get user ID from request params
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { branchId, firstName, lastName, phoneNumber, email, roleType, password, roleIds } = req.body;
 
     // Convert branchId to an integer if it's provided
@@ -218,7 +221,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     try {
         // Check if the user exists
         const existingUser = await prisma.user.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(userId) },
         });
 
         if (!existingUser) {
@@ -258,7 +261,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
         // Update user and manage role connections
         const updatedUser = await prisma.user.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(userId) },
             data: {
                 ...updateData,
                 roles: {
@@ -287,11 +290,11 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; // Get user ID from request params
-
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         // Check if the user exists
         const existingUser = await prisma.user.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(userId) },
         });
 
         if (!existingUser) {
@@ -301,7 +304,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 
         // Delete the user
         await prisma.user.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(userId) },
             data: { 
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null
@@ -317,12 +320,12 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const statusUser = async (req: Request, res: Response): Promise<void> => {
-    const userId = parseInt(req.params.id, 10); // Parse user ID from request params
-
+    const { id } = req.params;
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         // Find the user by ID
         const user = await prisma.user.findUnique({
-            where: { id: userId },
+            where: { id: Number(userId) },
         });
 
         if (!user) {
@@ -332,7 +335,7 @@ export const statusUser = async (req: Request, res: Response): Promise<void> => 
 
         // Toggle the user's status
         const updatedUser = await prisma.user.update({
-            where: { id: userId },
+            where: { id: Number(userId) },
             data: { 
                 status: user.status === 1 ? 0 : 1,
                 updatedAt: currentDate,

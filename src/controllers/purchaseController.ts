@@ -28,9 +28,7 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
         const sortField = getQueryString(req.query.sortField, "ref")!;
 
         const sortOrder =
-        getQueryString(req.query.sortOrder)?.toLowerCase() === "desc"
-            ? "DESC"
-            : "ASC";
+        getQueryString(req.query.sortOrder)?.toLowerCase() === "asc" ? "desc" : "asc";
 
         const offset = (pageNumber - 1) * pageSize;
 
@@ -133,14 +131,16 @@ export const getAllPurchases = async (req: Request, res: Response): Promise<void
 export const getNextPurchaseRef = async (req: Request, res: Response): Promise<void> => {
     const { branchId } = req.params;
 
-    if (!branchId) {
+    const branchIdNumber = branchId ? (Array.isArray(branchId) ? Number(branchId[0]) : Number(branchId)) : 0;
+
+    if (!branchIdNumber) {
         res.status(400).json({ message: "Branch ID is required" });
         return;
     }
 
     const lastPurchase = await prisma.purchases.findFirst({
         where: {
-            branchId: parseInt(branchId, 10),
+            branchId: Number(branchIdNumber),
         },
         orderBy: {
             id: "desc",
@@ -299,9 +299,9 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                 return;
             }
 
-            const purchaseId = id ? parseInt(id, 10) : undefined;
+            const purchaseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (purchaseId) {
-                const checkPurchase = await tx.purchases.findUnique({ where: { id: purchaseId } });
+                const checkPurchase = await tx.purchases.findUnique({ where: { id: Number(purchaseId) } });
                 if (!checkPurchase) {
                     res.status(404).json({ message: "Purchase not found!" });
                     return;
@@ -313,7 +313,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                     branchId: Number(branchId),
                     ref: ref,
                     ...(purchaseId && {
-                        id: { not: purchaseId }
+                        id: { not: Number(purchaseId) }
                     }),
                 },
             });
@@ -323,29 +323,10 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                 return;
             }
 
-            // let ref = "PR-";
-
-            // // Generate a new ref only for creation
-            // if (!id) {
-            //     // Query for the highest ref in the same branch
-            //     const lastPurchase = await prisma.purchases.findFirst({
-            //         where: { branchId: parseInt(branchId, 10) },
-            //         orderBy: { id: 'desc' }, // Sort by ref in descending order
-            //     });
-
-            //     // Extract and increment the numeric part of the ref
-            //     if (lastPurchase && lastPurchase.ref) {
-            //         const refNumber = parseInt(lastPurchase.ref.split('-')[1], 10) || 0;
-            //         ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
-            //     } else {
-            //         ref += "00001"; // Start from 00001 if no ref exists for the branch
-            //     }
-            // }
-
             // Fetch existing variant images
             let existingImages: string[] = [];
-            if (id) {
-                const existingPurchase = await tx.purchases.findUnique({ where: { id: Number(id) } });
+            if (purchaseId) {
+                const existingPurchase = await tx.purchases.findUnique({ where: { id: Number(purchaseId) } });
                 if (!existingPurchase) throw new Error("Purchase not found!");
                 existingImages = existingPurchase.image || [];
             }
@@ -371,7 +352,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
 
             const purchase = purchaseId
                 ? await tx.purchases.update({
-                    where: { id: purchaseId },
+                    where: { id: Number(purchaseId) },
                     data: {
                         ref,
                         userId: loggedInUser.id,
@@ -392,7 +373,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         receivedBy: status === "RECEIVED" ? req.user ? req.user.id : null : null,
                         purchaseDetails: {
                             deleteMany: {
-                                purchaseId: purchaseId   // MUST include a filter
+                                purchaseId: Number(purchaseId)   // MUST include a filter
                             }, // Delete existing purchase details
                             create: parsedPurchaseDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
@@ -594,12 +575,14 @@ export const getPurchaseById = async (
 ): Promise<void> => {
     const { id } = req.params;
 
+    const purchaseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
     try {
         /* ---------------------------------- */
         /* 1️⃣ GET PURCHASE (BASE DATA)       */
         /* ---------------------------------- */
         const purchase = await prisma.purchases.findUnique({
-            where: { id: Number(id) },
+            where: { id: Number(purchaseId) },
             include: {
                 branch: true,
                 suppliers: true,
@@ -735,10 +718,11 @@ export const getPurchaseById = async (
 
 export const getPurchasePaymentById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const purchaseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const purchasePayment = await prisma.purchaseOnPayments.findMany({ 
             where: { 
-                purchaseId: parseInt(id, 10),
+                purchaseId: Number(purchaseId),
                 status: 'PAID' 
             },
             orderBy: { id: 'desc' },
@@ -760,18 +744,19 @@ export const getPurchasePaymentById = async (req: Request, res: Response): Promi
 
 export const deletePayment = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const paymentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const result = await prisma.$transaction(async (tx) => {
             const payment = await tx.purchaseOnPayments.findUnique({ 
-                where: { id: parseInt(id, 10) },
+                where: { id: Number(paymentId) },
             });
             if (!payment) {
                 res.status(404).json({ message: "Payment not found!" });
                 return;
             }
             await tx.purchaseOnPayments.update({
-                where: { id: parseInt(id, 10) },
+                where: { id: Number(paymentId) },
                 data: {
                     deletedAt: currentDate,
                     deletedBy: req.user ? req.user.id : null,
@@ -800,10 +785,11 @@ export const deletePayment = async (req: Request, res: Response): Promise<void> 
 
 export const deletePurchase = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const purchaseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const purchase = await prisma.purchases.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(purchaseId) },
             include: { purchaseDetails: true } 
         });
         if (!purchase) {
@@ -811,7 +797,7 @@ export const deletePurchase = async (req: Request, res: Response): Promise<void>
             return;
         }
         await prisma.purchases.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(purchaseId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,
@@ -844,10 +830,11 @@ export const getAmountPurchasings = async (req: Request, res: Response): Promise
 
 export const updateAmountPurchasing = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const purchasingId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { amount } = req.body;
     try {
         const result = await prisma.purchaseAmountAuthorize.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(purchasingId) },
             data: {
                 amount: amount,
                 updatedAt: currentDate,

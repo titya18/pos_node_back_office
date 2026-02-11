@@ -133,9 +133,9 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                 return;
             }
 
-            const adjustmentId = id ? parseInt(id, 10) : undefined;
+            const adjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (adjustmentId) {
-                const checkStockAdjustment = await tx.stockAdjustments.findUnique({ where: { id: adjustmentId } });
+                const checkStockAdjustment = await tx.stockAdjustments.findUnique({ where: { id: Number(adjustmentId) } });
                 if (!checkStockAdjustment) {
                     res.status(404).json({ message: "Adjustment not found!" });
                     return;
@@ -167,7 +167,7 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
 
             const adjustment = adjustmentId
                 ? await tx.stockAdjustments.update({
-                    where: { id: adjustmentId },
+                    where: { id: Number(adjustmentId) },
                     data: {
                         branchId: parseInt(branchId, 10),
                         adjustDate: new Date(dayjs(adjustDate).format("YYYY-MM-DD")),
@@ -178,7 +178,7 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
                         updatedBy: req.user ? req.user.id : null,
                         adjustmentDetails: {
                             deleteMany: {
-                                adjustmentId: adjustmentId   // MUST include a filter
+                                adjustmentId: Number(adjustmentId)   // MUST include a filter
                             }, // Delete existing adjustment details
                             create: adjustmentDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
@@ -274,54 +274,157 @@ export const upsertAdjustment = async (req: Request, res: Response): Promise<voi
     }
 };
 
-export const getStockAdjustmentById = async (req: Request, res: Response): Promise<void> => {
+export const getStockAdjustmentById = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
+
+    const stockAdjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
     try {
-        const adjustment = await prisma.stockAdjustments.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: { 
+        /* ---------------------------------- */
+        /* 1️⃣ GET PURCHASE (BASE DATA)       */
+        /* ---------------------------------- */
+        const purchase = await prisma.stockAdjustments.findUnique({
+            where: { id: Number(stockAdjustmentId) },
+            include: {
+                branch: true,
+                creator: true,
+                updater: true,
                 adjustmentDetails: {
                     include: {
-                        products: true, // Include related products data
+                        products: true,
                         productvariants: {
                             select: {
-                                name: true, // Select the `name` field from `productVariant`
+                                id: true,
+                                name: true,
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                     },
                 },
-                branch: true, // Include related branch data
             },
         });
 
-        // Transform data to flatten `name` into `adjustDetails`
-        if (adjustment) {
-            adjustment.adjustmentDetails = adjustment.adjustmentDetails.map((detail: any) => ({
-                ...detail,
-                name: detail.productvariants.name, // Add `name` directly
-            }));
-        }
-
-        if (!adjustment) {
-            res.status(404).json({ message: "Adjustment not found!" });
+        if (!purchase) {
+            res.status(404).json({ message: "Stock adjustment not found!" });
             return;
         }
-        res.status(200).json(adjustment);
+
+        /* ---------------------------------- */
+        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
+        /* ---------------------------------- */
+        const branchId = purchase.branchId;
+
+        const variantIds = purchase.adjustmentDetails
+        .map((detail) => detail.productVariantId)
+        .filter((id): id is number => id !== null);
+
+        /* ---------------------------------- */
+        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
+        /* ---------------------------------- */
+        const stocks = await prisma.stocks.findMany({
+            where: {
+                branchId,
+                productVariantId: {
+                    in: variantIds,
+                },
+            },
+            select: {
+                productVariantId: true,
+                quantity: true,
+            },
+        });
+
+        /* ---------------------------------- */
+        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
+        /* ---------------------------------- */
+        const stockMap = new Map<number, number>(
+            stocks.map((s) => [
+                s.productVariantId,
+                Number(s.quantity),
+            ])
+        );
+
+        /* ---------------------------------- */
+        /* 5️⃣ MERGE STOCK INTO DETAILS       */
+        /* ---------------------------------- */
+        purchase.adjustmentDetails = purchase.adjustmentDetails.map(
+            (detail: any) => ({
+                ...detail,
+                name: detail.productvariants.name,
+                barcode: detail.productvariants.barcode,
+                sku: detail.productvariants.sku,
+                stocks:
+                    stockMap.get(detail.productVariantId) ?? 0,
+            })
+        );
+
+        /* ---------------------------------- */
+        /* 6️⃣ SEND RESPONSE                  */
+        /* ---------------------------------- */
+        res.status(200).json(purchase);
     } catch (error) {
-        logger.error("Error fetching adjustment by ID:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        console.error("Error fetching adjustment by ID:", error);
+        res.status(500).json({
+            message: "Error fetching adjustment by ID",
+        });
     }
 };
 
+// export const getStockAdjustmentById = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params;
+//     const stockAdjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+//     try {
+//         const adjustment = await prisma.stockAdjustments.findUnique({
+//             where: { id: Number(stockAdjustmentId) },
+//             include: { 
+//                 adjustmentDetails: {
+//                     include: {
+//                         products: true, // Include related products data
+//                         productvariants: {
+//                             select: {
+//                                 name: true, // Select the `name` field from `productVariant`
+//                                 barcode: true,
+//                                 sku: true
+//                             },
+//                         },
+//                     },
+//                 },
+//                 branch: true, // Include related branch data
+//             },
+//         });
+
+//         // Transform data to flatten `name` into `adjustDetails`
+//         if (adjustment) {
+//             adjustment.adjustmentDetails = adjustment.adjustmentDetails.map((detail: any) => ({
+//                 ...detail,
+//                 name: detail.productvariants.name, // Add `name` directly
+//             }));
+//         }
+
+//         if (!adjustment) {
+//             res.status(404).json({ message: "Adjustment not found!" });
+//             return;
+//         }
+//         res.status(200).json(adjustment);
+//     } catch (error) {
+//         logger.error("Error fetching adjustment by ID:", error);
+//         const typedError = error as Error;
+//         res.status(500).json({ message: typedError.message });
+//     }
+// };
+
 export const deleteAdjustment = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const stockAdjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const adjustment = await prisma.stockAdjustments.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(stockAdjustmentId) },
             include: { adjustmentDetails: true } 
         });
         if (!adjustment) {
@@ -329,7 +432,7 @@ export const deleteAdjustment = async (req: Request, res: Response): Promise<voi
             return;
         }
         await prisma.stockAdjustments.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(stockAdjustmentId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,

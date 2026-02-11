@@ -106,9 +106,11 @@ export const getAllBranches = async (req: Request, res: Response): Promise<void>
 
 export const getBranchById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const branchId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
     try {
         const branch = await prisma.branch.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(branchId) }
         });
 
         if (branch) {
@@ -127,10 +129,10 @@ export const upsertBranch = async (req: Request, res: Response): Promise<void> =
     const { id } = req.params;
     const { name, address } = req.body;
     try {
-        const restult = await prisma.$transaction(async (prisma) => {
-            const branchId = id ? parseInt(id, 10) : undefined;
+        const result = await prisma.$transaction(async (prisma) => {
+            const branchId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (branchId) {
-                const checkBranch = await prisma.branch.findUnique({ where: { id: branchId } });
+                const checkBranch = await prisma.branch.findUnique({ where: { id: Number(branchId) } });
                 if (!checkBranch) {
                     res.status(404).json({ message: "Branch not found" });
                 }
@@ -139,7 +141,7 @@ export const upsertBranch = async (req: Request, res: Response): Promise<void> =
             const checkExisting = await prisma.branch.findFirst({ 
                 where: {
                     name,
-                    id: { not: branchId }
+                    id: { not: Number(branchId) }
                 }
             });
             if (checkExisting) {
@@ -148,7 +150,7 @@ export const upsertBranch = async (req: Request, res: Response): Promise<void> =
             }
             const branch = id
                 ? await prisma.branch.update({
-                    where: { id: branchId },
+                    where: { id: Number(branchId) },
                     data: {
                         name,
                         address,
@@ -169,7 +171,7 @@ export const upsertBranch = async (req: Request, res: Response): Promise<void> =
             return branch;
         });
 
-        res.status(id ? 200 : 201).json(restult);
+        res.status(id ? 200 : 201).json(result);
     } catch (error) {
         logger.error("Error upserting branch:", error);
         res.status(500).json({ message: "Internal server error" });

@@ -22,7 +22,7 @@ export const getAllSaleReturnsWithPagination = async (req: Request, res: Respons
         const pageNumber = getQueryNumber(req.query.page, 1)!;
         const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
         const sortField = getQueryString(req.query.sortField, "ref")!;
-        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -292,8 +292,8 @@ export const createSaleReturn = async (
                     note,
                     createdBy: userId,
                     updatedBy: userId,
-                    createdAt: now,
-                    updatedAt: now,
+                    createdAt: currentDate,
+                    updatedAt: currentDate,
                 },
             });
 
@@ -389,8 +389,8 @@ export const createSaleReturn = async (
                                 note: `Sale Return #${ref}`,
                                 createdBy: userId,
                                 approvedBy: userId,
-                                createdAt: now,
-                                approvedAt: now,
+                                createdAt: currentDate,
+                                approvedAt: currentDate,
                             },
                         });
 
@@ -412,7 +412,7 @@ export const createSaleReturn = async (
                         data: {
                             quantity: { increment: item.quantity },
                             updatedBy: userId,
-                            updatedAt: now,
+                            updatedAt: currentDate,
                         },
                     });
                 }

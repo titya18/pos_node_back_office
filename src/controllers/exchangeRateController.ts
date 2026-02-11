@@ -107,10 +107,10 @@ export const upsertExchangeRate = async (req: Request, res: Response): Promise<v
     const { id } = req.params;
     const { amount } = req.body;
     try {
-        const restult = await prisma.$transaction(async (tx) => {
-            const exchangeId = id ? parseInt(id, 10) : undefined;
+        const result = await prisma.$transaction(async (tx) => {
+            const exchangeId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (exchangeId) {
-                const checkBranch = await tx.exchangeRates.findUnique({ where: { id: exchangeId } });
+                const checkBranch = await tx.exchangeRates.findUnique({ where: { id: Number(exchangeId) } });
                 if (!checkBranch) {
                     res.status(404).json({ message: "Exchange rate not found" });
                 }
@@ -118,7 +118,7 @@ export const upsertExchangeRate = async (req: Request, res: Response): Promise<v
 
             const exchange = id
                 ? await tx.exchangeRates.update({
-                    where: { id: exchangeId },
+                    where: { id: Number(exchangeId) },
                     data: {
                         amount: Number(amount),
                         updatedAt: currentDate,
@@ -137,7 +137,7 @@ export const upsertExchangeRate = async (req: Request, res: Response): Promise<v
             return exchange;
         });
 
-        res.status(id ? 200 : 201).json(restult);
+        res.status(id ? 200 : 201).json(result);
     } catch (error) {
         logger.error("Error upserting exchange rate:", error);
         res.status(500).json({ message: "Internal server error" });

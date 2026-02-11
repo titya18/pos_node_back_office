@@ -137,9 +137,9 @@ export const upsertRequest = async (req: Request, res: Response): Promise<void> 
                 return;
             }
 
-            const requestId = id ? parseInt(id, 10) : undefined;
+            const requestId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (requestId) {
-                const checkStockRequest = await tx.stockRequests.findUnique({ where: { id: requestId } });
+                const checkStockRequest = await tx.stockRequests.findUnique({ where: { id: Number(requestId) } });
                 if (!checkStockRequest) {
                     res.status(404).json({ message: "Request not found!" });
                     return;
@@ -171,7 +171,7 @@ export const upsertRequest = async (req: Request, res: Response): Promise<void> 
 
             const requestData = requestId
                 ? await tx.stockRequests.update({
-                    where: { id: requestId },
+                    where: { id: Number(requestId) },
                     data: {
                         branchId: parseInt(branchId, 10),
                         requestBy: req.user ? req.user.id : 0,
@@ -182,7 +182,7 @@ export const upsertRequest = async (req: Request, res: Response): Promise<void> 
                         updatedBy: req.user ? req.user.id : null,
                         requestDetails: {
                             deleteMany: {
-                                requestId: requestId   // MUST include a filter
+                                requestId: Number(requestId)   // MUST include a filter
                             },
                             create: requestDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
@@ -278,54 +278,157 @@ export const upsertRequest = async (req: Request, res: Response): Promise<void> 
     }
 };
 
-export const getStockRequestById = async (req: Request, res: Response): Promise<void> => {
+export const getStockRequestById = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
+
+    const stockRequestId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
     try {
-        const requestData = await prisma.stockRequests.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: { 
+        /* ---------------------------------- */
+        /* 1️⃣ GET PURCHASE (BASE DATA)       */
+        /* ---------------------------------- */
+        const purchase = await prisma.stockRequests.findUnique({
+            where: { id: Number(stockRequestId) },
+            include: {
+                branch: true,
+                creator: true,
+                updater: true,
                 requestDetails: {
                     include: {
-                        products: true, // Include related products data
+                        products: true,
                         productvariants: {
                             select: {
-                                name: true, // Select the `name` field from `productVariant`
+                                id: true,
+                                name: true,
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                     },
                 },
-                branch: true, // Include related branch data
             },
         });
 
-        // Transform data to flatten `name` into `requestDetails`
-        if (requestData) {
-            requestData.requestDetails = requestData.requestDetails.map((detail: any) => ({
-                ...detail,
-                name: detail.productvariants.name, // Add `name` directly
-            }));
-        }
-
-        if (!requestData) {
+        if (!purchase) {
             res.status(404).json({ message: "Stock request not found!" });
             return;
         }
-        res.status(200).json(requestData);
+
+        /* ---------------------------------- */
+        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
+        /* ---------------------------------- */
+        const branchId = purchase.branchId;
+
+        const variantIds = purchase.requestDetails
+        .map((detail) => detail.productVariantId)
+        .filter((id): id is number => id !== null);
+
+        /* ---------------------------------- */
+        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
+        /* ---------------------------------- */
+        const stocks = await prisma.stocks.findMany({
+            where: {
+                branchId,
+                productVariantId: {
+                    in: variantIds,
+                },
+            },
+            select: {
+                productVariantId: true,
+                quantity: true,
+            },
+        });
+
+        /* ---------------------------------- */
+        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
+        /* ---------------------------------- */
+        const stockMap = new Map<number, number>(
+            stocks.map((s) => [
+                s.productVariantId,
+                Number(s.quantity),
+            ])
+        );
+
+        /* ---------------------------------- */
+        /* 5️⃣ MERGE STOCK INTO DETAILS       */
+        /* ---------------------------------- */
+        purchase.requestDetails = purchase.requestDetails.map(
+            (detail: any) => ({
+                ...detail,
+                name: detail.productvariants.name,
+                barcode: detail.productvariants.barcode,
+                sku: detail.productvariants.sku,
+                stocks:
+                    stockMap.get(detail.productVariantId) ?? 0,
+            })
+        );
+
+        /* ---------------------------------- */
+        /* 6️⃣ SEND RESPONSE                  */
+        /* ---------------------------------- */
+        res.status(200).json(purchase);
     } catch (error) {
-        logger.error("Error fetching stock request by ID:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        console.error("Error fetching stock request by ID:", error);
+        res.status(500).json({
+            message: "Error fetching stock request by ID",
+        });
     }
 };
 
+// export const getStockRequestById = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params;
+//     const stockRequestId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+//     try {
+//         const requestData = await prisma.stockRequests.findUnique({
+//             where: { id: Number(stockRequestId) },
+//             include: { 
+//                 requestDetails: {
+//                     include: {
+//                         products: true, // Include related products data
+//                         productvariants: {
+//                             select: {
+//                                 name: true, // Select the `name` field from `productVariant`
+//                                 barcode: true,
+//                                 sku: true
+//                             },
+//                         },
+//                     },
+//                 },
+//                 branch: true, // Include related branch data
+//             },
+//         });
+
+//         // Transform data to flatten `name` into `requestDetails`
+//         if (requestData) {
+//             requestData.requestDetails = requestData.requestDetails.map((detail: any) => ({
+//                 ...detail,
+//                 name: detail.productvariants.name, // Add `name` directly
+//             }));
+//         }
+
+//         if (!requestData) {
+//             res.status(404).json({ message: "Stock request not found!" });
+//             return;
+//         }
+//         res.status(200).json(requestData);
+//     } catch (error) {
+//         logger.error("Error fetching stock request by ID:", error);
+//         const typedError = error as Error;
+//         res.status(500).json({ message: typedError.message });
+//     }
+// };
+
 export const deleteRequest = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const stockRequestId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const requestData = await prisma.stockRequests.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(stockRequestId) },
             include: { requestDetails: true } 
         });
         if (!requestData) {
@@ -333,7 +436,7 @@ export const deleteRequest = async (req: Request, res: Response): Promise<void> 
             return;
         }
         await prisma.stockRequests.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(stockRequestId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,

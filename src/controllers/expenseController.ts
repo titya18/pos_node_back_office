@@ -141,10 +141,10 @@ export const upsertExpense = async (req: Request, res: Response): Promise<void> 
 
     try {
         const restult = await prisma.$transaction(async (prisma) => {
-            const expenseId = id ? parseInt(id, 10) : undefined;
+            const expenseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
             if (expenseId) {
-                const checkExpense = await prisma.expenses.findUnique({ where: { id: expenseId } });
+                const checkExpense = await prisma.expenses.findUnique({ where: { id: Number(expenseId) } });
                 if (!checkExpense) {
                     res.status(404).json({ message: "Expense not found!" });
                     return;
@@ -172,7 +172,7 @@ export const upsertExpense = async (req: Request, res: Response): Promise<void> 
 
             const expense = id
                 ? await prisma.expenses.update({
-                    where: { id: expenseId },
+                    where: { id: Number(expenseId) },
                     data: {
                         branchId: Number(branchId),
                         expenseDate: new Date(dayjs(expenseDate).format("YYYY-MM-DD")),
@@ -210,9 +210,10 @@ export const upsertExpense = async (req: Request, res: Response): Promise<void> 
 
 export const getExpenseById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const expenseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const expense = await prisma.expenses.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(expenseId) }
         });
         if (!expense) {
             res.status(404).json({ message: "Expense not found!" });
@@ -228,15 +229,16 @@ export const getExpenseById = async (req: Request, res: Response): Promise<void>
 
 export const deleteExpense = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const expenseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
-        const expense = await prisma.expenses.findUnique({ where: { id: parseInt(id, 10) } });
+        const expense = await prisma.expenses.findUnique({ where: { id: Number(expenseId) } });
         if (!expense) {
             res.status(404).json({ message: "Expense not found!" });
             return;
         }
         await prisma.expenses.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(expenseId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,

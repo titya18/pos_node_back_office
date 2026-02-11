@@ -49,7 +49,8 @@ export const getAllBrandsWithPagination = async (req: Request, res: Response): P
             FROM "Brands" b
             LEFT JOIN "User" c ON b."createdBy" = c.id
             LEFT JOIN "User" u ON b."updatedBy" = u.id
-            WHERE
+            WHERE b."deletedAt" IS NULL
+            AND (
                 b."en_name" ILIKE $1
                 OR b."description" ILIKE $1
                 OR TO_CHAR(b."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
@@ -57,6 +58,7 @@ export const getAllBrandsWithPagination = async (req: Request, res: Response): P
                 OR TO_CHAR(b."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
         `, ...params.slice(0, params.length - 2));
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
@@ -69,7 +71,8 @@ export const getAllBrandsWithPagination = async (req: Request, res: Response): P
             FROM "Brands" b
             LEFT JOIN "User" c ON b."createdBy" = c.id
             LEFT JOIN "User" u ON b."updatedBy" = u.id
-            WHERE
+            WHERE b."deletedAt" IS NULL
+            AND (
                 b."en_name" ILIKE $1
                 OR b."description" ILIKE $1
                 OR TO_CHAR(b."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
@@ -77,6 +80,7 @@ export const getAllBrandsWithPagination = async (req: Request, res: Response): P
                 OR TO_CHAR(b."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
             ORDER BY b."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
@@ -127,13 +131,13 @@ export const upsertBrand = async (req: Request, res: Response): Promise<void> =>
 
     try {
         const result = await prisma.$transaction(async (prisma) => {
-            const brandId = id ? parseInt(id, 10) : undefined;
+            const brandId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             // console.log("Upsert Brand - Received Data:", { id, en_name, kh_name, description, imagePath });
 
             const checkExisting = await prisma.brands.findFirst({
                 where: {
                     en_name,
-                    id: { not: brandId }
+                    id: { not: Number(brandId) }
                 }
             });
             
@@ -151,7 +155,7 @@ export const upsertBrand = async (req: Request, res: Response): Promise<void> =>
             }
 
             if (brandId) {
-                const checkBrand = await prisma.brands.findUnique({ where: { id: brandId } });
+                const checkBrand = await prisma.brands.findUnique({ where: { id: Number(brandId) } });
                 if (!checkBrand) {
                     res.status(404).json({ message: "Brand not found!" });
                     return;
@@ -168,7 +172,7 @@ export const upsertBrand = async (req: Request, res: Response): Promise<void> =>
 
             const brand = id
                 ? await prisma.brands.update({
-                    where: { id: brandId },
+                    where: { id: Number(brandId) },
                     data: {
                         en_name,
                         kh_name,
@@ -204,9 +208,10 @@ export const upsertBrand = async (req: Request, res: Response): Promise<void> =>
 
 export const getBrandById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const brandId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const brand = await prisma.brands.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(brandId) }
         });
         if (!brand) {
             res.status(404).json({ message: "Brand not found!" });
@@ -222,15 +227,16 @@ export const getBrandById = async (req: Request, res: Response): Promise<void> =
 
 export const deleteBrand = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const brandId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const utcNow = DateTime.now().setZone('Asia/Phnom_Penh').toUTC();
     try {
-        const brand = await prisma.brands.findUnique({ where: { id: parseInt(id, 10) } });
+        const brand = await prisma.brands.findUnique({ where: { id: Number(brandId) } });
         if (!brand) {
             res.status(404).json({ message: "Brand not found!" });
             return;
         }
         await prisma.brands.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(brandId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null

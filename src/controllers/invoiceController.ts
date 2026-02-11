@@ -31,9 +31,7 @@ export const getAllInvoices = async (req: Request, res: Response): Promise<void>
         const sortField = getQueryString(req.query.sortField, "ref")!;
 
         const sortOrder =
-        getQueryString(req.query.sortOrder)?.toLowerCase() === "desc"
-            ? "DESC"
-            : "ASC";
+        getQueryString(req.query.sortOrder)?.toLowerCase() === "asc" ? "desc" : "asc";
 
         const offset = (pageNumber - 1) * pageSize;
 
@@ -188,8 +186,9 @@ export const getNextInvoiceRef = async (
 ): Promise<void> => {
     try {
         const { branchId } = req.params;
+        const branchIdNumber = branchId ? (Array.isArray(branchId) ? Number(branchId[0]) : Number(branchId)) : 0;
 
-        if (!branchId) {
+        if (!branchIdNumber) {
             res.status(400).json({ message: "Branch ID is required" });
             return;
         }
@@ -200,7 +199,7 @@ export const getNextInvoiceRef = async (
         // Find last invoice of THIS YEAR only
         const lastInvoice = await prisma.order.findFirst({
             where: {
-                branchId: Number(branchId),
+                branchId: Number(branchIdNumber),
                 ref: {
                     startsWith: prefix, // ZM2026-
                 },
@@ -242,10 +241,10 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                 return;
             }
 
-            const invoiceId = id ? parseInt(id, 10) : undefined;
+            const invoiceId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             const checkInvoice = invoiceId
                 ? await tx.order.findUnique({
-                    where: { id: invoiceId },
+                    where: { id: Number(invoiceId) },
                     select: {
                         status: true
                     },
@@ -262,7 +261,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                     branchId: Number(branchId),
                     ref: ref,
                     ...(invoiceId && {
-                        id: { not: invoiceId }
+                        id: { not: Number(invoiceId) }
                     })
                  },
             });
@@ -274,7 +273,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
 
             const invoice = invoiceId
                 ? await tx.order.update({
-                    where: { id: invoiceId },
+                    where: { id: Number(invoiceId) },
                     data: {
                         ref,
                         branchId: parseInt(branchId, 10),
@@ -294,7 +293,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         updatedBy: req.user ? req.user.id : null,
                         items: {
                             deleteMany: {
-                                orderId: invoiceId   // MUST include a filter
+                                orderId: Number(invoiceId)   // MUST include a filter
                             }, // Delete existing quotation details
                             create: items.map((detail: any) => ({
                                 productId: detail.productId ? parseInt(detail.productId, 10) : null,
@@ -547,13 +546,13 @@ export const getInvoiceById = async (
     res: Response
 ): Promise<void> => {
     const { id } = req.params;
-
+    const invoiceId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         /* ---------------------------------- */
         /* 1️⃣ GET ORDER (BASE DATA)       */
         /* ---------------------------------- */
         const order = await prisma.order.findUnique({
-            where: { id: Number(id) },
+            where: { id: Number(invoiceId) },
             include: {
                 branch: true,
                 creator: true,
@@ -697,10 +696,11 @@ export const getInvoiceById = async (
 
 export const getInvoicePaymentById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const orderId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const purchasePayment = await prisma.orderOnPayments.findMany({ 
             where: { 
-                orderId: parseInt(id, 10) ,
+                orderId: Number(orderId),
                 status: 'PAID'
             },
             orderBy: { id: 'desc' },
@@ -722,18 +722,19 @@ export const getInvoicePaymentById = async (req: Request, res: Response): Promis
 
 export const deletePayment = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const paymentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const result = await prisma.$transaction(async (tx) => {
             const payment = await tx.orderOnPayments.findUnique({ 
-                where: { id: parseInt(id, 10) },
+                where: { id: Number(paymentId) },
             });
             if (!payment) {
                 res.status(404).json({ message: "Payment not found!" });
                 return;
             }
             await tx.orderOnPayments.update({
-                where: { id: parseInt(id, 10) },
+                where: { id: Number(paymentId) },
                 data: {
                     deletedAt: currentDate,
                     deletedBy: req.user ? req.user.id : null,
@@ -762,10 +763,11 @@ export const deletePayment = async (req: Request, res: Response): Promise<void> 
 
 export const deleteInvoice = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const orderId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const order = await prisma.order.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(orderId) },
             include: { items: true } 
         });
         if (!order) {
@@ -773,7 +775,7 @@ export const deleteInvoice = async (req: Request, res: Response): Promise<void> 
             return;
         }
         await prisma.order.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(orderId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,
@@ -791,11 +793,12 @@ export const deleteInvoice = async (req: Request, res: Response): Promise<void> 
 
 export const approveInvoice = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const orderId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const result = await prisma.$transaction(async (tx) => {
             // 1 Fetch quotation with details
             const invoice = await tx.order.findUnique({
-                where: { id: Number(id) },
+                where: { id: Number(orderId) },
                 include: {
                     items: {
                         include: {

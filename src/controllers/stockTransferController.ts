@@ -143,9 +143,9 @@ export const upsertTransfer = async (req: Request, res: Response): Promise<void>
                 throw new Error("Transfer details cannot be empty");
             }
 
-            const transferId = id ? parseInt(id, 10) : undefined;
+            const transferId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (transferId) {
-                const checkStockTransfer = await tx.stockTransfers.findUnique({ where: { id: transferId } });
+                const checkStockTransfer = await tx.stockTransfers.findUnique({ where: { id: Number(transferId) } });
                 if (!checkStockTransfer) {
                     res.status(404).json({ message: "Transfer not found!" });
                     return;
@@ -173,7 +173,7 @@ export const upsertTransfer = async (req: Request, res: Response): Promise<void>
 
             const transfer = transferId
                 ? await tx.stockTransfers.update({
-                    where: { id: transferId },
+                    where: { id: Number(transferId) },
                     data: {
                         branchId: parseInt(fromBranchId, 10),
                         transferDate: new Date(dayjs(transferDate).format("YYYY-MM-DD")),
@@ -183,7 +183,7 @@ export const upsertTransfer = async (req: Request, res: Response): Promise<void>
                         updatedBy: req.user ? req.user.id : null,
                         transferDetails: {
                             deleteMany: {
-                                transferId: transferId   // MUST include a filter
+                                transferId: Number(transferId)   // MUST include a filter
                             },
                             create: transferDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
@@ -320,54 +320,157 @@ export const upsertTransfer = async (req: Request, res: Response): Promise<void>
     }
 };
 
-export const getStockTransferById = async (req: Request, res: Response): Promise<void> => {
+export const getStockTransferById = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
+
+    const stockAdjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
     try {
-        const transfer = await prisma.stockTransfers.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: { 
+        /* ---------------------------------- */
+        /* 1️⃣ GET PURCHASE (BASE DATA)       */
+        /* ---------------------------------- */
+        const purchase = await prisma.stockTransfers.findUnique({
+            where: { id: Number(stockAdjustmentId) },
+            include: {
+                branch: true,
+                creator: true,
+                updater: true,
                 transferDetails: {
                     include: {
-                        products: true, // Include related products data
+                        products: true,
                         productvariants: {
                             select: {
-                                name: true, // Select the `name` field from `productVariant`
+                                id: true,
+                                name: true,
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                     },
                 },
-                branch: true, // Include related branch data
             },
         });
 
-        // Transform data to flatten `name` into `transferDetails`
-        if (transfer) {
-            transfer.transferDetails = transfer.transferDetails.map((detail: any) => ({
-                ...detail,
-                name: detail.productvariants.name, // Add `name` directly
-            }));
-        }
-
-        if (!transfer) {
-            res.status(404).json({ message: "Transfer not found!" });
+        if (!purchase) {
+            res.status(404).json({ message: "Stock transfer not found!" });
             return;
         }
-        res.status(200).json(transfer);
+
+        /* ---------------------------------- */
+        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
+        /* ---------------------------------- */
+        const branchId = purchase.branchId;
+
+        const variantIds = purchase.transferDetails
+        .map((detail) => detail.productVariantId)
+        .filter((id): id is number => id !== null);
+
+        /* ---------------------------------- */
+        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
+        /* ---------------------------------- */
+        const stocks = await prisma.stocks.findMany({
+            where: {
+                branchId,
+                productVariantId: {
+                    in: variantIds,
+                },
+            },
+            select: {
+                productVariantId: true,
+                quantity: true,
+            },
+        });
+
+        /* ---------------------------------- */
+        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
+        /* ---------------------------------- */
+        const stockMap = new Map<number, number>(
+            stocks.map((s) => [
+                s.productVariantId,
+                Number(s.quantity),
+            ])
+        );
+
+        /* ---------------------------------- */
+        /* 5️⃣ MERGE STOCK INTO DETAILS       */
+        /* ---------------------------------- */
+        purchase.transferDetails = purchase.transferDetails.map(
+            (detail: any) => ({
+                ...detail,
+                name: detail.productvariants.name,
+                barcode: detail.productvariants.barcode,
+                sku: detail.productvariants.sku,
+                stocks:
+                    stockMap.get(detail.productVariantId) ?? 0,
+            })
+        );
+
+        /* ---------------------------------- */
+        /* 6️⃣ SEND RESPONSE                  */
+        /* ---------------------------------- */
+        res.status(200).json(purchase);
     } catch (error) {
-        logger.error("Error fetching transfer by ID:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        console.error("Error fetching transfer by ID:", error);
+        res.status(500).json({
+            message: "Error fetching transfer by ID",
+        });
     }
 };
 
+// export const getStockTransferById = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params;
+//     const transferId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+//     try {
+//         const transfer = await prisma.stockTransfers.findUnique({
+//             where: { id: Number(transferId) },
+//             include: { 
+//                 transferDetails: {
+//                     include: {
+//                         products: true, // Include related products data
+//                         productvariants: {
+//                             select: {
+//                                 name: true, // Select the `name` field from `productVariant`
+//                                 barcode: true,
+//                                 sku: true
+//                             },
+//                         },
+//                     },
+//                 },
+//                 branch: true, // Include related branch data
+//             },
+//         });
+
+//         // Transform data to flatten `name` into `transferDetails`
+//         if (transfer) {
+//             transfer.transferDetails = transfer.transferDetails.map((detail: any) => ({
+//                 ...detail,
+//                 name: detail.productvariants.name, // Add `name` directly
+//             }));
+//         }
+
+//         if (!transfer) {
+//             res.status(404).json({ message: "Transfer not found!" });
+//             return;
+//         }
+//         res.status(200).json(transfer);
+//     } catch (error) {
+//         logger.error("Error fetching transfer by ID:", error);
+//         const typedError = error as Error;
+//         res.status(500).json({ message: typedError.message });
+//     }
+// };
+
 export const deleteTransfer = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const transferId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const transfer = await prisma.stockTransfers.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(transferId) },
             include: { transferDetails: true } 
         });
         if (!transfer) {
@@ -375,7 +478,7 @@ export const deleteTransfer = async (req: Request, res: Response): Promise<void>
             return;
         }
         await prisma.stockTransfers.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(transferId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,

@@ -106,10 +106,10 @@ export const upsertRole = async (req: Request, res: Response): Promise<void> => 
     const utcNow = DateTime.now().setZone('Asia/Phnom_Penh').toUTC();
 
     try {
-        const roleId = id ? parseInt(id, 10) : undefined;
+        const roleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
         if (roleId) {
-            const checkRole = await prisma.role.findUnique({ where: { id: roleId } });
+            const checkRole = await prisma.role.findUnique({ where: { id: Number(roleId) } });
             if (!checkRole) {
                 res.status(404).json({ message: "Role not found!" });
                 return;
@@ -119,7 +119,7 @@ export const upsertRole = async (req: Request, res: Response): Promise<void> => 
         const checkExisting = await prisma.role.findFirst({
             where: {
                 name,
-                id: { not: roleId }
+                id: { not: Number(roleId) }
             }
         });
         if (checkExisting) {
@@ -129,7 +129,7 @@ export const upsertRole = async (req: Request, res: Response): Promise<void> => 
 
         const role = id
             ? await prisma.role.update({
-                where: { id: roleId },
+                where: { id: Number(roleId) },
                 data: {
                     name,
                     permissions: {
@@ -167,9 +167,10 @@ export const upsertRole = async (req: Request, res: Response): Promise<void> => 
 
 export const getRoleById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const roleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const role = await prisma.role.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(roleId) },
             include: { permissions: true }
         });
         if (!role) {
@@ -186,14 +187,15 @@ export const getRoleById = async (req: Request, res: Response): Promise<void> =>
 
 export const deleteRole = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const roleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
-        const role = await prisma.role.findUnique({ where: { id: parseInt(id, 10) } });
+        const role = await prisma.role.findUnique({ where: { id: Number(roleId) } });
         if (!role) {
             res.status(404).json({ message: "Role not found!" });
             return;
         }
         await prisma.role.delete({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(roleId) }
         });
         res.status(200).json({ message: "Role deleted successfully" });
     } catch (error) {

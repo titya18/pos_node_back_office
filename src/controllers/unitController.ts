@@ -47,7 +47,8 @@ export const getAllUnitsWithPagination = async (req: Request, res: Response): Pr
             FROM "Units" un
             LEFT JOIN "User" c ON un."createdBy" = c.id
             LEFT JOIN "User" u ON un."updatedBy" = u.id
-            WHERE
+            WHERE un."deletedAt" IS NULL
+            AND (
                 un."name" ILIKE $1
                 OR un."type"::text ILIKE $1
                 OR TO_CHAR(un."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
@@ -55,6 +56,7 @@ export const getAllUnitsWithPagination = async (req: Request, res: Response): Pr
                 OR TO_CHAR(un."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(un."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
         `, ...params.slice(0, params.length - 2));
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
@@ -67,7 +69,8 @@ export const getAllUnitsWithPagination = async (req: Request, res: Response): Pr
             FROM "Units" un
             LEFT JOIN "User" c ON un."createdBy" = c.id
             LEFT JOIN "User" u ON un."updatedBy" = u.id
-            WHERE
+            WHERE un."deletedAt" IS NULL
+            AND (
                 un."name" ILIKE $1
                 OR un."type"::text ILIKE $1
                 OR TO_CHAR(un."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
@@ -75,6 +78,7 @@ export const getAllUnitsWithPagination = async (req: Request, res: Response): Pr
                 OR TO_CHAR(un."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(un."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
             ORDER BY un."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
@@ -107,9 +111,9 @@ export const upsertUnit = async (req: Request, res: Response): Promise<void> => 
 
     try {
         const result = await prisma.$transaction(async (prisma) => {
-            const unitId = id ? parseInt(id, 10) : undefined;
+            const unitId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (unitId) {
-                const checkUnit = await prisma.units.findUnique({ where: { id: unitId } });
+                const checkUnit = await prisma.units.findUnique({ where: { id: Number(unitId) } });
                 if (!checkUnit) {
                     res.status(404).json({ message: "Unit not found!" });
                     return;
@@ -119,7 +123,7 @@ export const upsertUnit = async (req: Request, res: Response): Promise<void> => 
             const checkExisting = await prisma.units.findFirst({
                 where: {
                     name,
-                    id: { not: unitId }
+                    id: { not: Number(unitId) }
                 }
             });
             if (checkExisting) {
@@ -129,7 +133,7 @@ export const upsertUnit = async (req: Request, res: Response): Promise<void> => 
 
             const unit = id
                 ? await prisma.units.update({
-                    where: { id: unitId },
+                    where: { id: Number(unitId) },
                     data: {
                         name,
                         type,
@@ -161,9 +165,10 @@ export const upsertUnit = async (req: Request, res: Response): Promise<void> => 
 
 export const getUnitById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const unitId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const unit = await prisma.units.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(unitId) }
         });
         if (!unit) {
             res.status(404).json({ message: "Unit not found!" });
@@ -179,17 +184,18 @@ export const getUnitById = async (req: Request, res: Response): Promise<void> =>
 
 export const deleteUnit = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const unitId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
     try {
         const unit = await prisma.units.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(unitId) }
         });
         if (!unit) {
             res.status(404).json({ message: "Unit not found!" });
             return;
         }
         await prisma.units.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(unitId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null

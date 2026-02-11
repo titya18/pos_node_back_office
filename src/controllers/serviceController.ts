@@ -46,7 +46,8 @@ export const getAllServicesWithPagination = async (req: Request, res: Response):
             FROM "Services" s
             LEFT JOIN "User" c ON s."createdBy" = c.id
             LEFT JOIN "User" u ON s."updatedBy" = u.id
-            WHERE
+            WHERE s."deletedAt" IS NULL
+            AND (
                 s."name" ILIKE $1
                 OR s."description" ILIKE $1
                 OR CAST(s."price" AS TEXT) ILIKE $1
@@ -55,6 +56,7 @@ export const getAllServicesWithPagination = async (req: Request, res: Response):
                 OR TO_CHAR(s."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(s."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
         `, ...params.slice(0, params.length - 2));
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
@@ -67,7 +69,8 @@ export const getAllServicesWithPagination = async (req: Request, res: Response):
             FROM "Services" s
             LEFT JOIN "User" c ON s."createdBy" = c.id
             LEFT JOIN "User" u ON s."updatedBy" = u.id
-            WHERE
+            WHERE s."deletedAt" IS NULL
+            AND (
                 s."name" ILIKE $1
                 OR s."description" ILIKE $1
                 OR CAST(s."price" AS TEXT) ILIKE $1
@@ -76,6 +79,7 @@ export const getAllServicesWithPagination = async (req: Request, res: Response):
                 OR TO_CHAR(s."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(s."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
             ORDER BY s."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
@@ -112,13 +116,13 @@ export const upsertService = async (req: Request, res: Response): Promise<void> 
 
     try {
         const restult = await prisma.$transaction(async (prisma) => {
-            const serviceId = id ? parseInt(id, 10) : undefined;
+            const serviceId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             // console.log("Upsert Service - Received Data:", { id, name, description, price, imagePath });
 
             const checkExisting = await prisma.services.findFirst({
                 where: {
                     serviceCode,
-                    id: { not: serviceId }
+                    id: { not: Number(serviceId) }
                 }
             });
 
@@ -128,7 +132,7 @@ export const upsertService = async (req: Request, res: Response): Promise<void> 
             }
 
             if (serviceId) {
-                const checkService = await prisma.services.findUnique({ where: { id: serviceId } });
+                const checkService = await prisma.services.findUnique({ where: { id: Number(serviceId) } });
                 if (!checkService) {
                     res.status(404).json({ message: "Service not found!" });
                     return;
@@ -137,7 +141,7 @@ export const upsertService = async (req: Request, res: Response): Promise<void> 
 
             const service = id
                 ? await prisma.services.update({
-                    where: { id: serviceId },
+                    where: { id: Number(serviceId) },
                     data: {
                         serviceCode,
                         name,
@@ -172,9 +176,10 @@ export const upsertService = async (req: Request, res: Response): Promise<void> 
 
 export const getServiceById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const serviceId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const service = await prisma.services.findUnique({
-            where: { id: parseInt(id, 10) }
+            where: { id: Number(serviceId) }
         });
         if (!service) {
             res.status(404).json({ message: "Service not found!" });
@@ -190,14 +195,15 @@ export const getServiceById = async (req: Request, res: Response): Promise<void>
 
 export const deleteService = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const serviceId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
-        const service = await prisma.services.findUnique({ where: { id: parseInt(id, 10) } });
+        const service = await prisma.services.findUnique({ where: { id: Number(serviceId) } });
         if (!service) {
             res.status(404).json({ message: "Service not found!" });
             return;
         }
         await prisma.services.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(serviceId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null

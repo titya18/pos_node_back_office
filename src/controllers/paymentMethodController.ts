@@ -47,13 +47,15 @@ export const getAllPaymentMethodsWithPagination = async (req: Request, res: Resp
             FROM "PaymentMethods" b
             LEFT JOIN "User" c ON b."createdBy" = c.id
             LEFT JOIN "User" u ON b."updatedBy" = u.id
-            WHERE
+            WHERE b."deletedAt" IS NULL
+            AND (
                 b."name" ILIKE $1
                 OR TO_CHAR(b."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
         `, ...params.slice(0, params.length - 2));
 
         const total = parseInt(totalResult[0]?.total ?? 0, 10);
@@ -66,13 +68,15 @@ export const getAllPaymentMethodsWithPagination = async (req: Request, res: Resp
             FROM "PaymentMethods" b
             LEFT JOIN "User" c ON b."createdBy" = c.id
             LEFT JOIN "User" u ON b."updatedBy" = u.id
-            WHERE
+            WHERE b."deletedAt" IS NULL
+            AND (
                 b."name" ILIKE $1
                 OR TO_CHAR(b."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 OR TO_CHAR(b."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
                 ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
             ORDER BY b."${sortField}" ${sortOrder}
             LIMIT $${params.length - 1} OFFSET $${params.length}
         `, ...params);
@@ -103,9 +107,9 @@ export const upsertPaymentMethod = async (req: Request, res: Response): Promise<
 
     try {
         const result = await prisma.$transaction(async (prisma) => {
-            const paymentId = id ? parseInt(id, 10) : undefined;
+            const paymentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (paymentId) {
-                const checkPayment = await prisma.paymentMethods.findUnique({ where: { id: paymentId } });
+                const checkPayment = await prisma.paymentMethods.findUnique({ where: { id: Number(paymentId) } });
                 if (!checkPayment) {
                     res.status(404).json({ message: "Payment method not found!"});
                     return;
@@ -115,7 +119,7 @@ export const upsertPaymentMethod = async (req: Request, res: Response): Promise<
             const checkExisting = await prisma.paymentMethods.findFirst({
                 where: {
                     name,
-                    id: { not: paymentId }
+                    id: { not: Number(paymentId) }
                 }
             });
             if (checkExisting) {
@@ -125,7 +129,7 @@ export const upsertPaymentMethod = async (req: Request, res: Response): Promise<
 
             const paymentmethod = id
                 ? await prisma.paymentMethods.update({
-                    where: { id: paymentId },
+                    where: { id: Number(paymentId) },
                     data: {
                         name,
                         updatedAt: currentDate,
@@ -154,8 +158,9 @@ export const upsertPaymentMethod = async (req: Request, res: Response): Promise<
 
 export const getPaymentMethodById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const paymentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
-        const paymentMethod = await prisma.paymentMethods.findUnique({ where: { id: parseInt(id, 10) } });
+        const paymentMethod = await prisma.paymentMethods.findUnique({ where: { id: Number(paymentId) } });
         if (!paymentMethod) {
             res.status(404).json({ message: "Payment method not found!" });
             return;
@@ -170,15 +175,16 @@ export const getPaymentMethodById = async (req: Request, res: Response): Promise
 
 export const deletePaymentMethod = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const paymentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
     try {
-        const paymentMethod = await prisma.paymentMethods.findUnique({ where : { id: parseInt(id, 10) } });
+        const paymentMethod = await prisma.paymentMethods.findUnique({ where : { id: Number(paymentId) } });
         if (!paymentMethod) {
             res.status(404).json({ message: "Payment method not found!" });
             return;
         }
         await prisma.paymentMethods.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(paymentId) },
             data: {
                 deletedAt: currentDate,
                 updatedAt: currentDate,

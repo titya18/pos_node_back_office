@@ -2343,7 +2343,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 d:\node-react-pos\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -2383,7 +2383,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 d:\node-react-pos\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -5706,7 +5706,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -5746,7 +5746,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -5793,7 +5793,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -5833,7 +5833,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -5880,7 +5880,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -5920,7 +5920,7 @@ Invalid `prisma.productVariants.findFirst()` invocation in
 D:\Citylink-Inventory\backend\src\controllers\productVariantController.ts:153:60
 
   150 try {
-  151     const variantId = id ? parseInt(id, 10) : undefined;
+  151     const variantId = id ? (Array.isArray(id) ? id[0] : id) : 0;
   152 
 → 153     const checkExisting = await prisma.productVariants.findFirst({
             where: {
@@ -29030,3 +29030,916 @@ Unique constraint failed on the fields: (`barcode`)
     at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:257:52)
     at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:200:24)
+2026-02-11 10:51:34 error: Error toggling product status: 
+Invalid `prisma.products.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:467:44
+
+  464 
+  465 try {
+  466     // Find the user by ID
+→ 467     const user = await prisma.products.findUnique({
+            where: {
+              id: "1"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.products.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:467:44
+
+  464 
+  465 try {
+  466     // Find the user by ID
+→ 467     const user = await prisma.products.findUnique({
+            where: {
+              id: "1"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async statusProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:467:22)
+2026-02-11 10:51:37 error: Error toggling product status: 
+Invalid `prisma.products.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:467:44
+
+  464 
+  465 try {
+  466     // Find the user by ID
+→ 467     const user = await prisma.products.findUnique({
+            where: {
+              id: "1"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.products.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:467:44
+
+  464 
+  465 try {
+  466     // Find the user by ID
+→ 467     const user = await prisma.products.findUnique({
+            where: {
+              id: "1"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async statusProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:467:22)
+2026-02-11 11:41:59 error: Error upserting customer: 
+Invalid `prisma.customer.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\customerController.ts:116:57
+
+  113 const customerId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  114 // console.log("Upsert Customer - Received Data:", { id, name, phone, email, address });
+  115 
+→ 116 const checkExisting = await prisma.customer.findFirst({
+        where: {
+          phone: "343434",
+          email: "",
+          id: {
+            not: "2"
+                 ~~~
+          }
+        }
+      })
+
+Argument `not`: Invalid value provided. Expected Int or NestedIntFilter, provided String. PrismaClientValidationError: 
+Invalid `prisma.customer.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\customerController.ts:116:57
+
+  113 const customerId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  114 // console.log("Upsert Customer - Received Data:", { id, name, phone, email, address });
+  115 
+→ 116 const checkExisting = await prisma.customer.findFirst({
+        where: {
+          phone: "343434",
+          email: "",
+          id: {
+            not: "2"
+                 ~~~
+          }
+        }
+      })
+
+Argument `not`: Invalid value provided. Expected Int or NestedIntFilter, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\customerController.ts:116:35)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertCustomer (D:\Citylink-Inventory\backend\src\controllers\customerController.ts:112:24)
+2026-02-11 11:43:41 error: Error upserting branch: 
+Invalid `prisma.branch.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\branchController.ts:135:57
+
+  132 const result = await prisma.$transaction(async (prisma) => {
+  133     const branchId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  134     if (branchId) {
+→ 135         const checkBranch = await prisma.branch.findUnique({
+                where: {
+                  id: "3"
+                      ~~~
+                }
+              })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.branch.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\branchController.ts:135:57
+
+  132 const result = await prisma.$transaction(async (prisma) => {
+  133     const branchId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  134     if (branchId) {
+→ 135         const checkBranch = await prisma.branch.findUnique({
+                where: {
+                  id: "3"
+                      ~~~
+                }
+              })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\branchController.ts:135:37)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertBranch (D:\Citylink-Inventory\backend\src\controllers\branchController.ts:132:24)
+2026-02-11 11:47:36 error: Error upserting role: 
+Invalid `prisma.role.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\roleController.ts:112:49
+
+  109 const roleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  110 
+  111 if (roleId) {
+→ 112     const checkRole = await prisma.role.findUnique({
+            where: {
+              id: "3"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.role.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\roleController.ts:112:49
+
+  109 const roleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  110 
+  111 if (roleId) {
+→ 112     const checkRole = await prisma.role.findUnique({
+            where: {
+              id: "3"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async upsertRole (D:\Citylink-Inventory\backend\src\controllers\roleController.ts:112:31)
+2026-02-11 12:10:13 error: Error upserting supplier: 
+Invalid `prisma.suppliers.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\supplierController.ts:118:62
+
+  115 const result = await prisma.$transaction(async (prisma) => {
+  116     const supplierId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  117     if (supplierId) {
+→ 118         const checkSupplier = await prisma.suppliers.findUnique({
+                where: {
+                  id: "2"
+                      ~~~
+                }
+              })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.suppliers.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\supplierController.ts:118:62
+
+  115 const result = await prisma.$transaction(async (prisma) => {
+  116     const supplierId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  117     if (supplierId) {
+→ 118         const checkSupplier = await prisma.suppliers.findUnique({
+                where: {
+                  id: "2"
+                      ~~~
+                }
+              })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\supplierController.ts:118:39)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertSupplier (D:\Citylink-Inventory\backend\src\controllers\supplierController.ts:115:24)
+2026-02-11 12:14:44 error: Error upserting category: 
+Invalid `prisma.categories.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\categoryController.ts:121:59
+
+  118     }
+  119 }
+  120 
+→ 121 const checkExisting = await prisma.categories.findFirst({
+        where: {
+          code: "CAT002",
+          id: {
+      +     not: Int
+          }
+        }
+      })
+
+Argument `not` is missing. PrismaClientValidationError: 
+Invalid `prisma.categories.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\categoryController.ts:121:59
+
+  118     }
+  119 }
+  120 
+→ 121 const checkExisting = await prisma.categories.findFirst({
+        where: {
+          code: "CAT002",
+          id: {
+      +     not: Int
+          }
+        }
+      })
+
+Argument `not` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\categoryController.ts:121:35)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertCategory (D:\Citylink-Inventory\backend\src\controllers\categoryController.ts:111:24)
+2026-02-11 12:19:03 error: Error upserting branch: 
+Invalid `prisma.branch.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\branchController.ts:141:55
+
+  138     }
+  139 }
+  140 
+→ 141 const checkExisting = await prisma.branch.findFirst({
+        where: {
+          name: "dfasdfdsa",
+          id: {
+      +     not: Int
+          }
+        }
+      })
+
+Argument `not` is missing. PrismaClientValidationError: 
+Invalid `prisma.branch.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\branchController.ts:141:55
+
+  138     }
+  139 }
+  140 
+→ 141 const checkExisting = await prisma.branch.findFirst({
+        where: {
+          name: "dfasdfdsa",
+          id: {
+      +     not: Int
+          }
+        }
+      })
+
+Argument `not` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\branchController.ts:141:35)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertBranch (D:\Citylink-Inventory\backend\src\controllers\branchController.ts:132:24)
+2026-02-11 12:28:25 error: Error fetching brands: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllBrandsWithPagination (D:\Citylink-Inventory\backend\src\controllers\brandController.ts:67:31)
+2026-02-11 12:28:25 error: Error fetching brands: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllBrandsWithPagination (D:\Citylink-Inventory\backend\src\controllers\brandController.ts:67:31)
+2026-02-11 12:29:49 error: Error fetching brands: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllBrandsWithPagination (D:\Citylink-Inventory\backend\src\controllers\brandController.ts:67:31)
+2026-02-11 12:29:49 error: Error fetching brands: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"` PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `42601`. Message: `ERROR: syntax error at or near "ORDER"`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async getAllBrandsWithPagination (D:\Citylink-Inventory\backend\src\controllers\brandController.ts:67:31)
+2026-02-11 12:42:44 error: Error upserting product: 
+Invalid `tx.products.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:242:37
+
+  239 };
+  240 
+  241 const product = productId
+→ 242     ? await tx.products.update({
+            where: {
+              id: "13"
+                  ~~~~
+            },
+            data: {
+              categoryId: 1,
+              brandId: 1,
+              name: "tests",
+              note: "dgfgsdg",
+              isActive: undefined,
+              image: [
+                "images\\products\\1770788521249-3364888.jpg"
+              ],
+              updatedAt: new Date("2026-02-11T12:40:27.000Z"),
+              updatedBy: 1
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `tx.products.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:242:37
+
+  239 };
+  240 
+  241 const product = productId
+→ 242     ? await tx.products.update({
+            where: {
+              id: "13"
+                  ~~~~
+            },
+            data: {
+              categoryId: 1,
+              brandId: 1,
+              name: "tests",
+              note: "dgfgsdg",
+              isActive: undefined,
+              image: [
+                "images\\products\\1770788521249-3364888.jpg"
+              ],
+              updatedAt: new Date("2026-02-11T12:40:27.000Z"),
+              updatedBy: 1
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:242:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
+2026-02-11 12:45:06 error: Error upserting service: 
+Invalid `prisma.services.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\serviceController.ts:122:57
+
+  119 const serviceId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  120 // console.log("Upsert Service - Received Data:", { id, name, description, price, imagePath });
+  121 
+→ 122 const checkExisting = await prisma.services.findFirst({
+        where: {
+          serviceCode: "SRV002",
+          id: {
+            not: "2"
+                 ~~~
+          }
+        }
+      })
+
+Argument `not`: Invalid value provided. Expected Int or NestedIntFilter, provided String. PrismaClientValidationError: 
+Invalid `prisma.services.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\serviceController.ts:122:57
+
+  119 const serviceId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  120 // console.log("Upsert Service - Received Data:", { id, name, description, price, imagePath });
+  121 
+→ 122 const checkExisting = await prisma.services.findFirst({
+        where: {
+          serviceCode: "SRV002",
+          id: {
+            not: "2"
+                 ~~~
+          }
+        }
+      })
+
+Argument `not`: Invalid value provided. Expected Int or NestedIntFilter, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\serviceController.ts:122:35)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertService (D:\Citylink-Inventory\backend\src\controllers\serviceController.ts:118:25)
+2026-02-11 13:01:13 error: Error creating/updating purchase: 
+Invalid `tx.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:311:49
+
+  308     }
+  309 }
+  310 
+→ 311 const checkRef = await tx.purchases.findFirst({
+        where: {
+          branchId: 1,
+          ref: "PO-00009",
+          id: {
+            not: "12"
+                 ~~~~
+          }
+        }
+      })
+
+Argument `not`: Invalid value provided. Expected Int or NestedIntFilter, provided String. PrismaClientValidationError: 
+Invalid `tx.purchases.findFirst()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:311:49
+
+  308     }
+  309 }
+  310 
+→ 311 const checkRef = await tx.purchases.findFirst({
+        where: {
+          branchId: 1,
+          ref: "PO-00009",
+          id: {
+            not: "12"
+                 ~~~~
+          }
+        }
+      })
+
+Argument `not`: Invalid value provided. Expected Int or NestedIntFilter, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:311:30)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:294:24)
+2026-02-11 13:04:42 error: Error creating/updating purchase: 
+Invalid `tx.purchases.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:373:38
+
+  370 const updatedImages = [...existingImages.filter(img => !parsedImagesToDelete.includes(img)), ...uploadedImages];
+  371 
+  372 const purchase = purchaseId
+→ 373     ? await tx.purchases.update({
+            where: {
+              id: 12
+            },
+            data: {
+              ref: "PO-00009",
+              userId: 1,
+              branchId: 1,
+              supplierId: 1,
+              purchaseDate: new Date("2026-02-11T00:00:00.000Z"),
+              taxRate: "0",
+              taxNet: undefined,
+              discount: "0",
+              shipping: "0",
+              grandTotal: "55",
+              status: "PENDING",
+              note: "dsfsdsfsdfsdfas",
+              image: [],
+              updatedAt: new Date("2026-02-11T13:04:30.000Z"),
+              updatedBy: 1,
+              receivedAt: null,
+              receivedBy: null,
+              purchaseDetails: {
+                deleteMany: {
+                  purchaseId: "12"
+                              ~~~~
+                },
+                create: [
+                  {
+                    productId: 3,
+                    productVariantId: 3,
+                    cost: 5,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 15,
+                    quantity: 3
+                  },
+                  {
+                    productId: 2,
+                    productVariantId: 9,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  },
+                  {
+                    productId: 12,
+                    productVariantId: 8,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: undefined,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  }
+                ]
+              }
+            }
+          })
+
+Argument `purchaseId`: Invalid value provided. Expected IntFilter or Int, provided String. PrismaClientValidationError: 
+Invalid `tx.purchases.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:373:38
+
+  370 const updatedImages = [...existingImages.filter(img => !parsedImagesToDelete.includes(img)), ...uploadedImages];
+  371 
+  372 const purchase = purchaseId
+→ 373     ? await tx.purchases.update({
+            where: {
+              id: 12
+            },
+            data: {
+              ref: "PO-00009",
+              userId: 1,
+              branchId: 1,
+              supplierId: 1,
+              purchaseDate: new Date("2026-02-11T00:00:00.000Z"),
+              taxRate: "0",
+              taxNet: undefined,
+              discount: "0",
+              shipping: "0",
+              grandTotal: "55",
+              status: "PENDING",
+              note: "dsfsdsfsdfsdfas",
+              image: [],
+              updatedAt: new Date("2026-02-11T13:04:30.000Z"),
+              updatedBy: 1,
+              receivedAt: null,
+              receivedBy: null,
+              purchaseDetails: {
+                deleteMany: {
+                  purchaseId: "12"
+                              ~~~~
+                },
+                create: [
+                  {
+                    productId: 3,
+                    productVariantId: 3,
+                    cost: 5,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 15,
+                    quantity: 3
+                  },
+                  {
+                    productId: 2,
+                    productVariantId: 9,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  },
+                  {
+                    productId: 12,
+                    productVariantId: 8,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: undefined,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  }
+                ]
+              }
+            }
+          })
+
+Argument `purchaseId`: Invalid value provided. Expected IntFilter or Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:373:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:294:24)
+2026-02-11 13:05:57 error: Error creating/updating purchase: 
+Invalid `tx.purchases.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:373:38
+
+  370 const updatedImages = [...existingImages.filter(img => !parsedImagesToDelete.includes(img)), ...uploadedImages];
+  371 
+  372 const purchase = purchaseId
+→ 373     ? await tx.purchases.update({
+            where: {
+              id: 12
+            },
+            data: {
+              ref: "PO-00009",
+              userId: 1,
+              branchId: 1,
+              supplierId: 1,
+              purchaseDate: new Date("2026-02-11T00:00:00.000Z"),
+              taxRate: "0",
+              taxNet: undefined,
+              discount: "0",
+              shipping: "0",
+              grandTotal: "55",
+              status: "PENDING",
+              note: "dsfsdsfsdfsdfas",
+              image: [],
+              updatedAt: new Date("2026-02-11T13:05:39.000Z"),
+              updatedBy: 1,
+              receivedAt: null,
+              receivedBy: null,
+              purchaseDetails: {
+                deleteMany: {
+                  purchaseId: "12"
+                              ~~~~
+                },
+                create: [
+                  {
+                    productId: 3,
+                    productVariantId: 3,
+                    cost: 5,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 15,
+                    quantity: 3
+                  },
+                  {
+                    productId: 2,
+                    productVariantId: 9,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  },
+                  {
+                    productId: 12,
+                    productVariantId: 8,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: undefined,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  }
+                ]
+              }
+            }
+          })
+
+Argument `purchaseId`: Invalid value provided. Expected IntFilter or Int, provided String. PrismaClientValidationError: 
+Invalid `tx.purchases.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:373:38
+
+  370 const updatedImages = [...existingImages.filter(img => !parsedImagesToDelete.includes(img)), ...uploadedImages];
+  371 
+  372 const purchase = purchaseId
+→ 373     ? await tx.purchases.update({
+            where: {
+              id: 12
+            },
+            data: {
+              ref: "PO-00009",
+              userId: 1,
+              branchId: 1,
+              supplierId: 1,
+              purchaseDate: new Date("2026-02-11T00:00:00.000Z"),
+              taxRate: "0",
+              taxNet: undefined,
+              discount: "0",
+              shipping: "0",
+              grandTotal: "55",
+              status: "PENDING",
+              note: "dsfsdsfsdfsdfas",
+              image: [],
+              updatedAt: new Date("2026-02-11T13:05:39.000Z"),
+              updatedBy: 1,
+              receivedAt: null,
+              receivedBy: null,
+              purchaseDetails: {
+                deleteMany: {
+                  purchaseId: "12"
+                              ~~~~
+                },
+                create: [
+                  {
+                    productId: 3,
+                    productVariantId: 3,
+                    cost: 5,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 15,
+                    quantity: 3
+                  },
+                  {
+                    productId: 2,
+                    productVariantId: 9,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: 0,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  },
+                  {
+                    productId: 12,
+                    productVariantId: 8,
+                    cost: 20,
+                    taxNet: 0,
+                    taxMethod: "Include",
+                    discount: undefined,
+                    discountMethod: "Fixed",
+                    total: 20,
+                    quantity: 1
+                  }
+                ]
+              }
+            }
+          })
+
+Argument `purchaseId`: Invalid value provided. Expected IntFilter or Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:373:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertPurchase (D:\Citylink-Inventory\backend\src\controllers\purchaseController.ts:294:24)
+2026-02-11 14:20:16 error: Error creating/updating adjustment: 
+Invalid `tx.stockAdjustments.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:138:72
+
+  135 
+  136 const adjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  137 if (adjustmentId) {
+→ 138     const checkStockAdjustment = await tx.stockAdjustments.findUnique({
+            where: {
+              id: "3"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `tx.stockAdjustments.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:138:72
+
+  135 
+  136 const adjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+  137 if (adjustmentId) {
+→ 138     const checkStockAdjustment = await tx.stockAdjustments.findUnique({
+            where: {
+              id: "3"
+                  ~~~
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:138:46)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertAdjustment (D:\Citylink-Inventory\backend\src\controllers\stockAdjustmentController.ts:128:24)
+2026-02-11 14:43:19 error: Error upserting income: 
+Invalid `prisma.incomes.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:175:40
+
+  172 }
+  173 
+  174 const income = id
+→ 175     ? await prisma.incomes.update({
+            where: {
+              id: "1"
+                  ~~~
+            },
+            data: {
+              branchId: 1,
+              incomeDate: new Date("2026-02-11T00:00:00.000Z"),
+              name: "sdfdsfsfd ffsdfd",
+              amount: "12",
+              description: "fdfsdfsdaf",
+              updatedAt: new Date("2026-02-11T14:30:45.000Z"),
+              updatedBy: 1
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String. PrismaClientValidationError: 
+Invalid `prisma.incomes.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:175:40
+
+  172 }
+  173 
+  174 const income = id
+→ 175     ? await prisma.incomes.update({
+            where: {
+              id: "1"
+                  ~~~
+            },
+            data: {
+              branchId: 1,
+              incomeDate: new Date("2026-02-11T00:00:00.000Z"),
+              name: "sdfdsfsfd ffsdfd",
+              amount: "12",
+              description: "fdfsdfsdaf",
+              updatedAt: new Date("2026-02-11T14:30:45.000Z"),
+              updatedBy: 1
+            }
+          })
+
+Argument `id`: Invalid value provided. Expected Int, provided String.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:175:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertIncome (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:144:25)

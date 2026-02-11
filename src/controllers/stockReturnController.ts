@@ -137,9 +137,9 @@ export const upsertReturn = async (req: Request, res: Response): Promise<void> =
                 return;
             }
 
-            const returnId = id ? parseInt(id, 10) : undefined;
+            const returnId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (returnId) {
-                const checkStockReturn = await tx.stockReturns.findUnique({ where: { id: returnId } });
+                const checkStockReturn = await tx.stockReturns.findUnique({ where: { id: Number(returnId) } });
                 if (!checkStockReturn) {
                     res.status(404).json({ message: "Stock return not found!" });
                     return;
@@ -171,7 +171,7 @@ export const upsertReturn = async (req: Request, res: Response): Promise<void> =
 
             const returnData = returnId
                 ? await tx.stockReturns.update({
-                    where: { id: returnId },
+                    where: { id: Number(returnId) },
                     data: {
                         branchId: parseInt(branchId, 10),
                         returnBy: req.user ? req.user.id : 0,
@@ -182,7 +182,7 @@ export const upsertReturn = async (req: Request, res: Response): Promise<void> =
                         updatedBy: req.user ? req.user.id : null,
                         returnDetails: {
                             deleteMany: {
-                                returnId: returnId   // MUST include a filter
+                                returnId: Number(returnId)   // MUST include a filter
                             },
                             create: returnDetails.map((detail: any) => ({
                                 productId: parseInt(detail.productId, 10),
@@ -278,54 +278,157 @@ export const upsertReturn = async (req: Request, res: Response): Promise<void> =
     }
 };
 
-export const getStockReturnById = async (req: Request, res: Response): Promise<void> => {
+export const getStockReturnById = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     const { id } = req.params;
+
+    const stockReturnId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
     try {
-        const returnData = await prisma.stockReturns.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: { 
+        /* ---------------------------------- */
+        /* 1️⃣ GET PURCHASE (BASE DATA)       */
+        /* ---------------------------------- */
+        const purchase = await prisma.stockReturns.findUnique({
+            where: { id: Number(stockReturnId) },
+            include: {
+                branch: true,
+                creator: true,
+                updater: true,
                 returnDetails: {
                     include: {
-                        products: true, // Include related products data
+                        products: true,
                         productvariants: {
                             select: {
-                                name: true, // Select the `name` field from `productVariant`
+                                id: true,
+                                name: true,
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                     },
                 },
-                branch: true, // Include related branch data
             },
         });
 
-        // Transform data to flatten `name` into `requestDetails`
-        if (returnData) {
-            returnData.returnDetails = returnData.returnDetails.map((detail: any) => ({
-                ...detail,
-                name: detail.productvariants.name, // Add `name` directly
-            }));
-        }
-
-        if (!returnData) {
+        if (!purchase) {
             res.status(404).json({ message: "Stock return not found!" });
             return;
         }
-        res.status(200).json(returnData);
+
+        /* ---------------------------------- */
+        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
+        /* ---------------------------------- */
+        const branchId = purchase.branchId;
+
+        const variantIds = purchase.returnDetails
+        .map((detail) => detail.productVariantId)
+        .filter((id): id is number => id !== null);
+
+        /* ---------------------------------- */
+        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
+        /* ---------------------------------- */
+        const stocks = await prisma.stocks.findMany({
+            where: {
+                branchId,
+                productVariantId: {
+                    in: variantIds,
+                },
+            },
+            select: {
+                productVariantId: true,
+                quantity: true,
+            },
+        });
+
+        /* ---------------------------------- */
+        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
+        /* ---------------------------------- */
+        const stockMap = new Map<number, number>(
+            stocks.map((s) => [
+                s.productVariantId,
+                Number(s.quantity),
+            ])
+        );
+
+        /* ---------------------------------- */
+        /* 5️⃣ MERGE STOCK INTO DETAILS       */
+        /* ---------------------------------- */
+        purchase.returnDetails = purchase.returnDetails.map(
+            (detail: any) => ({
+                ...detail,
+                name: detail.productvariants.name,
+                barcode: detail.productvariants.barcode,
+                sku: detail.productvariants.sku,
+                stocks:
+                    stockMap.get(detail.productVariantId) ?? 0,
+            })
+        );
+
+        /* ---------------------------------- */
+        /* 6️⃣ SEND RESPONSE                  */
+        /* ---------------------------------- */
+        res.status(200).json(purchase);
     } catch (error) {
-        logger.error("Error fetching stock return by ID:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        console.error("Error fetching stock return by ID:", error);
+        res.status(500).json({
+            message: "Error fetching stock return by ID",
+        });
     }
 };
 
+// export const getStockReturnById = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params;
+//     const stockReturnId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+//     try {
+//         const returnData = await prisma.stockReturns.findUnique({
+//             where: { id: Number(stockReturnId) },
+//             include: { 
+//                 returnDetails: {
+//                     include: {
+//                         products: true, // Include related products data
+//                         productvariants: {
+//                             select: {
+//                                 name: true, // Select the `name` field from `productVariant`
+//                                 barcode: true,
+//                                 sku: true
+//                             },
+//                         },
+//                     },
+//                 },
+//                 branch: true, // Include related branch data
+//             },
+//         });
+
+//         // Transform data to flatten `name` into `requestDetails`
+//         if (returnData) {
+//             returnData.returnDetails = returnData.returnDetails.map((detail: any) => ({
+//                 ...detail,
+//                 name: detail.productvariants.name, // Add `name` directly
+//             }));
+//         }
+
+//         if (!returnData) {
+//             res.status(404).json({ message: "Stock return not found!" });
+//             return;
+//         }
+//         res.status(200).json(returnData);
+//     } catch (error) {
+//         logger.error("Error fetching stock return by ID:", error);
+//         const typedError = error as Error;
+//         res.status(500).json({ message: typedError.message });
+//     }
+// };
+
 export const deleteReturn = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const stockReturnId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const returnData = await prisma.stockReturns.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(stockReturnId) },
             include: { returnDetails: true } 
         });
         if (!returnData) {
@@ -333,7 +436,7 @@ export const deleteReturn = async (req: Request, res: Response): Promise<void> =
             return;
         }
         await prisma.stockReturns.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(stockReturnId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,

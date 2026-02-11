@@ -142,10 +142,10 @@ export const upsertIncome = async (req: Request, res: Response): Promise<void> =
 
     try {
         const restult = await prisma.$transaction(async (prisma) => {
-            const incomeId = id ? parseInt(id, 10) : undefined;
+            const incomeId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
             if (incomeId) {
-                const checkIncome = await prisma.expenses.findUnique({ where: { id: incomeId } });
+                const checkIncome = await prisma.incomes.findUnique({ where: { id: Number(incomeId) } });
                 if (!checkIncome) {
                     res.status(404).json({ message: "Income not found!" });
                     return;
@@ -173,7 +173,7 @@ export const upsertIncome = async (req: Request, res: Response): Promise<void> =
 
             const income = id
                 ? await prisma.incomes.update({
-                    where: { id: incomeId },
+                    where: { id: Number(incomeId) },
                     data: {
                         branchId: Number(branchId),
                         incomeDate: new Date(dayjs(incomeDate).format("YYYY-MM-DD")),
@@ -211,9 +211,10 @@ export const upsertIncome = async (req: Request, res: Response): Promise<void> =
 
 export const getIncomeById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const incomeId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
-        const income = await prisma.expenses.findUnique({
-            where: { id: parseInt(id, 10) }
+        const income = await prisma.incomes.findUnique({
+            where: { id: Number(incomeId) }
         });
         if (!income) {
             res.status(404).json({ message: "Income not found!" });
@@ -229,15 +230,16 @@ export const getIncomeById = async (req: Request, res: Response): Promise<void> 
 
 export const deleteIncome = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const incomeId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
-        const income = await prisma.incomes.findUnique({ where: { id: parseInt(id, 10) } });
+        const income = await prisma.incomes.findUnique({ where: { id: Number(incomeId) } });
         if (!income) {
             res.status(404).json({ message: "Income not found!" });
             return;
         }
         await prisma.incomes.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(incomeId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,

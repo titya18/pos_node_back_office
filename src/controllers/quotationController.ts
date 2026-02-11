@@ -22,7 +22,7 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
         const pageNumber = getQueryNumber(req.query.page, 1)!;
         const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
         const sortField = getQueryString(req.query.sortField, "ref")!;
-        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "asc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -137,15 +137,16 @@ export const getAllQuotations = async (req: Request, res: Response): Promise<voi
 
 export const getNextQuotationRef = async (req: Request, res: Response): Promise<void> => {
     const { branchId } = req.params;
+    const branchIdNumber = branchId ? (Array.isArray(branchId) ? Number(branchId[0]) : Number(branchId)) : 0;
 
-    if (!branchId) {
+    if (!branchIdNumber) {
         res.status(400).json({ message: "Branch ID is required" });
         return;
     }
 
     const lastQuotation = await prisma.quotations.findFirst({
         where: {
-            branchId: parseInt(branchId, 10),
+            branchId: Number(branchIdNumber),
         },
         orderBy: {
             id: "desc",
@@ -178,9 +179,9 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                 return;
             }
 
-            const quotationId = id ? parseInt(id, 10) : undefined;
+            const quotationId = id ? (Array.isArray(id) ? id[0] : id) : 0;
             if (quotationId) {
-                const checkQuotation = await tx.quotations.findUnique({ where: { id: quotationId } });
+                const checkQuotation = await tx.quotations.findUnique({ where: { id: Number(quotationId) } });
                 if (!checkQuotation) {
                     res.status(404).json({ message: "Quotation not found!" });
                     return;
@@ -192,7 +193,7 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                     branchId: Number(branchId),
                     ref: ref,
                     ...(quotationId && {
-                        id: { not: quotationId }
+                        id: { not: Number(quotationId) }
                     })
                  },
             });
@@ -223,7 +224,7 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
 
             const quotation = quotationId
                 ? await tx.quotations.update({
-                    where: { id: quotationId },
+                    where: { id: Number(quotationId) },
                     data: {
                         ref,
                         branchId: parseInt(branchId, 10),
@@ -243,7 +244,7 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                         sentBy: status === "SENT" ? req.user ? req.user.id : null : null,
                         quotationDetails: {
                             deleteMany: {
-                                quotationId: quotationId   // MUST include a filter
+                                quotationId: Number(quotationId)   // MUST include a filter
                             }, // Delete existing quotation details
                             create: quotationDetails.map((detail: any) => ({
                                 productId: detail.productId ? parseInt(detail.productId, 10) : null,
@@ -315,13 +316,14 @@ export const getQuotationById = async (
     res: Response
 ): Promise<void> => {
     const { id } = req.params;
+    const quotationId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
     try {
         /* ---------------------------------- */
         /* 1️⃣ GET QUOTATION (BASE DATA)       */
         /* ---------------------------------- */
         const quotation = await prisma.quotations.findUnique({
-            where: { id: Number(id) },
+            where: { id: Number(quotationId) },
             include: {
                 branch: true,
                 creator: true,
@@ -472,10 +474,11 @@ export const getQuotationById = async (
 
 export const deleteQuotation = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const quotationId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { delReason } = req.body;
     try {
         const quotation = await prisma.quotations.findUnique({ 
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(quotationId) },
             include: { quotationDetails: true } 
         });
 
@@ -484,7 +487,7 @@ export const deleteQuotation = async (req: Request, res: Response): Promise<void
             return;
         }
         await prisma.quotations.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(quotationId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null,
@@ -502,13 +505,14 @@ export const deleteQuotation = async (req: Request, res: Response): Promise<void
 
 export const convertQuotationToOrder = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const quotationId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const result = await prisma.$transaction(async (tx) => {
             /* ------------------------------------------------ */
             /* 1️ FETCH QUOTATION WITH DETAILS                  */
             /* ------------------------------------------------ */
             const quotation = await tx.quotations.findUnique({
-                where: { id: Number(id) },
+                where: { id: Number(quotationId) },
                 include: {
                     quotationDetails: {
                         include: {

@@ -199,17 +199,17 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-            const productId = id ? parseInt(id, 10) : undefined;
+            const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
             // -------------------- PRODUCT --------------------
             const existingProduct = await tx.products.findFirst({
-                where: { name, id: { not: productId } },
+                where: { name, id: { not: Number(productId) } },
             });
             if (existingProduct) throw new Error("Product's name must be unique");
 
             let existingImages: string[] = [];
             if (productId) {
-                const checkProduct = await tx.products.findUnique({ where: { id: productId } });
+                const checkProduct = await tx.products.findUnique({ where: { id: Number(productId) } });
                 if (!checkProduct) throw new Error("Product not found");
                 existingImages = checkProduct.image || [];
             }
@@ -239,7 +239,7 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
             };
 
             const product = productId
-                ? await tx.products.update({ where: { id: productId }, data: productData })
+                ? await tx.products.update({ where: { id: Number(productId) }, data: productData })
                 : await tx.products.create({ data: { ...productData, createdAt: currentDate, createdBy: req.user?.id || null } });
 
             // -------------------- VARIANT --------------------
@@ -328,7 +328,7 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
 //     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
 
 //     try {
-//         const productId = id ? parseInt(id, 10) : undefined;
+//         const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
 //         const checkExisting = await prisma.products.findFirst({
 //             where: {
@@ -405,9 +405,10 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
 
 export const getProductById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const product = await prisma.products.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(productId) },
             include: {
                 productvariants: {
                     include: {
@@ -434,15 +435,16 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
 
 export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
     try {
-        const product = await prisma.products.findUnique({ where: { id: parseInt(id, 10) } });
+        const product = await prisma.products.findUnique({ where: { id: Number(productId) } });
         if (!product) {
             res.status(404).json({ message: "Product not found!" });
             return;
         }
         await prisma.products.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(productId) },
             data: {
                 deletedAt: currentDate,
                 deletedBy: req.user ? req.user.id : null
@@ -457,12 +459,13 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
 };
 
 export const statusProduct = async (req: Request, res: Response): Promise<void> => {
-    const prdouctId = parseInt(req.params.id, 10); // Parse user ID from request params
+    const { id } = req.params;
+    const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;// Parse user ID from request params
 
     try {
         // Find the user by ID
         const user = await prisma.products.findUnique({
-            where: { id: prdouctId },
+            where: { id: Number(productId) },
         });
 
         if (!user) {
@@ -472,13 +475,13 @@ export const statusProduct = async (req: Request, res: Response): Promise<void> 
 
         // Toggle the user's status
         const updatedProduct = await prisma.products.update({
-            where: { id: prdouctId },
+            where: { id: Number(productId) },
             data: { isActive: user.isActive === 1 ? 0 : 1 },
         });
 
         res.status(200).json(updatedProduct);
     } catch (error) {
-        logger.error("Error toggling user status:", error);
+        logger.error("Error toggling product status:", error);
         const typedError = error as Error; // Type assertion
         res.status(500).json({ message: typedError.message });
     }
