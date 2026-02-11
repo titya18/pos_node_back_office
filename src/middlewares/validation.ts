@@ -115,9 +115,15 @@ export const validateProductRequest = [
 export const validateProductVariantRequest = [
     body("productId").notEmpty().withMessage("Product must be required"),
     body("unitId").notEmpty().withMessage("Unit must be required"),
-    body("barcode").notEmpty().withMessage("Barcode must be required").custom(async (barcode) => {
+    body("barcode").notEmpty().withMessage("Barcode must be required").custom(async (barcode, { req }) => {
+        const productType = req.body.productType;
         const existingCode = await prisma.productVariants.findUnique({
-            where: { barcode: barcode }
+            where: {
+                productType_barcode: {
+                    productType: productType,
+                    barcode: barcode
+                }
+            }
         });
         if (existingCode) {
             throw new Error("Barcode is already in use.");
