@@ -7,6 +7,7 @@ import fs from 'fs';  // Import fs module to delete files
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { getQueryNumber, getQueryString } from "../utils/request";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -18,11 +19,11 @@ const prisma = new PrismaClient();
 
 export const getAllBrandsWithPagination = async (req: Request, res: Response): Promise<void> => {
     try {
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
-        const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString().trim() : "";
-        const sortField = req.query.sortField ? req.query.sortField.toString() : "name";
-        const sortOrder = req.query.sortOrder === "desc" ? "DESC" : "ASC";
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "name")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
         const offset = (pageNumber - 1) * pageSize;
 
         // Base LIKE term for simple fields

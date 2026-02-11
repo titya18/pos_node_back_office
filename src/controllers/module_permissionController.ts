@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { DateTime } from "luxon";
 import { PrismaClient } from '@prisma/client';
 import logger from '../utils/logger';
+import { getQueryNumber, getQueryString } from "../utils/request";
 
 const prisma = new PrismaClient();
 
@@ -118,11 +119,11 @@ export const upsertModule = async (req: Request, res: Response): Promise<void> =
 // Get All Modules
 export const getAllModulesWithPagination = async (req: Request, res: Response): Promise<void> => {
     try {
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
-        const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString() : "";
-        const sortField = req.query.sortField ? req.query.sortField.toString() : "name";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "name")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const skip = (pageNumber - 1) * pageSize;
 

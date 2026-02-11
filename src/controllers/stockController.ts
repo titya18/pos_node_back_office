@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { buildBranchFilter } from "../utils/branchFilter";
+import { getQueryNumber, getQueryString } from "../utils/request";
 
 const prisma = new PrismaClient();
 
@@ -17,11 +18,11 @@ const SORT_FIELD_MAP: Record<string, string> = {
 
 export const stockSummary = async (req: Request, res: Response) => {
     try {
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
-        const searchTerm = (req.query.searchTerm as string || "").trim();
-        const sortField = (req.query.sortField as string) || "productName";
-        const sortOrder = req.query.sortOrder === "desc" ? "DESC" : "ASC";
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "productName")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
         const offset = (pageNumber - 1) * pageSize;
         const likeTerm = `%${searchTerm}%`;
 

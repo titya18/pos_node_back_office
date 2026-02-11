@@ -3,6 +3,7 @@ import { ItemType, PrismaClient } from "@prisma/client";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { getQueryNumber, getQueryString } from "../utils/request";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -20,13 +21,13 @@ export const getAllReportInvoices = async (
         /* ------------------------ */
         /* PAGINATION & FILTERS    */
         /* ------------------------ */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "asc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -231,13 +232,13 @@ export const getAllCancelReportInvoices = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -433,13 +434,13 @@ export const getAllPaymentInvoices = async (
 ): Promise<void> => {
     try {
         /* -------------------- Pagination -------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "paymentDate";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "paymentDate")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -639,13 +640,13 @@ export const getAllReportQuotations = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -827,13 +828,13 @@ export const getAllReportPurchases = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -1012,13 +1013,13 @@ export const getAllPaymentPurchases = async (
 ): Promise<void> => {
     try {
         /* -------------------- Pagination -------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "paymentDate";
-        const sortOrder = req.query.sortOrder === "desc" ? "asc" : "desc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "paymentDate")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -1215,13 +1216,13 @@ export const getAllReportAdjustments = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -1389,13 +1390,13 @@ export const getAllReportTransfers = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -1567,13 +1568,13 @@ export const getAllReportRequests = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -1746,13 +1747,13 @@ export const getAllReportReturns = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -1925,13 +1926,13 @@ export const getAllReportExpenses = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -2078,13 +2079,13 @@ export const getAllReportIncomes = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -2231,13 +2232,13 @@ export const getAllReportSalesReturns = async (
         /* -------------------------------------------------- */
         /* PAGINATION & FILTER PARAMS                         */
         /* -------------------------------------------------- */
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page as string, 10) || 1;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
         const offset = (pageNumber - 1) * pageSize;
 
-        const searchTerm = ((req.query.searchTerm as string) || "").trim();
-        const sortField = (req.query.sortField as string) || "ref";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "ref")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
