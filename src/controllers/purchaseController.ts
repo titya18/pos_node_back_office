@@ -350,6 +350,12 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
             // Combine remaining existing images with newly uploaded ones
             const updatedImages = [...existingImages.filter(img => !parsedImagesToDelete.includes(img)), ...uploadedImages];
 
+            const lastExchange = await prisma.exchangeRates.findFirst({
+                orderBy: {
+                    id: "desc",
+                },
+            });
+
             const purchase = purchaseId
                 ? await tx.purchases.update({
                     where: { id: Number(purchaseId) },
@@ -364,6 +370,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         discount,
                         shipping,
                         grandTotal,
+                        exchangeRate: lastExchange?.amount ?? 0,
                         status,
                         note,
                         image: updatedImages,
@@ -400,6 +407,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         discount,
                         shipping,
                         grandTotal,
+                        exchangeRate: lastExchange?.amount ?? 0,
                         status,
                         note,
                         image: updatedImages,
@@ -658,7 +666,7 @@ export const getPurchaseById = async (
                     stockMap.get(detail.productVariantId) ?? 0,
             })
         );
-
+        
         /* ---------------------------------- */
         /* 6️⃣ SEND RESPONSE                  */
         /* ---------------------------------- */

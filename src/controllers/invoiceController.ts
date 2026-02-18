@@ -271,6 +271,12 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                 return;
             }
 
+            const lastExchange = await prisma.exchangeRates.findFirst({
+                orderBy: {
+                    id: "desc",
+                },
+            });
+
             const invoice = invoiceId
                 ? await tx.order.update({
                     where: { id: Number(invoiceId) },
@@ -285,6 +291,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         discount,
                         shipping,
                         totalAmount,
+                        exchangeRate: lastExchange?.amount ?? 0,
                         status,
                         note,
                         approvedAt: status === "APPROVED" ? currentDate : null,
@@ -330,6 +337,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         discount,
                         shipping,
                         totalAmount,
+                        exchangeRate: lastExchange?.amount ?? 0,
                         status,
                         note,
                         orderDate: new Date(dayjs(orderDate).format("YYYY-MM-DD")),
@@ -438,8 +446,8 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
 
                     // Update total stock
                     await tx.stocks.update({
-                            where: { id: stock.id },
-                            data: {
+                        where: { id: stock.id },
+                        data: {
                             quantity: { decrement: item.quantity },
                             updatedAt: new Date(),
                             updatedBy: loggedInUser.id,
@@ -557,6 +565,7 @@ export const getInvoiceById = async (
                 branch: true,
                 creator: true,
                 updater: true,
+                customer: true,
                 items: {
                     include: {
                         products: true,

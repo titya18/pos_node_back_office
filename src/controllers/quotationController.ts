@@ -328,6 +328,7 @@ export const getQuotationById = async (
                 branch: true,
                 creator: true,
                 updater: true,
+                customers: true,
                 quotationDetails: {
                     include: {
                         products: true,

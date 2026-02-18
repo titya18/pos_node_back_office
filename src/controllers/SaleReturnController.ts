@@ -482,7 +482,8 @@ export const getSaleReturnById = async (req: Request, res: Response): Promise<vo
                             select: {
                                 name: true, // Select the `name` field from `productVariant`
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                         services: true, // Include related services data
@@ -523,7 +524,8 @@ export const getSaleReturnByReturnId = async (req: Request, res: Response): Prom
                             select: {
                                 name: true, // Select the `name` field from `productVariant`
                                 barcode: true,
-                                sku: true
+                                sku: true,
+                                productType: true,
                             },
                         },
                         services: true, // Include related services data
