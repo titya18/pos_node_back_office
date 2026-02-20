@@ -185,6 +185,7 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
         retailPrice,
         wholeSalePrice,
         variantValueIds,
+        stocks
     } = req.body;
 
     const imagePaths = req.files ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, "")) : [];
@@ -200,6 +201,18 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
     try {
         const result = await prisma.$transaction(async (tx) => {
             const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+            
+            /* ---------------- Stocks ---------------- */
+            let parsedStocks: { branchId: number; quantity: number }[] = [];
+
+            if (typeof stocks === "string") {
+                parsedStocks = JSON.parse(stocks);
+            } else if (Array.isArray(stocks)) {
+                parsedStocks = stocks.map((s: any) => ({
+                    branchId: Number(s.branchId),
+                    quantity: Number(s.quantity)
+                }));
+            }
 
             // -------------------- PRODUCT --------------------
             const existingProduct = await tx.products.findFirst({
@@ -245,19 +258,19 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
             // -------------------- VARIANT --------------------
             const existingVariant = await tx.productVariants.findFirst({ where: { productId: product.id } });
 
-            // Pre-check uniqueness for friendly messages
-            const preExisting = await tx.productVariants.findFirst({
-                where: {
-                    OR: [
-                        { sku, productType, id: { not: existingVariant?.id } },
-                        { barcode, productType, id: { not: existingVariant?.id } }
-                    ]
-                }
-            });
-            if (preExisting) {
-                if (preExisting.sku === sku) throw new Error("SKU already exists for this product type");
-                if (preExisting.barcode === barcode) throw new Error("Barcode already exists for this product type");
-            }
+            // // Pre-check uniqueness for friendly messages
+            // const preExisting = await tx.productVariants.findFirst({
+            //     where: {
+            //         OR: [
+            //             { sku, productType, id: { not: existingVariant?.id } },
+            //             { barcode, productType, id: { not: existingVariant?.id } }
+            //         ]
+            //     }
+            // });
+            // if (preExisting) {
+            //     if (preExisting.sku === sku) throw new Error("SKU already exists for this product type");
+            //     if (preExisting.barcode === barcode) throw new Error("Barcode already exists for this product type");
+            // }
 
             const variantData = {
                 productId: product.id,
@@ -286,6 +299,8 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
 
                     // Remove old variant values
                     await tx.productVariantValues.deleteMany({ where: { productVariantId: variantId } });
+
+                    
                 } else {
                     const newVariant = await tx.productVariants.create({
                         data: { ...variantData, isActive: 1, createdAt: currentDate, createdBy: req.user?.id || null },
@@ -307,6 +322,34 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
                 await tx.productVariantValues.createMany({
                     data: parsedVariantValueIds.map(vId => ({ productVariantId: variantId, variantValueId: vId })),
                 });
+            }
+
+            // ==================== STOCK LOGIC ====================
+            if (parsedStocks.length > 0) {
+
+                for (const stock of parsedStocks) {
+
+                    if (!stock.branchId || stock.quantity === 0) continue;
+
+                    await tx.stocks.upsert({
+                        where: {
+                            productVariantId_branchId: {
+                                productVariantId: variantId,
+                                branchId: stock.branchId
+                            }
+                        },
+                        update: {
+                            quantity: { increment: stock.quantity },
+                            updatedBy: req.user?.id || null
+                        },
+                        create: {
+                            productVariantId: variantId,
+                            branchId: stock.branchId,
+                            quantity: stock.quantity,
+                            createdBy: req.user?.id || null
+                        }
+                    });
+                }
             }
 
             return product;
@@ -416,11 +459,17 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
                             include: {
                                 variantValue: true
                             }
+                        },
+                        stocks: {   // ✅ Include stocks per variant
+                            include: {
+                                branch: true  // optional, get branch name
+                            }
                         }
                     }
                 }
             }
         });
+
         if (!product) {
             res.status(404).json({ message: "Product not found!" });
             return;

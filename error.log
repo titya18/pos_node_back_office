@@ -29943,3 +29943,27 @@ Argument `id`: Invalid value provided. Expected Int, provided String.
     at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:175:19)
     at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async upsertIncome (D:\Citylink-Inventory\backend\src\controllers\incomeController.ts:144:25)
+2026-02-18 14:51:39 error: Error upserting product: SKU already exists for this product type Error: SKU already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:258:52)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
+2026-02-18 14:52:28 error: Error upserting product: SKU already exists for this product type Error: SKU already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:299:55)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
+2026-02-18 14:52:46 error: Error upserting product: SKU already exists for this product type Error: SKU already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:299:55)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
+2026-02-18 14:55:06 error: Error upserting product: SKU already exists for this product typessss Error: SKU already exists for this product typessss
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:258:52)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
+2026-02-18 14:55:34 error: Error upserting product: SKU already exists for this product type Error: SKU already exists for this product type
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:299:55)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
+2026-02-18 14:56:02 error: Error upserting product: SKU already exists for this product typesssss Error: SKU already exists for this product typesssss
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:299:55)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
