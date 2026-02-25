@@ -83,9 +83,12 @@ export const getAllUser = async (req: Request, res: Response): Promise<void> => 
         const users: any = await prisma.$queryRawUnsafe(`
             SELECT u.*,
                    json_build_object('id', br.id, 'name', br.name) AS branch,
-                   json_agg(
-                     json_build_object('id', r.id, 'name', r.name)
-                   ) FILTER (WHERE r.id IS NOT NULL) AS roles,
+                   COALESCE(
+                        json_agg(
+                        json_build_object('id', r.id, 'name', r.name)
+                        ) FILTER (WHERE r.id IS NOT NULL),
+                        '[]'
+                   ) AS roles,
                    json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
                    json_build_object('id', u2.id, 'firstName', u2."firstName", 'lastName', u2."lastName") AS updater
             FROM "User" u
@@ -115,6 +118,7 @@ export const getAllUser = async (req: Request, res: Response): Promise<void> => 
         res.status(200).json({ data: users, total });
 
     } catch (error) {
+        console.log("Error fetching users:", error); // Log the error to the console for debugging
         logger.error("Error fetching users:", error);
         const typedError = error as Error;
         res.status(500).json({ message: typedError.message });
