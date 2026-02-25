@@ -27,7 +27,7 @@ import serviceRoute from './routes/serviceRoute';
 const app = express();
 
 // Serve the 'public' folder as the root for static files
-const publicPath = path.resolve(__dirname, '../public');
+const publicPath = path.resolve(__dirname, '../../public');
 app.use('/images', express.static(path.join(publicPath, 'images')));
 
 // console.log('Static images path:', path.join(publicPath, 'images'));
