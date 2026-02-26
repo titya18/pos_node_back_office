@@ -834,7 +834,10 @@ export const getAllReportPurchases = async (
 
         const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
         const sortField = getQueryString(req.query.sortField, "ref")!;
-        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
+        const sortOrder =
+            getQueryString(req.query.sortOrder)?.toLowerCase() === "desc"
+                ? "DESC"
+                : "ASC";
 
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
@@ -842,6 +845,8 @@ export const getAllReportPurchases = async (
         const branchId = req.query.branchId
             ? parseInt(req.query.branchId as string, 10)
             : null;
+
+        const groupBy = (req.query.groupBy as string) || "day"; // NEW
 
         const loggedInUser = req.user;
         if (!loggedInUser) {
@@ -868,14 +873,18 @@ export const getAllReportPurchases = async (
             `)
             .join(" AND ");
 
-        const params: any[] = [likeTerm, ...searchWords.map(w => `%${w}%`)];
+        const params: any[] = [
+            likeTerm,
+            ...searchWords.map((w) => `%${w}%`)
+        ];
 
         /* -------------------------------------------------- */
         /* BRANCH RESTRICTION                                 */
         /* -------------------------------------------------- */
         let branchRestriction = "";
         if (loggedInUser.roleType === "ADMIN") {
-            if (branchId) branchRestriction = `AND pc."branchId" = ${branchId}`;
+            if (branchId)
+                branchRestriction = `AND pc."branchId" = ${branchId}`;
         } else {
             if (!loggedInUser.branchId) {
                 res.status(403).json({ message: "Branch not assigned." });
@@ -887,11 +896,14 @@ export const getAllReportPurchases = async (
         /* -------------------------------------------------- */
         /* COMMON FILTERS                                     */
         /* -------------------------------------------------- */
-        
         const commonFilters = `
             WHERE 1=1
             ${branchRestriction}
-            ${startDate && endDate ? `AND pc."purchaseDate"::date BETWEEN '${startDate}' AND '${endDate}'` : ""}
+            ${
+                startDate && endDate
+                    ? `AND pc."purchaseDate"::date BETWEEN '${startDate}' AND '${endDate}'`
+                    : ""
+            }
             ${status ? `AND pc."status" = '${status}'` : ""}
             AND (
                 pc."ref" ILIKE $1
@@ -912,9 +924,10 @@ export const getAllReportPurchases = async (
         `;
 
         /* -------------------------------------------------- */
-        /* 1️ SUMMARY TOTALS                                   */
+        /* 1️ SUMMARY TOTALS                                 */
         /* -------------------------------------------------- */
-        const summary: any = await prisma.$queryRawUnsafe(`
+        const summary: any = await prisma.$queryRawUnsafe(
+            `
             SELECT
                 COUNT(DISTINCT pc.id) AS "totalPurchase",
                 COALESCE(SUM(pc."grandTotal"), 0) AS "grandTotalAmount",
@@ -928,15 +941,110 @@ export const getAllReportPurchases = async (
             LEFT JOIN "User" rcb ON pc."receivedBy" = rcb.id
             LEFT JOIN "User" db ON pc."deletedBy" = db.id
             ${commonFilters}
-        `, ...params);
+        `,
+            ...params
+        );
 
-        /* Convert BigInt in summary */
         const summarySafe = {
             totalPurchase: Number(summary[0]?.totalPurchase || 0),
             grandTotalAmount: Number(summary[0]?.grandTotalAmount || 0),
             totalPaidAmount: Number(summary[0]?.totalPaidAmount || 0),
             totalRemainAmount: Number(summary[0]?.totalRemainAmount || 0)
         };
+
+        /* -------------------------------------------------- */
+        /* 1️.1 PREVIOUS PERIOD (NEW)                         */
+        /* -------------------------------------------------- */
+        let previousSummarySafe = {
+            totalPurchase: 0,
+            grandTotalAmount: 0,
+            totalPaidAmount: 0,
+            totalRemainAmount: 0
+        };
+
+        let growth = 0;
+
+        if (startDate && endDate) {
+            const start = dayjs(startDate);
+            const end = dayjs(endDate);
+            const diffDays = end.diff(start, "day") + 1;
+
+            const prevStart = start
+                .subtract(diffDays, "day")
+                .format("YYYY-MM-DD");
+            const prevEnd = start
+                .subtract(1, "day")
+                .format("YYYY-MM-DD");
+
+            const previousSummary: any = await prisma.$queryRawUnsafe(`
+                SELECT
+                    COUNT(DISTINCT pc.id) AS "totalPurchase",
+                    COALESCE(SUM(pc."grandTotal"), 0) AS "grandTotalAmount",
+                    COALESCE(SUM(pc."paidAmount"), 0) AS "totalPaidAmount",
+                    COALESCE(SUM(pc."grandTotal" - pc."paidAmount"), 0) AS "totalRemainAmount"
+                FROM "Purchases" pc
+                WHERE 1=1
+                ${branchRestriction}
+                AND pc."purchaseDate"::date BETWEEN '${prevStart}' AND '${prevEnd}'
+            `);
+
+            previousSummarySafe = {
+                totalPurchase:
+                    Number(previousSummary[0]?.totalPurchase || 0),
+                grandTotalAmount:
+                    Number(previousSummary[0]?.grandTotalAmount || 0),
+                totalPaidAmount:
+                    Number(previousSummary[0]?.totalPaidAmount || 0),
+                totalRemainAmount:
+                    Number(previousSummary[0]?.totalRemainAmount || 0)
+            };
+
+            // console.log("START:", startDate);
+// console.log("END:", endDate);
+// console.log("PREV START:", prevStart);
+// console.log("PREV END:", prevEnd);
+// console.log("CURRENT TOTAL:", summarySafe.grandTotalAmount);
+// console.log("PREVIOUS TOTAL:", previousSummarySafe.grandTotalAmount);
+
+            const currentTotal = summarySafe.grandTotalAmount;
+            const previousTotal =
+                previousSummarySafe.grandTotalAmount;
+
+            if (previousTotal > 0) {
+                growth = ((currentTotal - previousTotal) / previousTotal) * 100;
+            } else if (previousTotal === 0 && currentTotal === 0) {
+                growth = 0; // no change
+            } else {
+                growth = 0; // cannot calculate (new growth)
+            }
+        }
+
+        /* -------------------------------------------------- */
+        /* 1️.2 GROUPING DATA FOR CHART (NEW)                */
+        /* -------------------------------------------------- */
+
+        let dateGroup = `DATE(pc."purchaseDate")`;
+        if (groupBy === "week")
+            dateGroup = `DATE_TRUNC('week', pc."purchaseDate")`;
+        if (groupBy === "month")
+            dateGroup = `DATE_TRUNC('month', pc."purchaseDate")`;
+
+        const chartData: any = await prisma.$queryRawUnsafe(`
+            SELECT
+                ${dateGroup} AS period,
+                COUNT(*)::int AS totalPurchase,
+                COALESCE(SUM(pc."grandTotal"),0)::float AS totalAmount
+            FROM "Purchases" pc
+            LEFT JOIN "Suppliers" s ON pc."supplierId" = s.id
+            LEFT JOIN "Branch" br ON pc."branchId" = br.id
+            LEFT JOIN "User" c ON pc."createdBy" = c.id
+            LEFT JOIN "User" u ON pc."updatedBy" = u.id
+            LEFT JOIN "User" rcb ON pc."receivedBy" = rcb.id
+            LEFT JOIN "User" db ON pc."deletedBy" = db.id
+            ${commonFilters}
+            GROUP BY period
+            ORDER BY period ASC
+        `, ...params);
 
         /* -------------------------------------------------- */
         /* 2️ TOTAL COUNT (PAGINATION)                       */
@@ -986,19 +1094,26 @@ export const getAllReportPurchases = async (
             ...quote,
             id: Number(quote.id),
             branchId: Number(quote.branchId),
-            supplierId: quote.supplierId ? Number(quote.supplierId) : null,
+            supplierId: quote.supplierId
+                ? Number(quote.supplierId)
+                : null,
             createdBy: quote.createdBy ? Number(quote.createdBy) : null,
             updatedBy: quote.updatedBy ? Number(quote.updatedBy) : null,
             receivedBy: quote.receivedBy ? Number(quote.receivedBy) : null,
             deletedBy: quote.deletedBy ? Number(quote.deletedBy) : null
         }));
-        // console.log("Data: ", purchaseSafe);
-        // console.log("Summary: ", summarySafe);
+
+        /* -------------------------------------------------- */
+        /* RESPONSE                                           */
+        /* -------------------------------------------------- */
 
         res.status(200).json({
             data: purchaseSafe,
             total,
             summary: summarySafe,
+            previousSummary: previousSummarySafe,
+            growth: growth !== null ? Number(growth.toFixed(1)) : null,
+            chart: chartData
         });
 
     } catch (error) {
