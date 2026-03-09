@@ -29967,3 +29967,439 @@ Argument `id`: Invalid value provided. Expected Int, provided String.
     at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:299:55)
     at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:201:24)
+2026-03-02 09:57:33 error: Login error 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`. PrismaClientInitializationError: 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7615)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async signIn (D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:22)
+2026-03-02 09:57:47 error: Login error 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`. PrismaClientInitializationError: 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7615)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async signIn (D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:22)
+2026-03-02 09:58:19 error: Login error 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`. PrismaClientInitializationError: 
+Invalid `prisma.user.findUnique()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:40
+
+  50 export const signIn = async(req: Request, res: Response): Promise<void> => {
+  51     const { email, password } = req.body;
+  52     try {
+→ 53         const user = await prisma.user.findUnique(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7615)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async signIn (D:\Citylink-Inventory\backend\src\controllers\authController.ts:53:22)
+2026-03-03 12:56:45 error: Error upserting product: 
+Invalid `tx.productVariants.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:533:55
+
+  530   // clear old join values
+  531   await tx.productVariantValues.deleteMany({ where: { productVariantId: variantId } });
+  532 } else {
+→ 533   const newVariant = await tx.productVariants.create(
+Foreign key constraint violated: `ProductVariants_unitId_fkey (index)` PrismaClientKnownRequestError: 
+Invalid `tx.productVariants.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\productController.ts:533:55
+
+  530   // clear old join values
+  531   await tx.productVariantValues.deleteMany({ where: { productVariantId: variantId } });
+  532 } else {
+→ 533   const newVariant = await tx.productVariants.create(
+Foreign key constraint violated: `ProductVariants_unitId_fkey (index)`
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\productController.ts:533:30)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertProduct (D:\Citylink-Inventory\backend\src\controllers\productController.ts:430:20)
+2026-03-05 15:55:21 error: Error creating/updating invoice: 
+Invalid `tx.order.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:370:34
+
+  367         },
+  368     },
+  369 })
+→ 370 : await tx.order.create({
+        data: {
+          branchId: 1,
+          customerId: 1,
+          OrderSaleType: "RETAIL",
+          ref: "ZM2026-0008",
+          taxRate: "10",
+          taxNet: null,
+          discount: "10",
+          shipping: null,
+          totalAmount: 2216.5,
+          exchangeRate: 4150,
+          status: "PENDING",
+          note: "",
+          orderDate: new Date("2026-03-05T00:00:00.000Z"),
+          createdAt: new Date("2026-03-05T15:12:35.000Z"),
+          updatedAt: new Date("2026-03-05T15:12:35.000Z"),
+          createdBy: 1,
+          updatedBy: 1,
+          approvedAt: null,
+          approvedBy: null,
+          items: {
+            create: [
+              {
+                ItemType: "PRODUCT",
+                productId: 41,
+                productVariantId: 38,
+                serviceId: null,
+                unitId: 5,
+                unitQty: new Prisma.Decimal("1"),
+                baseQty: new Prisma.Decimal("305"),
+                cost: new Prisma.Decimal("0"),
+                costPerBaseUnit: new Prisma.Decimal("0.09836065573770492"),
+                taxNet: new Prisma.Decimal("10"),
+                taxMethod: "Include",
+                discount: new Prisma.Decimal("5"),
+                discountMethod: "Fixed",
+                total: new Prisma.Decimal("25"),
+                quantity: 1
+              },
+              {
+                ItemType: "PRODUCT",
+                productId: 42,
+                productVariantId: 39,
+                serviceId: null,
+                unitId: 4,
+                unitQty: new Prisma.Decimal("50"),
+                baseQty: new Prisma.Decimal("50"),
+                cost: new Prisma.Decimal("0"),
+                costPerBaseUnit: new Prisma.Decimal("0.8"),
+                taxNet: new Prisma.Decimal("0"),
+                taxMethod: "Include",
+                discount: new Prisma.Decimal("0"),
+                discountMethod: "Fixed",
+                total: new Prisma.Decimal("2000"),
+                quantity: 50
+              }
+            ]
+          }
+        },
+        include: {
+          items: {
+            include: {
+              products: true,
+              productvariants: true
+            }
+          }
+        }
+      })
+
+Argument `price` is missing. PrismaClientValidationError: 
+Invalid `tx.order.create()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:370:34
+
+  367         },
+  368     },
+  369 })
+→ 370 : await tx.order.create({
+        data: {
+          branchId: 1,
+          customerId: 1,
+          OrderSaleType: "RETAIL",
+          ref: "ZM2026-0008",
+          taxRate: "10",
+          taxNet: null,
+          discount: "10",
+          shipping: null,
+          totalAmount: 2216.5,
+          exchangeRate: 4150,
+          status: "PENDING",
+          note: "",
+          orderDate: new Date("2026-03-05T00:00:00.000Z"),
+          createdAt: new Date("2026-03-05T15:12:35.000Z"),
+          updatedAt: new Date("2026-03-05T15:12:35.000Z"),
+          createdBy: 1,
+          updatedBy: 1,
+          approvedAt: null,
+          approvedBy: null,
+          items: {
+            create: [
+              {
+                ItemType: "PRODUCT",
+                productId: 41,
+                productVariantId: 38,
+                serviceId: null,
+                unitId: 5,
+                unitQty: new Prisma.Decimal("1"),
+                baseQty: new Prisma.Decimal("305"),
+                cost: new Prisma.Decimal("0"),
+                costPerBaseUnit: new Prisma.Decimal("0.09836065573770492"),
+                taxNet: new Prisma.Decimal("10"),
+                taxMethod: "Include",
+                discount: new Prisma.Decimal("5"),
+                discountMethod: "Fixed",
+                total: new Prisma.Decimal("25"),
+                quantity: 1
+              },
+              {
+                ItemType: "PRODUCT",
+                productId: 42,
+                productVariantId: 39,
+                serviceId: null,
+                unitId: 4,
+                unitQty: new Prisma.Decimal("50"),
+                baseQty: new Prisma.Decimal("50"),
+                cost: new Prisma.Decimal("0"),
+                costPerBaseUnit: new Prisma.Decimal("0.8"),
+                taxNet: new Prisma.Decimal("0"),
+                taxMethod: "Include",
+                discount: new Prisma.Decimal("0"),
+                discountMethod: "Fixed",
+                total: new Prisma.Decimal("2000"),
+                quantity: 50
+              }
+            ]
+          }
+        },
+        include: {
+          items: {
+            include: {
+              products: true,
+              productvariants: true
+            }
+          }
+        }
+      })
+
+Argument `price` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:370:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:237:24)
+2026-03-05 16:05:15 error: Error creating/updating invoice: 
+Invalid `tx.order.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:282:34
+
+  279 });
+  280 
+  281 const invoice = invoiceId
+→ 282     ? await tx.order.update({
+            where: {
+              id: 48
+            },
+            data: {
+              ref: "ZM2026-0008",
+              branchId: 1,
+              customerId: 1,
+              orderDate: new Date("2026-03-05T00:00:00.000Z"),
+              OrderSaleType: "RETAIL",
+              taxRate: "10",
+              taxNet: null,
+              discount: "10",
+              shipping: null,
+              totalAmount: 2244,
+              exchangeRate: 4150,
+              status: "PENDING",
+              note: "",
+              approvedAt: null,
+              approvedBy: null,
+              updatedAt: new Date("2026-03-05T15:57:51.000Z"),
+              updatedBy: 1,
+              items: {
+                deleteMany: {
+                  orderId: 48
+                },
+                create: [
+                  {
+                    ItemType: "PRODUCT",
+                    productId: 41,
+                    productVariantId: 38,
+                    serviceId: null,
+                    unitId: 5,
+                    unitQty: new Prisma.Decimal("2"),
+                    baseQty: new Prisma.Decimal("610"),
+                    cost: new Prisma.Decimal("0"),
+                    costPerBaseUnit: new Prisma.Decimal("0.04918032786885246"),
+                    taxNet: new Prisma.Decimal("10"),
+                    taxMethod: "Include",
+                    discount: new Prisma.Decimal("5"),
+                    discountMethod: "Fixed",
+                    total: new Prisma.Decimal("50"),
+                    quantity: 2
+                  },
+                  {
+                    ItemType: "PRODUCT",
+                    productId: 42,
+                    productVariantId: 39,
+                    serviceId: null,
+                    unitId: 6,
+                    unitQty: new Prisma.Decimal("50"),
+                    baseQty: new Prisma.Decimal("10000"),
+                    cost: new Prisma.Decimal("0"),
+                    costPerBaseUnit: new Prisma.Decimal("0.004"),
+                    taxNet: new Prisma.Decimal("0"),
+                    taxMethod: "Include",
+                    discount: new Prisma.Decimal("0"),
+                    discountMethod: "Fixed",
+                    total: new Prisma.Decimal("2000"),
+                    quantity: 50
+                  }
+                ]
+              }
+            },
+            include: {
+              items: {
+                include: {
+                  products: true,
+                  productvariants: true
+                }
+              }
+            }
+          })
+
+Argument `price` is missing. PrismaClientValidationError: 
+Invalid `tx.order.update()` invocation in
+D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:282:34
+
+  279 });
+  280 
+  281 const invoice = invoiceId
+→ 282     ? await tx.order.update({
+            where: {
+              id: 48
+            },
+            data: {
+              ref: "ZM2026-0008",
+              branchId: 1,
+              customerId: 1,
+              orderDate: new Date("2026-03-05T00:00:00.000Z"),
+              OrderSaleType: "RETAIL",
+              taxRate: "10",
+              taxNet: null,
+              discount: "10",
+              shipping: null,
+              totalAmount: 2244,
+              exchangeRate: 4150,
+              status: "PENDING",
+              note: "",
+              approvedAt: null,
+              approvedBy: null,
+              updatedAt: new Date("2026-03-05T15:57:51.000Z"),
+              updatedBy: 1,
+              items: {
+                deleteMany: {
+                  orderId: 48
+                },
+                create: [
+                  {
+                    ItemType: "PRODUCT",
+                    productId: 41,
+                    productVariantId: 38,
+                    serviceId: null,
+                    unitId: 5,
+                    unitQty: new Prisma.Decimal("2"),
+                    baseQty: new Prisma.Decimal("610"),
+                    cost: new Prisma.Decimal("0"),
+                    costPerBaseUnit: new Prisma.Decimal("0.04918032786885246"),
+                    taxNet: new Prisma.Decimal("10"),
+                    taxMethod: "Include",
+                    discount: new Prisma.Decimal("5"),
+                    discountMethod: "Fixed",
+                    total: new Prisma.Decimal("50"),
+                    quantity: 2
+                  },
+                  {
+                    ItemType: "PRODUCT",
+                    productId: 42,
+                    productVariantId: 39,
+                    serviceId: null,
+                    unitId: 6,
+                    unitQty: new Prisma.Decimal("50"),
+                    baseQty: new Prisma.Decimal("10000"),
+                    cost: new Prisma.Decimal("0"),
+                    costPerBaseUnit: new Prisma.Decimal("0.004"),
+                    taxNet: new Prisma.Decimal("0"),
+                    taxMethod: "Include",
+                    discount: new Prisma.Decimal("0"),
+                    discountMethod: "Fixed",
+                    total: new Prisma.Decimal("2000"),
+                    quantity: 50
+                  }
+                ]
+              }
+            },
+            include: {
+              items: {
+                include: {
+                  products: true,
+                  productvariants: true
+                }
+              }
+            }
+          })
+
+Argument `price` is missing.
+    at wn (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:282:19)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:237:24)

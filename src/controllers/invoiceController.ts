@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { computeBaseQty } from "../utils/uom";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -302,19 +303,59 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                             deleteMany: {
                                 orderId: Number(invoiceId)   // MUST include a filter
                             }, // Delete existing quotation details
-                            create: items.map((detail: any) => ({
-                                productId: detail.productId ? parseInt(detail.productId, 10) : null,
-                                productVariantId: detail.productVariantId ? parseInt(detail.productVariantId, 10) : null,
-                                serviceId: detail.serviceId ? parseInt(detail.serviceId, 10) : null,
-                                price: parseFloat(detail.price),
-                                ItemType: detail.ItemType,
-                                taxNet: parseFloat(detail.taxNet),
-                                taxMethod: detail.taxMethod,
-                                discount: detail.discount ? parseFloat(detail.discount) : undefined,
-                                discountMethod: detail.discountMethod,
-                                total: parseFloat(detail.total),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
+                            create: await Promise.all(
+                                items.map(async (detail: any) => {
+                                    // SERVICE
+                                    if (detail.ItemType === "SERVICE") {
+                                        return {
+                                            ItemType: detail.ItemType,
+                                            serviceId: detail.serviceId ? Number(detail.serviceId) : null,
+                                            productId: null,
+                                            productVariantId: null,
+
+                                            // UOM empty for service
+                                            unitId: null,
+                                            unitQty: null,
+                                            baseQty: null,
+
+                                            price: new Decimal(detail.price ?? 0),
+                                            costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                            taxNet: new Decimal(detail.taxNet ?? 0),
+                                            taxMethod: detail.taxMethod,
+                                            discount: new Decimal(detail.discount ?? 0),
+                                            discountMethod: detail.discountMethod,
+                                            total: new Decimal(detail.total ?? 0),
+                                            quantity: Number(detail.quantity ?? 1),
+                                        };
+                                    }
+
+                                    // PRODUCT
+                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+
+                                    return {
+                                        ItemType: detail.ItemType,
+                                        productId: detail.productId ? Number(detail.productId) : null,
+                                        productVariantId: detail.productVariantId ? Number(detail.productVariantId) : null,
+                                        serviceId: null,
+
+                                        // ✅ save UOM
+                                        unitId,
+                                        unitQty,
+                                        baseQty,
+
+                                        price: new Decimal(detail.price ?? 0),
+                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        taxNet: new Decimal(detail.taxNet ?? 0),
+                                        taxMethod: detail.taxMethod,
+                                        discount: new Decimal(detail.discount ?? 0),
+                                        discountMethod: detail.discountMethod,
+                                        total: new Decimal(detail.total ?? 0),
+
+                                        // keep old field (optional)
+                                        quantity: Number(detail.quantity ?? detail.unitQty ?? 0),
+                                    };
+                                })
+                            ),
                         },
                     },
                     include: {
@@ -348,19 +389,59 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         approvedAt: status === "APPROVED" ? currentDate : null,
                         approvedBy: status === "APPROVED" ? loggedInUser.id : null,
                         items: {
-                            create: items.map((detail: any) => ({
-                                productId: detail.productId ? parseInt(detail.productId, 10) : null,
-                                productVariantId: detail.productVariantId ? parseInt(detail.productVariantId, 10) : null,
-                                serviceId: detail.serviceId ? parseInt(detail.serviceId, 10) : null,
-                                price: parseFloat(detail.price),
-                                ItemType: detail.ItemType,
-                                taxNet: parseFloat(detail.taxNet),
-                                taxMethod: detail.taxMethod,
-                                discount: detail.discount ? parseFloat(detail.discount) : undefined,
-                                discountMethod: detail.discountMethod,
-                                total: parseFloat(detail.total),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
+                            create: await Promise.all(
+                                items.map(async (detail: any) => {
+                                    // SERVICE
+                                    if (detail.ItemType === "SERVICE") {
+                                        return {
+                                            ItemType: detail.ItemType,
+                                            serviceId: detail.serviceId ? Number(detail.serviceId) : null,
+                                            productId: null,
+                                            productVariantId: null,
+
+                                            // UOM empty for service
+                                            unitId: null,
+                                            unitQty: null,
+                                            baseQty: null,
+
+                                            price: new Decimal(detail.price ?? 0),
+                                            costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                            taxNet: new Decimal(detail.taxNet ?? 0),
+                                            taxMethod: detail.taxMethod,
+                                            discount: new Decimal(detail.discount ?? 0),
+                                            discountMethod: detail.discountMethod,
+                                            total: new Decimal(detail.total ?? 0),
+                                            quantity: Number(detail.quantity ?? 1),
+                                        };
+                                    }
+
+                                    // PRODUCT
+                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+
+                                    return {
+                                        ItemType: detail.ItemType,
+                                        productId: detail.productId ? Number(detail.productId) : null,
+                                        productVariantId: detail.productVariantId ? Number(detail.productVariantId) : null,
+                                        serviceId: null,
+
+                                        // ✅ save UOM
+                                        unitId,
+                                        unitQty,
+                                        baseQty,
+
+                                        price: new Decimal(detail.price ?? 0),
+                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        taxNet: new Decimal(detail.taxNet ?? 0),
+                                        taxMethod: detail.taxMethod,
+                                        discount: new Decimal(detail.discount ?? 0),
+                                        discountMethod: detail.discountMethod,
+                                        total: new Decimal(detail.total ?? 0),
+
+                                        // keep old field (optional)
+                                        quantity: Number(detail.quantity ?? detail.unitQty ?? 0),
+                                    };
+                                })
+                            ),
                         },
                     },
                     include: {
@@ -391,12 +472,14 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                         },
                     });
 
-                    if (!stock || stock.quantity.toNumber() < item.quantity) {
+                    const sellQty = item.baseQty ?? new Decimal(item.quantity ?? 0);
+
+                    if (!stock || stock.quantity.toNumber() < sellQty.toNumber()) {
                         throw new Error("Insufficient stock for barcode: " + item.productvariants?.barcode);
                     }
 
                     // FIFO logic: fetch oldest IN batches
-                    let qtyToSell = new Decimal(item.quantity);
+                    let qtyToSell = new Decimal(sellQty);
                     const fifoBatches = await tx.stockMovements.findMany({
                         where: {
                             productVariantId: item.productVariantId,
@@ -448,7 +531,7 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                     await tx.stocks.update({
                         where: { id: stock.id },
                         data: {
-                            quantity: { decrement: item.quantity },
+                            quantity: { decrement: sellQty },
                             updatedAt: new Date(),
                             updatedBy: loggedInUser.id,
                         },
@@ -568,17 +651,37 @@ export const getInvoiceById = async (
                 customer: true,
                 items: {
                     include: {
-                        products: true,
-                        productvariants: {
+                        unit: true,
+                        products: {
+                        select: {
+                            id: true,
+                            name: true,
+                            unitConversions: {
                             select: {
                                 id: true,
-                                name: true,
-                                barcode: true,
-                                sku: true,
-                                productType: true,
+                                productId: true,
+                                fromUnitId: true,
+                                toUnitId: true,
+                                multiplier: true,
+                                fromUnit: { select: { id: true, name: true, type: true } },
+                                toUnit: { select: { id: true, name: true, type: true } },
+                            },
                             },
                         },
-                        services: true, // Include related services data
+                        },
+                        productvariants: {
+                        select: {
+                            id: true,
+                            name: true,
+                            barcode: true,
+                            sku: true,
+                            productType: true,
+
+                            baseUnitId: true,
+                            baseUnit: { select: { id: true, name: true, type: true } },
+                        },
+                        },
+                        services: true,
                     },
                 },
             },
@@ -803,9 +906,16 @@ export const deleteInvoice = async (req: Request, res: Response): Promise<void> 
 export const approveInvoice = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const orderId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+
     try {
         const result = await prisma.$transaction(async (tx) => {
-            // 1 Fetch quotation with details
+            const loggedInUser = req.user;
+            if (!loggedInUser) {
+                res.status(401).json({ message: "User is not authenticated." });
+                return;
+            }
+
+            // 1️⃣ Fetch invoice with items
             const invoice = await tx.order.findUnique({
                 where: { id: Number(orderId) },
                 include: {
@@ -818,69 +928,82 @@ export const approveInvoice = async (req: Request, res: Response): Promise<void>
                 },
             });
 
-            if (!invoice) {
-                throw new Error("Invoice not found");
-            }
+            if (!invoice) throw new Error("Invoice not found");
+            if (invoice.approvedAt) throw new Error("Invoice already approved");
 
-            if (invoice.approvedAt) {
-                throw new Error("Invoice already approved");
-            }
-
+            // 2️⃣ Deduct stock by BASE QTY
             for (const item of invoice.items) {
                 if (item.ItemType !== "PRODUCT" || !item.productVariantId) continue;
+
+                // ✅ use baseQty if exists, fallback to quantity
+                const sellQty =
+                (item as any).baseQty != null
+                    ? (item as any).baseQty // Decimal
+                    : new Decimal(item.quantity ?? 0);
 
                 // Get stock row
                 const stock = await tx.stocks.findUnique({
                     where: {
-                        productVariantId_branchId: {
+                            productVariantId_branchId: {
                             productVariantId: item.productVariantId,
                             branchId: invoice.branchId,
                         },
                     },
                 });
 
-                if (!stock || stock.quantity.toNumber() < item.quantity) {
-                    throw new Error("Insufficient stock for barcode: " + item.productvariants?.barcode);
+                if (!stock || stock.quantity.lt(sellQty)) {
+                    throw new Error(
+                        "Insufficient stock for barcode: " + item.productvariants?.barcode
+                    );
                 }
 
                 // Update stock
                 await tx.stocks.update({
                     where: { id: stock.id },
                     data: {
-                        quantity: {
-                            decrement: item.quantity,
-                        },
+                        quantity: { decrement: sellQty },
                         updatedAt: currentDate,
-                        updatedBy: req.user ? req.user.id : null,
+                        updatedBy: loggedInUser.id,
                     },
                 });
 
-                // Insert stock movement
+                // Insert stock movement (use negative qty for OUT is cleaner)
                 await tx.stockMovements.create({
                     data: {
                         productVariantId: item.productVariantId,
                         branchId: invoice.branchId,
                         type: "ORDER",
-                        quantity: item.quantity,
+                        status: "APPROVED",
+                        quantity: sellQty.neg(), // ✅ OUT
                         note: `Invoice #${invoice.ref}`,
-                        createdBy: req.user ? req.user.id : null,
-                        createdAt: currentDate
+                        createdBy: loggedInUser.id,
+                        createdAt: currentDate,
+
+                        // Optional: store unit fields if your table has them
+                        // unitId: (item as any).unitId ?? null,
+                        // unitQty: (item as any).unitQty ?? null,
+                        // baseQty: sellQty,
                     },
                 });
             }
 
-            // 3 Update quotation status
-            await tx.order.update({
+            // 3️⃣ Update invoice approve status
+            const updated = await tx.order.update({
                 where: { id: invoice.id },
                 data: {
                     approvedAt: currentDate,
-                    approvedBy: req.user ? req.user.id : null,
+                    approvedBy: loggedInUser.id,
                     status: "APPROVED",
                 },
+                include: { items: true },
             });
 
-            return invoice;
+            return updated;
         });
+
+        // if transaction returned early due to res.status(401) above
+        if (!result) return;
+
         res.status(201).json(result);
     } catch (error) {
         logger.error("Error approve invoice:", error);

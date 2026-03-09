@@ -17,10 +17,19 @@ const prisma = new PrismaClient();
 
 export const getAllUnitsWithPagination = async (req: Request, res: Response): Promise<void> => {
     try {
+        const allowedSortFields = new Set([
+            "id",
+            "name",
+            "type",
+            "createdAt",
+            "updatedAt",
+        ]);
+
         const pageSize = getQueryNumber(req.query.pageSize, 10)!;
         const pageNumber = getQueryNumber(req.query.page, 1)!;
         const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
-        const sortField = getQueryString(req.query.sortField, "name")!;
+        const sortFieldRaw = getQueryString(req.query.sortField, "name")!;
+        const sortField = allowedSortFields.has(sortFieldRaw) ? sortFieldRaw : "name";
         const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
         const offset = (pageNumber - 1) * pageSize;
 
@@ -131,11 +140,18 @@ export const upsertUnit = async (req: Request, res: Response): Promise<void> => 
                 return;
             }
 
+            // normalize name
+            const normalizedName = name
+                ?.trim()                    // remove leading/trailing space
+                .toLowerCase()              // convert to lowercase
+                .replace(/\s+/g, "_")       // replace multiple spaces with underscore
+                .replace(/[^a-z0-9_]/g, ""); // optional extra safety
+
             const unit = id
                 ? await prisma.units.update({
                     where: { id: Number(unitId) },
                     data: {
-                        name,
+                        name: normalizedName,
                         type,
                         updatedAt: currentDate,
                         updatedBy: req.user ? req.user.id : null
@@ -143,7 +159,7 @@ export const upsertUnit = async (req: Request, res: Response): Promise<void> => 
                 })
                 : await prisma.units.create({
                     data: {
-                        name,
+                        name: normalizedName,
                         type,
                         createdAt: currentDate,
                         updatedAt: currentDate,

@@ -10,6 +10,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs"; // Import fs module to delete file
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { computeBaseQty } from "../utils/uom";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -292,6 +293,7 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
     
     try {
         const result = await prisma.$transaction(async (tx) => {
+
             const loggedInUser = req.user; // Assuming you have a middleware that attaches the logged-in user to the request
             // Verify that loggedInUser is defined
             if (!loggedInUser) {
@@ -300,13 +302,21 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
             }
 
             const purchaseId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+            let oldStatus: string | null = null;
             if (purchaseId) {
-                const checkPurchase = await tx.purchases.findUnique({ where: { id: Number(purchaseId) } });
+                const checkPurchase = await tx.purchases.findUnique({
+                    where: { id: Number(purchaseId) },
+                    select: { status: true },
+                });
+                oldStatus = checkPurchase?.status ?? null;
+
                 if (!checkPurchase) {
                     res.status(404).json({ message: "Purchase not found!" });
                     return;
                 }
             }
+
+            const isReceivingNow = status === "RECEIVED" && oldStatus !== "RECEIVED";
 
             const checkRef = await tx.purchases.findFirst({
                 where: {
@@ -382,17 +392,32 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                             deleteMany: {
                                 purchaseId: Number(purchaseId)   // MUST include a filter
                             }, // Delete existing purchase details
-                            create: parsedPurchaseDetails.map((detail: any) => ({
-                                productId: parseInt(detail.productId, 10),
-                                productVariantId: parseInt(detail.productVariantId, 10),
-                                cost: parseFloat(detail.cost),
-                                taxNet: parseFloat(detail.taxNet),
-                                taxMethod: detail.taxMethod,
-                                discount: detail.discount ? parseFloat(detail.discount) : undefined,
-                                discountMethod: detail.discountMethod,
-                                total: parseFloat(detail.total),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
+                            create: await Promise.all(
+                                parsedPurchaseDetails.map(async (detail: any) => {
+                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+
+                                    return {
+                                        productId: Number(detail.productId),
+                                        productVariantId: Number(detail.productVariantId),
+
+                                        // ✅ save UOM
+                                        unitId,
+                                        unitQty,
+                                        baseQty,
+
+                                        cost: new Decimal(detail.cost ?? 0),
+                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        taxNet: new Decimal(detail.taxNet ?? 0),
+                                        taxMethod: detail.taxMethod,
+                                        discount: new Decimal(detail.discount ?? 0),
+                                        discountMethod: detail.discountMethod,
+                                        total: new Decimal(detail.total ?? 0),
+
+                                        // keep your old field (optional)
+                                        quantity: Number(detail.quantity ?? unitQty.toString()),
+                                    };
+                                })
+                            ),
                         }
                     }
                 })
@@ -419,73 +444,89 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         receivedAt: status === "RECEIVED" ? currentDate : null,
                         receivedBy: status === "RECEIVED" ? req.user ? req.user.id : null : null,
                         purchaseDetails: {
-                            create: parsedPurchaseDetails.map((detail: any) => ({
-                                productId: parseInt(detail.productId, 10),
-                                productVariantId: parseInt(detail.productVariantId, 10),
-                                cost: parseFloat(detail.cost),
-                                taxNet: parseFloat(detail.taxNet),
-                                taxMethod: detail.taxMethod,
-                                discount: detail.discount ? parseFloat(detail.discount) : undefined,
-                                discountMethod: detail.discountMethod,
-                                total: parseFloat(detail.total),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
+                            create: await Promise.all(
+                                parsedPurchaseDetails.map(async (detail: any) => {
+                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+
+                                    return {
+                                        productId: Number(detail.productId),
+                                        productVariantId: Number(detail.productVariantId),
+
+                                        // ✅ save UOM
+                                        unitId,
+                                        unitQty,
+                                        baseQty,
+
+                                        cost: new Decimal(detail.cost ?? 0),
+                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        taxNet: new Decimal(detail.taxNet ?? 0),
+                                        taxMethod: detail.taxMethod,
+                                        discount: new Decimal(detail.discount ?? 0),
+                                        discountMethod: detail.discountMethod,
+                                        total: new Decimal(detail.total ?? 0),
+
+                                        // keep your old field (optional)
+                                        quantity: Number(detail.quantity ?? unitQty.toString()),
+                                    };
+                                })
+                            ),
                         },
                     }
                 });
             
-            // If status is Received update stock
-            if (status === "RECEIVED") {
+            // ✅ If status is RECEIVED (only when switching to RECEIVED)
+            if (isReceivingNow) {
                 for (const detail of parsedPurchaseDetails) {
+                    const { baseQty } = await computeBaseQty(tx, detail);
+
+                    const variantId = Number(detail.productVariantId);
                     const existingStock = await tx.stocks.findFirst({
                         where: {
-                            branchId: parseInt(branchId, 10),
-                            productVariantId: parseInt(detail.productVariantId, 10),
-                        }
+                            branchId: Number(branchId),
+                            productVariantId: variantId,
+                        },
                     });
 
                     if (existingStock) {
-                        // Update the existing stock
                         await tx.stocks.update({
                             where: { id: existingStock.id },
                             data: {
-                                quantity: { increment: new Decimal(detail.quantity) },
+                                quantity: { increment: baseQty },
                                 updatedAt: currentDate,
-                                updatedBy: req.user ? req.user.id : null
-                            }
+                                updatedBy: req.user ? req.user.id : null,
+                            },
                         });
                     } else {
-                        // Insert new stock
                         await tx.stocks.create({
                             data: {
-                                branchId: parseInt(branchId, 10),
-                                productVariantId: parseInt(detail.productVariantId, 10),
-                                quantity: parseInt(detail.quantity, 10),
+                                branchId: Number(branchId),
+                                productVariantId: variantId,
+                                quantity: baseQty,
                                 createdAt: currentDate,
-                                createdBy: req.user ? req.user.id : null
-                            }
+                                createdBy: req.user ? req.user.id : null,
+                            },
                         });
                     }
 
                     await tx.stockMovements.create({
                         data: {
-                            productVariantId: parseInt(detail.productVariantId, 10),
-                            branchId: parseInt(branchId, 10),
+                            productVariantId: variantId,
+                            branchId: Number(branchId),
 
-                            type: 'PURCHASE',
-                            AdjustMentType: 'POSITIVE',
-                            status: 'APPROVED',
+                            type: "PURCHASE",
+                            AdjustMentType: "POSITIVE",
+                            status: "APPROVED",
 
-                            quantity: parseInt(detail.quantity, 10),
-                            remainingQty: parseInt(detail.quantity, 10),
-                            unitCost: parseFloat(detail.cost),
+                            quantity: baseQty,
+                            remainingQty: baseQty,
+                            unitCost: new Decimal(detail.cost ?? 0),
 
-                            note: `Purchase Received #${purchase.ref}`,
+                            note: `Purchase Received #${ref}`,
                             createdAt: currentDate,
                             createdBy: req.user?.id ?? null,
                             approvedAt: currentDate,
                             approvedBy: req.user?.id ?? null,
-                        }
+                        },
                     });
                 }
             }
@@ -596,18 +637,47 @@ export const getPurchaseById = async (
                 suppliers: true,
                 creator: true,
                 updater: true,
+                // purchaseDetails: {
+                //     include: {
+                //         products: true,
+                //         unit: { select: { id: true, name: true, type: true } }, // ✅ NEW
+                //         productvariants: {
+                //             select: {
+                //                 id: true,
+                //                 name: true,
+                //                 barcode: true,
+                //                 sku: true,
+                //                 productType: true,
+
+                //                 baseUnitId: true, // ✅ NEW
+                //                 baseUnit: { select: { id: true, name: true, type: true } }, // ✅ NEW
+                //             },
+                //         },
+                //     },
+                // },
                 purchaseDetails: {
                     include: {
-                        products: true,
-                        productvariants: {
-                            select: {
-                                id: true,
-                                name: true,
-                                barcode: true,
-                                sku: true,
-                                productType: true,
+                        // IMPORTANT: include conversions with unit names
+                        products: {
+                            include: {
+                                unitConversions: {
+                                    include: {
+                                        fromUnit: true,
+                                        toUnit: true,
+                                    },
+                                },
                             },
                         },
+
+                        // IMPORTANT: include baseUnit for label + baseUnitId
+                        productvariants: {
+                            include: {
+                                baseUnit: true,
+                            },
+                        },
+
+                        // IMPORTANT: include unit (the selected unit saved in PurchaseDetails)
+                        unit: true,
                     },
                 },
             },

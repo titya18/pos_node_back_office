@@ -2507,3 +2507,242 @@ export const getAllReportSalesReturns = async (
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const getDashboardTopSellingProducts = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
+        const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+        const branchId = req.query.branchId
+        ? parseInt(req.query.branchId as string, 10)
+        : null;
+
+        const loggedInUser = req.user;
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) {
+                branchRestriction = `AND o."branchId" = ${branchId}`;
+            }
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+            branchRestriction = `AND o."branchId" = ${loggedInUser.branchId}`;
+        }
+
+        const dateFilter =
+        startDate && endDate
+            ? `AND o."orderDate"::date BETWEEN '${startDate}' AND '${endDate}'`
+            : "";
+
+        const data: any = await prisma.$queryRawUnsafe(`
+            SELECT
+                pv.id AS "productVariantId",
+                p.id AS "productId",
+                p.name AS "productName",
+                pv.name AS "variantName",
+                pv.sku AS "sku",
+                pv.barcode AS "barcode",
+                COALESCE(SUM(COALESCE(oi."baseQty", oi.quantity, 0)), 0) AS "totalQty",
+                COALESCE(SUM(oi.total), 0) AS "totalRevenue",
+                COALESCE(MAX(st.quantity), 0) AS "currentStock",
+                COALESCE(pv."stockAlert", 0) AS "stockAlert",
+                json_build_object(
+                'id', b.id,
+                'name', b.name
+                ) AS branch
+            FROM "OrderItem" oi
+            INNER JOIN "Order" o ON oi."orderId" = o.id
+            INNER JOIN "ProductVariants" pv ON oi."productVariantId" = pv.id
+            INNER JOIN "Products" p ON pv."productId" = p.id
+            INNER JOIN "Branch" b ON o."branchId" = b.id
+            LEFT JOIN "Stocks" st
+                ON st."productVariantId" = pv.id
+                AND st."branchId" = o."branchId"
+            WHERE 1=1
+                AND oi."ItemType" = 'PRODUCT'
+                AND o.status IN ('APPROVED', 'COMPLETED')
+                ${branchRestriction}
+                ${dateFilter}
+            GROUP BY
+                pv.id,
+                p.id,
+                p.name,
+                pv.name,
+                pv.sku,
+                pv.barcode,
+                pv."stockAlert",
+                b.id
+            ORDER BY
+                COALESCE(SUM(COALESCE(oi."baseQty", oi.quantity, 0)), 0) DESC,
+                COALESCE(SUM(oi.total), 0) DESC
+            LIMIT ${limit}
+        `);
+
+        const safeData = data.map((item: any, index: number) => ({
+            rank: index + 1,
+            productVariantId: Number(item.productVariantId),
+            productId: Number(item.productId),
+            productName: item.productName,
+            variantName: item.variantName,
+            sku: item.sku,
+            barcode: item.barcode,
+            totalQty: Number(item.totalQty || 0),
+            totalRevenue: Number(item.totalRevenue || 0),
+            currentStock: Number(item.currentStock || 0),
+            stockAlert: Number(item.stockAlert || 0),
+            branch: item.branch,
+        }));
+
+        res.status(200).json({
+            data: safeData,
+            total: safeData.length,
+        });
+    } catch (error) {
+        console.error("Dashboard top selling products error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const getDashboardLowStockProducts = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+        const branchId = req.query.branchId
+        ? parseInt(req.query.branchId as string, 10)
+        : null;
+
+        const threshold = req.query.threshold
+        ? parseInt(req.query.threshold as string, 10)
+        : 5;
+
+        const loggedInUser = req.user;
+
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        const isAdmin = loggedInUser.roleType === "ADMIN";
+        const effectiveBranchId = isAdmin ? branchId : loggedInUser.branchId;
+
+        if (!isAdmin && !loggedInUser.branchId) {
+            res.status(403).json({ message: "Branch not assigned." });
+            return;
+        }
+
+        let data: any[] = [];
+        let mode: "branch" | "all" = "all";
+
+        // ==============================
+        // BRANCH MODE
+        // ==============================
+        if (effectiveBranchId) {
+            mode = "branch";
+
+            data = await prisma.$queryRawUnsafe(`
+                SELECT
+                pv.id AS "productVariantId",
+                p.id AS "productId",
+                p.name AS "productName",
+                pv.name AS "variantName",
+                pv.sku AS "sku",
+                pv.barcode AS "barcode",
+                COALESCE(s.quantity, 0) AS "currentStock",
+                json_build_object(
+                    'id', b.id,
+                    'name', b.name
+                ) AS branch
+                FROM "Stocks" s
+                INNER JOIN "ProductVariants" pv
+                ON s."productVariantId" = pv.id
+                INNER JOIN "Products" p
+                ON pv."productId" = p.id
+                INNER JOIN "Branch" b
+                ON s."branchId" = b.id
+                WHERE 1=1
+                AND s."branchId" = ${effectiveBranchId}
+                AND pv."isActive" = 1
+                AND COALESCE(s.quantity, 0) <= ${threshold}
+                ORDER BY
+                COALESCE(s.quantity, 0) ASC,
+                p.name ASC,
+                pv.name ASC
+                LIMIT ${limit}
+            `);
+        } else {
+            // ==============================
+            // ALL BRANCHES MODE
+            // ==============================
+            mode = "all";
+
+            data = await prisma.$queryRawUnsafe(`
+                SELECT
+                pv.id AS "productVariantId",
+                p.id AS "productId",
+                p.name AS "productName",
+                pv.name AS "variantName",
+                pv.sku AS "sku",
+                pv.barcode AS "barcode",
+                COALESCE(SUM(s.quantity), 0) AS "currentStock"
+                FROM "Stocks" s
+                INNER JOIN "ProductVariants" pv
+                ON s."productVariantId" = pv.id
+                INNER JOIN "Products" p
+                ON pv."productId" = p.id
+                WHERE 1=1
+                AND pv."isActive" = 1
+                GROUP BY
+                pv.id,
+                p.id,
+                p.name,
+                pv.name,
+                pv.sku,
+                pv.barcode
+                HAVING COALESCE(SUM(s.quantity), 0) <= ${threshold}
+                ORDER BY
+                COALESCE(SUM(s.quantity), 0) ASC,
+                p.name ASC,
+                pv.name ASC
+                LIMIT ${limit}
+            `);
+        }
+
+        const safeData = data.map((item: any) => {
+            const currentStock = Number(item.currentStock || 0);
+
+            return {
+                productVariantId: Number(item.productVariantId),
+                productId: Number(item.productId),
+                productName: item.productName,
+                variantName: item.variantName,
+                sku: item.sku,
+                barcode: item.barcode,
+                currentStock,
+                branch: item.branch || null,
+                stockStatus: currentStock <= 0 ? "OUT_OF_STOCK" : "LOW_STOCK",
+            };
+        });
+
+        res.status(200).json({
+            data: safeData,
+            total: safeData.length,
+            mode,
+            threshold,
+        });
+    } catch (error) {
+        console.error("Dashboard low stock products error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};

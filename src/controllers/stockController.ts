@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { buildBranchFilter } from "../utils/branchFilter";
 import { getQueryNumber, getQueryString } from "../utils/request";
 
@@ -12,6 +12,7 @@ const SORT_FIELD_MAP: Record<string, string> = {
   barcode: 'pv.barcode',
   quantity: 'quantity',
   branchName: 'b.name',
+  unitName: 'u.name',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 };
@@ -22,7 +23,10 @@ export const stockSummary = async (req: Request, res: Response) => {
         const pageNumber = getQueryNumber(req.query.page, 1)!;
         const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
         const sortField = getQueryString(req.query.sortField, "productName")!;
-        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
+        const sortOrder =
+            getQueryString(req.query.sortOrder)?.toLowerCase() === "desc"
+                ? "asc"
+                : "desc";
         const offset = (pageNumber - 1) * pageSize;
         const likeTerm = `%${searchTerm}%`;
 
@@ -31,18 +35,19 @@ export const stockSummary = async (req: Request, res: Response) => {
          ====================== */
         const branchFilter = buildBranchFilter(req.user, req.query);
         const branchCondition = branchFilter?.branchId
-          ? `AND s."branchId" = ${branchFilter.branchId}`
-          : "";
+            ? `AND s."branchId" = ${branchFilter.branchId}`
+            : "";
 
         /** ======================
          * SAFE SORT FIELD
          ====================== */
-        const sortColumn = SORT_FIELD_MAP[sortField] || 'p.name';
+        const sortColumn = SORT_FIELD_MAP[sortField] || "p.name";
 
         /** ======================
          * 1️ COUNT TOTAL VARIANTS
          ====================== */
-        const totalResult: any[] = await prisma.$queryRawUnsafe(`
+        const totalResult: any[] = await prisma.$queryRawUnsafe(
+            `
             SELECT COUNT(*) AS total
             FROM (
                 SELECT pv.id, s."branchId"
@@ -58,14 +63,17 @@ export const stockSummary = async (req: Request, res: Response) => {
                 ${branchCondition}
                 GROUP BY pv.id, s."branchId"
             ) t
-        `, likeTerm);
+        `,
+            likeTerm
+        );
 
         const total = Number(totalResult[0]?.total || 0);
 
         /** ======================
          * 2️ FETCH STOCK SUMMARY
          ====================== */
-        const rows: any[] = await prisma.$queryRawUnsafe(`
+        const rows: any[] = await prisma.$queryRawUnsafe(
+            `
             SELECT
                 p.id AS "productId",
                 p.name AS "productName",
@@ -75,6 +83,11 @@ export const stockSummary = async (req: Request, res: Response) => {
                 pv."productType" AS "productType",
                 pv.sku,
                 pv.barcode,
+                pv."baseUnitId" AS "baseUnitId",
+
+                u.id AS "unitId",
+                u.name AS "unitName",
+                u.type AS "unitType",
 
                 b.id AS "branchId",
                 b.name AS "branchName",
@@ -94,13 +107,14 @@ export const stockSummary = async (req: Request, res: Response) => {
             JOIN "ProductVariants" pv ON s."productVariantId" = pv.id
             JOIN "Products" p ON pv."productId" = p.id
             JOIN "Branch" b ON s."branchId" = b.id
+            LEFT JOIN "Units" u ON pv."baseUnitId" = u.id
 
             LEFT JOIN "User" cu ON cu.id = (
                 SELECT s2."createdBy"
                 FROM "Stocks" s2
                 WHERE s2."productVariantId" = pv.id
-                    AND s2."branchId" = b.id
-                    AND s2."createdBy" IS NOT NULL
+                  AND s2."branchId" = b.id
+                  AND s2."createdBy" IS NOT NULL
                 ORDER BY s2."createdAt" ASC
                 LIMIT 1
             )
@@ -109,8 +123,8 @@ export const stockSummary = async (req: Request, res: Response) => {
                 SELECT s3."updatedBy"
                 FROM "Stocks" s3
                 WHERE s3."productVariantId" = pv.id
-                    AND s3."branchId" = b.id
-                    AND s3."updatedBy" IS NOT NULL
+                  AND s3."branchId" = b.id
+                  AND s3."updatedBy" IS NOT NULL
                 ORDER BY s3."updatedAt" DESC
                 LIMIT 1
             )
@@ -124,20 +138,30 @@ export const stockSummary = async (req: Request, res: Response) => {
             ${branchCondition}
 
             GROUP BY
-                p.id, pv.id, b.id, cu.id, uu.id
+                p.id,
+                pv.id,
+                b.id,
+                u.id,
+                cu.id,
+                uu.id
 
             ORDER BY ${sortColumn} ${sortOrder}
             LIMIT $2 OFFSET $3
-        `, likeTerm, pageSize, offset);
+        `,
+            likeTerm,
+            pageSize,
+            offset
+        );
 
         /** ======================
          * 3️ FETCH VARIANT ATTRIBUTES
          ====================== */
-        const variantIds = rows.map(r => r.variantId);
+        const variantIds = rows.map((r) => r.variantId);
         let attributeMap: Record<number, any[]> = {};
 
         if (variantIds.length > 0) {
-            const attrs: any[] = await prisma.$queryRawUnsafe(`
+            const attrs: any[] = await prisma.$queryRawUnsafe(
+                `
                 SELECT
                     pvv."productVariantId" AS "variantId",
                     va.name AS "attributeName",
@@ -146,9 +170,11 @@ export const stockSummary = async (req: Request, res: Response) => {
                 JOIN "VariantValue" vv ON pvv."variantValueId" = vv.id
                 JOIN "VariantAttribute" va ON vv."variantAttributeId" = va.id
                 WHERE pvv."productVariantId" = ANY($1)
-            `, variantIds);
+            `,
+                variantIds
+            );
 
-            attrs.forEach(a => {
+            attrs.forEach((a) => {
                 if (!attributeMap[a.variantId]) attributeMap[a.variantId] = [];
                 attributeMap[a.variantId].push({
                     attributeName: a.attributeName,
@@ -160,7 +186,7 @@ export const stockSummary = async (req: Request, res: Response) => {
         /** ======================
          * 4️ FINAL RESPONSE
          ====================== */
-        const data = rows.map(r => ({
+        const data = rows.map((r) => ({
             productId: r.productId,
             productName: r.productName,
 
@@ -170,6 +196,11 @@ export const stockSummary = async (req: Request, res: Response) => {
             sku: r.sku,
             barcode: r.barcode,
 
+            baseUnitId: r.baseUnitId,
+            unitId: r.unitId,
+            unitName: r.unitName,
+            unitType: r.unitType,
+
             branchId: r.branchId,
             branchName: r.branchName,
 
@@ -178,8 +209,12 @@ export const stockSummary = async (req: Request, res: Response) => {
             createdAt: r.createdAt,
             updatedAt: r.updatedAt,
 
-            createdBy: r.createdById ? { id: r.createdById, name: r.createdByName } : null,
-            updatedBy: r.updatedById ? { id: r.updatedById, name: r.updatedByName } : null,
+            createdBy: r.createdById
+                ? { id: r.createdById, name: r.createdByName }
+                : null,
+            updatedBy: r.updatedById
+                ? { id: r.updatedById, name: r.updatedByName }
+                : null,
 
             attributes: attributeMap[r.variantId] || [],
         }));
@@ -193,7 +228,6 @@ export const stockSummary = async (req: Request, res: Response) => {
                 totalPages: Math.ceil(total / pageSize),
             },
         });
-
     } catch (error) {
         console.error("stockSummary error:", error);
         res.status(500).json({ message: "Failed to load stock summary" });

@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { Decimal } from "@prisma/client/runtime/library";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -20,7 +21,7 @@ export const getAllStockRequests = async (req: Request, res: Response): Promise<
         const pageNumber = getQueryNumber(req.query.page, 1)!;
         const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
         const sortField = getQueryString(req.query.sortField, "ref")!;
-        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "asc" : "desc";
         const offset = (pageNumber - 1) * pageSize;
 
         const loggedInUser = req.user;
@@ -127,101 +128,153 @@ export const getAllStockRequests = async (req: Request, res: Response): Promise<
 export const upsertRequest = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const { branchId, StatusType, note, requestDetails, requestDate } = req.body;
-    
+
     try {
         const result = await prisma.$transaction(async (tx) => {
-            const loggedInUser = req.user; // Assuming you have a middleware that attaches the logged-in user to the request
-            // Verify that loggedInUser is defined
+            const loggedInUser = req.user;
             if (!loggedInUser) {
                 res.status(401).json({ message: "User is not authenticated." });
                 return;
             }
 
-            const requestId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+            const requestId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
+
+            let oldRequest: any = null;
+
             if (requestId) {
-                const checkStockRequest = await tx.stockRequests.findUnique({ where: { id: Number(requestId) } });
-                if (!checkStockRequest) {
+                oldRequest = await tx.stockRequests.findUnique({
+                    where: { id: requestId },
+                    include: {
+                        requestDetails: true,
+                    },
+                });
+
+                if (!oldRequest) {
                     res.status(404).json({ message: "Request not found!" });
                     return;
                 }
+
+                if (oldRequest.StatusType === "APPROVED") {
+                    throw new Error("Approved stock request cannot be edited.");
+                }
+
+                if (oldRequest.StatusType === "CANCELLED") {
+                    throw new Error("Cancelled stock request cannot be edited.");
+                }
             }
 
-            if (!requestDetails || requestDetails.length === 0) {
+            if (!requestDetails || !Array.isArray(requestDetails) || requestDetails.length === 0) {
                 throw new Error("Request details cannot be empty");
+            }
+
+            for (const detail of requestDetails) {
+                if (!detail.productVariantId) {
+                    throw new Error("productVariantId is required in request details");
+                }
+
+                if (!detail.unitId) {
+                    throw new Error("unitId is required in request details");
+                }
+
+                if (detail.unitQty == null || Number(detail.unitQty) <= 0) {
+                    throw new Error("unitQty must be greater than 0");
+                }
+
+                if (detail.baseQty == null || Number(detail.baseQty) <= 0) {
+                    throw new Error("baseQty must be greater than 0");
+                }
             }
 
             let ref = "SRQ-";
 
-            // Generate a new ref only for creation
-            if (!id) {
-                // Query for the highest ref in the same branch
-                const lastRequest = await prisma.stockRequests.findFirst({
-                    where: { branchId: parseInt(branchId, 10) },
-                    orderBy: { id: 'desc' }, // Sort by ref in descending order
+            if (!requestId) {
+                const lastRequest = await tx.stockRequests.findFirst({
+                    where: { branchId: Number(branchId) },
+                    orderBy: { id: "desc" },
+                    select: { ref: true },
                 });
 
-                // Extract and increment the numeric part of the ref
-                if (lastRequest && lastRequest.ref) {
-                    const refNumber = parseInt(lastRequest.ref.split('-')[1], 10) || 0;
-                    ref += String(refNumber + 1).padStart(5, '0'); // Increment and format with leading zeros
+                if (lastRequest?.ref) {
+                    const refNumber = parseInt(lastRequest.ref.split("-")[1], 10) || 0;
+                    ref += String(refNumber + 1).padStart(5, "0");
                 } else {
-                    ref += "00001"; // Start from 00001 if no ref exists for the branch
+                    ref += "00001";
                 }
             }
 
+            const requestPayload = {
+                branchId: Number(branchId),
+                requestBy: req.user ? req.user.id : 0,
+                requestDate: new Date(dayjs(requestDate).format("YYYY-MM-DD")),
+                StatusType,
+                note,
+                updatedAt: currentDate,
+                updatedBy: req.user ? req.user.id : null,
+                requestDetails: {
+                    deleteMany: requestId ? { requestId } : undefined,
+                    create: requestDetails.map((detail: any) => ({
+                        productId: detail.productId ? Number(detail.productId) : null,
+                        productVariantId: Number(detail.productVariantId),
+                        unitId: Number(detail.unitId),
+                        unitQty: new Decimal(detail.unitQty ?? 0),
+                        baseQty: new Decimal(detail.baseQty ?? 0),
+
+                        // optional legacy field
+                        quantity: Math.round(Number(detail.baseQty ?? 0)),
+                    })),
+                },
+            };
+
             const requestData = requestId
                 ? await tx.stockRequests.update({
-                    where: { id: Number(requestId) },
-                    data: {
-                        branchId: parseInt(branchId, 10),
-                        requestBy: req.user ? req.user.id : 0,
-                        requestDate: new Date(dayjs(requestDate).format("YYYY-MM-DD")),
-                        StatusType,
-                        note,
-                        updatedAt: currentDate,
-                        updatedBy: req.user ? req.user.id : null,
-                        requestDetails: {
-                            deleteMany: {
-                                requestId: Number(requestId)   // MUST include a filter
-                            },
-                            create: requestDetails.map((detail: any) => ({
-                                productId: parseInt(detail.productId, 10),
-                                productVariantId: parseInt(detail.productVariantId, 10),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
-                        },
-                    }
+                    where: { id: requestId },
+                    data: requestPayload,
+                    include: {
+                        requestDetails: true,
+                    },
                 })
                 : await tx.stockRequests.create({
                     data: {
-                        branchId: parseInt(branchId, 10),
-                        requestBy: req.user ? req.user.id : 0,
+                        ...requestPayload,
                         ref,
-                        note,
-                        requestDate: new Date(dayjs(requestDate).format("YYYY-MM-DD")),
-                        StatusType,
                         createdAt: currentDate,
                         updatedAt: currentDate,
                         createdBy: req.user ? req.user.id : null,
-                        updatedBy: req.user ? req.user.id : null,
-                        requestDetails: {
-                            create: requestDetails.map((detail: any) => ({
-                                productId: parseInt(detail.productId, 10),
-                                productVariantId: parseInt(detail.productVariantId, 10),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
-                        },
-                    }
+                    },
+                    include: {
+                        requestDetails: true,
+                    },
                 });
-            
-            // If status is Received update stock
-            if (StatusType === "APPROVED") {
-                for (const detail of requestDetails) {
-                    // Determine signed quantity for request
-                    const signedQuantity = -Number(detail.quantity);
 
-                    // Update or create stock
-                     await tx.stocks.upsert({
+            if (StatusType === "APPROVED") {
+                for (const detail of requestData.requestDetails) {
+                    const baseQty = Number(detail.baseQty ?? 0);
+
+                    if (baseQty <= 0) {
+                        throw new Error("baseQty must be greater than 0");
+                    }
+
+                    // check stock availability first
+                    const currentStock = await tx.stocks.findUnique({
+                        where: {
+                            productVariantId_branchId: {
+                                productVariantId: Number(detail.productVariantId),
+                                branchId: Number(branchId),
+                            },
+                        },
+                    });
+
+                    const availableQty = Number(currentStock?.quantity ?? 0);
+
+                    if (availableQty < baseQty) {
+                        throw new Error(
+                            `Insufficient stock for variant ID ${detail.productVariantId}. Available: ${availableQty}, Requested: ${baseQty}`
+                        );
+                    }
+
+                    const signedBaseQty = -baseQty;
+
+                    await tx.stocks.upsert({
                         where: {
                             productVariantId_branchId: {
                                 productVariantId: Number(detail.productVariantId),
@@ -229,30 +282,35 @@ export const upsertRequest = async (req: Request, res: Response): Promise<void> 
                             },
                         },
                         update: {
-                            quantity: { increment: signedQuantity },
+                            quantity: { increment: signedBaseQty },
                             updatedBy: loggedInUser.id,
-                            updatedAt: currentDate
+                            updatedAt: currentDate,
                         },
                         create: {
                             productVariantId: Number(detail.productVariantId),
                             branchId: Number(branchId),
-                            quantity: signedQuantity,
+                            quantity: signedBaseQty,
                             createdBy: loggedInUser.id,
-                            createdAt: currentDate
+                            createdAt: currentDate,
+                            updatedBy: loggedInUser.id,
+                            updatedAt: currentDate,
                         },
                     });
 
-                    // Insert stock movement
                     await tx.stockMovements.create({
                         data: {
                             productVariantId: Number(detail.productVariantId),
                             branchId: Number(branchId),
                             type: "REQUEST",
-                            status: 'APPROVED',
-                            quantity: signedQuantity,
+                            status: "APPROVED",
+                            quantity: new Decimal(signedBaseQty),
+                            unitCost: null,
+                            requestDetailId: detail.id,
                             note,
                             createdBy: req.user ? req.user.id : null,
-                            createdAt: currentDate
+                            createdAt: currentDate,
+                            approvedAt: currentDate,
+                            approvedBy: loggedInUser.id,
                         },
                     });
                 }
@@ -262,14 +320,14 @@ export const upsertRequest = async (req: Request, res: Response): Promise<void> 
                     data: {
                         StatusType: "APPROVED",
                         approvedAt: currentDate,
-                        approvedBy: loggedInUser.id
-                    }
+                        approvedBy: loggedInUser.id,
+                    },
                 });
             }
 
             return requestData;
         });
-        
+
         res.status(id ? 200 : 201).json(result);
     } catch (error) {
         logger.error("Error creating/updating stock request:", error);
@@ -283,13 +341,9 @@ export const getStockRequestById = async (
     res: Response
 ): Promise<void> => {
     const { id } = req.params;
-
     const stockRequestId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
     try {
-        /* ---------------------------------- */
-        /* 1️⃣ GET PURCHASE (BASE DATA)       */
-        /* ---------------------------------- */
         const purchase = await prisma.stockRequests.findUnique({
             where: { id: Number(stockRequestId) },
             include: {
@@ -298,14 +352,53 @@ export const getStockRequestById = async (
                 updater: true,
                 requestDetails: {
                     include: {
+                        unit: true,
                         products: true,
                         productvariants: {
                             select: {
                                 id: true,
+                                productId: true,
                                 name: true,
                                 barcode: true,
                                 sku: true,
                                 productType: true,
+                                baseUnitId: true,
+                                baseUnit: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        type: true,
+                                    },
+                                },
+                                products: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        unitConversions: {
+                                            select: {
+                                                id: true,
+                                                productId: true,
+                                                fromUnitId: true,
+                                                toUnitId: true,
+                                                multiplier: true,
+                                                fromUnit: {
+                                                    select: {
+                                                        id: true,
+                                                        name: true,
+                                                        type: true,
+                                                    },
+                                                },
+                                                toUnit: {
+                                                    select: {
+                                                        id: true,
+                                                        name: true,
+                                                        type: true,
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
                             },
                         },
                     },
@@ -314,22 +407,16 @@ export const getStockRequestById = async (
         });
 
         if (!purchase) {
-            res.status(404).json({ message: "Stock request not found!" });
+            res.status(404).json({ message: "Stock adjustment not found!" });
             return;
         }
 
-        /* ---------------------------------- */
-        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
-        /* ---------------------------------- */
         const branchId = purchase.branchId;
 
         const variantIds = purchase.requestDetails
-        .map((detail) => detail.productVariantId)
-        .filter((id): id is number => id !== null);
+            .map((detail) => detail.productVariantId)
+            .filter((id): id is number => id !== null);
 
-        /* ---------------------------------- */
-        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
-        /* ---------------------------------- */
         const stocks = await prisma.stocks.findMany({
             where: {
                 branchId,
@@ -343,38 +430,86 @@ export const getStockRequestById = async (
             },
         });
 
-        /* ---------------------------------- */
-        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
-        /* ---------------------------------- */
         const stockMap = new Map<number, number>(
-            stocks.map((s) => [
-                s.productVariantId,
-                Number(s.quantity),
-            ])
+            stocks.map((s) => [s.productVariantId, Number(s.quantity)])
         );
 
-        /* ---------------------------------- */
-        /* 5️⃣ MERGE STOCK INTO DETAILS       */
-        /* ---------------------------------- */
-        purchase.requestDetails = purchase.requestDetails.map(
-            (detail: any) => ({
+        purchase.requestDetails = purchase.requestDetails.map((detail: any) => {
+            const pv = detail.productvariants;
+
+            let unitOptions: any[] = [];
+
+            if (pv) {
+                const unitMap = new Map<
+                    number,
+                    {
+                        unitId: number;
+                        unitName: string;
+                        operationValue: number;
+                        isBaseUnit: boolean;
+                        operator?: string;
+                    }
+                >();
+
+                if (pv.baseUnit) {
+                    unitMap.set(pv.baseUnit.id, {
+                        unitId: pv.baseUnit.id,
+                        unitName: pv.baseUnit.name,
+                        operationValue: 1,
+                        isBaseUnit: true,
+                        operator: "*",
+                    });
+                }
+
+                const conversions = pv.products?.unitConversions ?? [];
+
+                for (const conv of conversions) {
+                    if (pv.baseUnitId === conv.toUnitId && conv.fromUnit) {
+                        unitMap.set(conv.fromUnit.id, {
+                            unitId: conv.fromUnit.id,
+                            unitName: conv.fromUnit.name,
+                            operationValue: Number(conv.multiplier ?? 1),
+                            isBaseUnit: false,
+                            operator: "*",
+                        });
+                    }
+
+                    if (pv.baseUnitId === conv.fromUnitId && conv.toUnit) {
+                        const multiplier = Number(conv.multiplier ?? 1);
+
+                        unitMap.set(conv.toUnit.id, {
+                            unitId: conv.toUnit.id,
+                            unitName: conv.toUnit.name,
+                            operationValue: multiplier === 0 ? 1 : 1 / multiplier,
+                            isBaseUnit: false,
+                            operator: "*",
+                        });
+                    }
+                }
+
+                unitOptions = Array.from(unitMap.values());
+            }
+
+            return {
                 ...detail,
-                name: detail.productvariants.name,
-                barcode: detail.productvariants.barcode,
-                sku: detail.productvariants.sku,
-                stocks:
-                    stockMap.get(detail.productVariantId) ?? 0,
-            })
-        );
+                productvariants: pv
+                    ? {
+                          ...pv,
+                          unitOptions,
+                      }
+                    : null,
+                name: detail.productvariants?.name,
+                barcode: detail.productvariants?.barcode,
+                sku: detail.productvariants?.sku,
+                stocks: stockMap.get(detail.productVariantId) ?? 0,
+            };
+        });
 
-        /* ---------------------------------- */
-        /* 6️⃣ SEND RESPONSE                  */
-        /* ---------------------------------- */
         res.status(200).json(purchase);
     } catch (error) {
-        console.error("Error fetching stock request by ID:", error);
+        console.error("Error fetching request by ID:", error);
         res.status(500).json({
-            message: "Error fetching stock request by ID",
+            message: "Error fetching request by ID",
         });
     }
 };

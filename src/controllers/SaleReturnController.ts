@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { computeBaseQty } from "../utils/uom";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -135,6 +136,339 @@ export const getAllSaleReturnsWithPagination = async (req: Request, res: Respons
     }
 };
 
+// export const createSaleReturn = async (
+//     req: Request,
+//     res: Response
+// ): Promise<void> => {
+//     const {
+//         orderId,
+//         branchId,
+//         customerId,
+//         status,
+//         note,
+//         items,
+//     } = req.body;
+
+//     if (!items || items.length === 0) {
+//         res.status(400).json({ message: "No items to return" });
+//         return;
+//     }
+
+//     const userId = req.user?.id;
+//     const now = new Date();
+
+//     try {
+//         const result = await prisma.$transaction(async (tx) => {
+
+//             /* -------------------------------------------------------
+//             1️ LOAD ORDER
+//             ------------------------------------------------------- */
+//             const order = await tx.order.findUnique({
+//                 where: { id: orderId },
+//                 select: {
+//                     id: true,
+//                     discount: true,
+//                     taxRate: true,
+//                 },
+//             });
+
+//             if (!order) throw new Error("Order not found");
+
+//             /* -------------------------------------------------------
+//             2️ GENERATE RETURN REF
+//             ------------------------------------------------------- */
+//             let ref = "SR-00001";
+
+//             const lastReturn = await tx.saleReturns.findFirst({
+//                 where: { branchId },
+//                 orderBy: { id: "desc" },
+//             });
+
+//             if (lastReturn?.ref) {
+//                 const lastNo = parseInt(lastReturn.ref.split("-")[1]) || 0;
+//                 ref = `SR-${String(lastNo + 1).padStart(5, "0")}`;
+//             }
+
+//             /* -------------------------------------------------------
+//             3️ RETURN ITEMS SUBTOTAL
+//             ------------------------------------------------------- */
+//             let itemsSubtotal = 0;
+
+//             for (const item of items) {
+//                 const netUnit =
+//                     item.discountMethod === "Fixed"
+//                         ? Number(item.price) - Number(item.discount)
+//                         : Number(item.price) *
+//                           ((100 - Number(item.discount)) / 100);
+
+//                 itemsSubtotal += netUnit * Number(item.quantity);
+//             }
+
+//             if (itemsSubtotal <= 0) {
+//                 throw new Error("Invalid return subtotal");
+//             }
+
+//             /* -------------------------------------------------------
+//             4️ FULL ORDER SUBTOTAL
+//             ------------------------------------------------------- */
+//             const orderItemsAgg = await tx.orderItem.aggregate({
+//                 where: { orderId },
+//                 _sum: { total: true },
+//             });
+
+//             const invoiceSubtotal = Number(orderItemsAgg._sum.total || 0);
+//             if (invoiceSubtotal <= 0) {
+//                 throw new Error("Invalid invoice subtotal");
+//             }
+
+//             /* -------------------------------------------------------
+//             5️ PRORATE DISCOUNT & TAX
+//             ------------------------------------------------------- */
+//             const returnRatio = itemsSubtotal / invoiceSubtotal;
+
+//             const rawReturnDiscount =
+//                 Number(order.discount || 0) * returnRatio;
+
+//             const taxableAmount = itemsSubtotal - rawReturnDiscount;
+
+//             const rawReturnTax =
+//                 taxableAmount * (Number(order.taxRate || 0) / 100);
+
+//             /* -------------------------------------------------------
+//             6️ PREVIOUS RETURNS (DISCOUNT + TAX)
+//             ------------------------------------------------------- */
+//             const previousReturns = await tx.saleReturns.aggregate({
+//                 where: { orderId },
+//                 _sum: {
+//                     discount: true,
+//                     taxNet: true,
+//                 },
+//             });
+
+//             const prevDiscount = Number(previousReturns._sum.discount || 0);
+//             const prevTax = Number(previousReturns._sum.taxNet || 0);
+
+//             const maxOrderTax =
+//                 (invoiceSubtotal - Number(order.discount || 0)) *
+//                 (Number(order.taxRate || 0) / 100);
+
+//             /* -------------------------------------------------------
+//             ✅ FIX: CAP DISCOUNT & TAX (ROUNDING SAFE)
+//             ------------------------------------------------------- */
+//             const remainingDiscount =
+//                 Number(order.discount || 0) - prevDiscount;
+
+//             const remainingTax =
+//                 maxOrderTax - prevTax;
+
+//             const returnDiscount = Math.min(
+//                 rawReturnDiscount,
+//                 remainingDiscount
+//             );
+
+//             const returnTax = Math.min(
+//                 rawReturnTax,
+//                 remainingTax
+//             );
+
+//             const returnTotal =
+//                 taxableAmount - (rawReturnDiscount - returnDiscount) +
+//                 returnTax;
+
+//             /* -------------------------------------------------------
+//             7️ CREATE SALE RETURN
+//             ------------------------------------------------------- */
+//             const saleReturn = await tx.saleReturns.create({
+//                 data: {
+//                     orderId,
+//                     branchId,
+//                     customerId,
+//                     ref,
+//                     discount: returnDiscount,
+//                     taxRate: order.taxRate,
+//                     taxNet: returnTax,
+//                     shipping: 0,
+//                     totalAmount: returnTotal,
+//                     status,
+//                     note,
+//                     createdBy: userId,
+//                     updatedBy: userId,
+//                     createdAt: currentDate,
+//                     updatedAt: currentDate,
+//                 },
+//             });
+
+//             /* -------------------------------------------------------
+//             8️ PROCESS RETURN ITEMS
+//             ------------------------------------------------------- */
+//             for (const item of items) {
+
+//                 /* -----------------------------
+//                 CREATE RETURN ITEM (ALL TYPES)
+//                 ----------------------------- */
+//                 const returnItem = await tx.saleReturnItems.create({
+//                     data: {
+//                         saleReturnId: saleReturn.id,
+//                         saleItemId: item.orderItemId,
+//                         productVariantId: item.productVariantId ?? null,
+//                         productId: item.productId,
+//                         serviceId: item.serviceId ?? null,
+//                         ItemType: item.ItemType,
+//                         quantity: item.quantity,
+//                         price: item.price,
+//                         discount: item.discount,
+//                         discountMethod: item.discountMethod,
+//                         taxNet: item.taxNet,
+//                         taxMethod: item.taxMethod,
+//                         total: item.total,
+//                     },
+//                 });
+
+//                 /* =====================================================
+//                 🔥 STOCK & FIFO — PRODUCT ONLY
+//                 ===================================================== */
+//                 if (item.ItemType === "PRODUCT") {
+
+//                     if (!item.productVariantId) {
+//                         throw new Error("Product return requires productVariantId");
+//                     }
+
+//                     /* ---------- VALIDATE QTY ---------- */
+//                     const returnedAgg = await tx.saleReturnItems.aggregate({
+//                         where: { saleItemId: item.orderItemId },
+//                         _sum: { quantity: true },
+//                     });
+
+//                     const alreadyReturned = Number(returnedAgg._sum.quantity || 0);
+
+//                     const orderItem = await tx.orderItem.findUnique({
+//                         where: { id: item.orderItemId },
+//                     });
+
+//                     if (!orderItem) {
+//                         throw new Error(`Order item ${item.orderItemId} not found`);
+//                     }
+
+//                     if (alreadyReturned > Number(orderItem.quantity)) {
+//                         throw new Error(
+//                             `Return exceeds available quantity for order item ${item.orderItemId}`
+//                         );
+//                     }
+
+//                     /* ---------- FIFO RESTORE ---------- */
+//                     let qtyToRestore = item.quantity;
+
+//                     const soldMovements = await tx.stockMovements.findMany({
+//                         where: {
+//                             orderItemId: item.orderItemId,
+//                             productVariantId: item.productVariantId,
+//                             branchId,
+//                             type: "ORDER",
+//                             status: "APPROVED",
+//                         },
+//                         orderBy: { createdAt: "asc" },
+//                     });
+
+//                     for (const mov of soldMovements) {
+//                         if (qtyToRestore <= 0) break;
+
+//                         const soldQty = Math.abs(Number(mov.quantity));
+//                         const restoreQty = Math.min(soldQty, qtyToRestore);
+
+//                         await tx.stockMovements.create({
+//                             data: {
+//                                 productVariantId: item.productVariantId,
+//                                 branchId,
+//                                 orderItemId: item.orderItemId,
+//                                 saleReturnItemId: returnItem.id,
+//                                 type: "SALE_RETURN",
+//                                 status: "APPROVED",
+//                                 quantity: restoreQty,
+//                                 unitCost: mov.unitCost,
+//                                 sourceMovementId: mov.id,
+//                                 remainingQty: restoreQty,
+//                                 note: `Sale Return #${ref}`,
+//                                 createdBy: userId,
+//                                 approvedBy: userId,
+//                                 createdAt: currentDate,
+//                                 approvedAt: currentDate,
+//                             },
+//                         });
+
+//                         qtyToRestore -= restoreQty;
+//                     }
+
+//                     if (qtyToRestore > 0) {
+//                         throw new Error("FIFO restore quantity mismatch");
+//                     }
+
+//                     /* ---------- UPDATE STOCK ---------- */
+//                     await tx.stocks.update({
+//                         where: {
+//                             productVariantId_branchId: {
+//                                 productVariantId: item.productVariantId,
+//                                 branchId,
+//                             },
+//                         },
+//                         data: {
+//                             quantity: { increment: item.quantity },
+//                             updatedBy: userId,
+//                             updatedAt: currentDate,
+//                         },
+//                     });
+//                 }
+//             }
+
+//             /* ------------------------------------------------------- 
+//             9️ PAYMENT REVERSAL (REFUND) 
+//             ------------------------------------------------------- */ 
+//             const payments = await tx.orderOnPayments.findMany({ where: { orderId }, }); 
+            
+//             for (const pay of payments) { 
+//                 if (Number(pay.totalPaid) > 0) { 
+//                     await tx.orderOnPayments.create({ 
+//                         data: { 
+//                             branchId, 
+//                             orderId, 
+//                             paymentDate: now, 
+//                             paymentMethodId: pay.paymentMethodId, 
+//                             totalPaid: new Decimal(-Number(pay.totalPaid)), 
+//                             receive_usd: pay.receive_usd ? new Decimal(-Number(pay.receive_usd)) : null, 
+//                             receive_khr: pay.receive_khr ? -Number(pay.receive_khr) : null, 
+//                             exchangerate: pay.exchangerate, 
+//                             status: "REFUND", 
+//                             createdBy: userId 
+//                         }, 
+//                     }); 
+//                 }
+//             }
+
+//             /* -------------------------------------------------------
+//             10 UPDATE ORDER TOTAL
+//             ------------------------------------------------------- */
+//             await tx.order.update({
+//                 where: { id: orderId },
+//                 data: {
+//                     totalAmount: {
+//                         decrement: returnTotal,
+//                     },
+//                     returnstatus: 1
+//                 },
+//             });
+
+//             return saleReturn;
+//         });
+
+//         res.status(201).json(result);
+
+//     } catch (error: any) {
+//         console.error(error);
+//         res.status(500).json({
+//             message: error?.message || "Sale return failed",
+//         });
+//     }
+// };
+
 export const createSaleReturn = async (
     req: Request,
     res: Response
@@ -158,12 +492,11 @@ export const createSaleReturn = async (
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-
             /* -------------------------------------------------------
-            1️ LOAD ORDER
+            1️⃣ LOAD ORDER
             ------------------------------------------------------- */
             const order = await tx.order.findUnique({
-                where: { id: orderId },
+                where: { id: Number(orderId) },
                 select: {
                     id: true,
                     discount: true,
@@ -174,12 +507,12 @@ export const createSaleReturn = async (
             if (!order) throw new Error("Order not found");
 
             /* -------------------------------------------------------
-            2️ GENERATE RETURN REF
+            2️⃣ GENERATE RETURN REF
             ------------------------------------------------------- */
             let ref = "SR-00001";
 
             const lastReturn = await tx.saleReturns.findFirst({
-                where: { branchId },
+                where: { branchId: Number(branchId) },
                 orderBy: { id: "desc" },
             });
 
@@ -189,18 +522,22 @@ export const createSaleReturn = async (
             }
 
             /* -------------------------------------------------------
-            3️ RETURN ITEMS SUBTOTAL
+            3️⃣ RETURN ITEMS SUBTOTAL
             ------------------------------------------------------- */
             let itemsSubtotal = 0;
 
             for (const item of items) {
+                const qty =
+                    item.ItemType === "PRODUCT"
+                        ? Number(item.unitQty ?? item.quantity ?? 0)
+                        : Number(item.quantity ?? 0);
+
                 const netUnit =
                     item.discountMethod === "Fixed"
-                        ? Number(item.price) - Number(item.discount)
-                        : Number(item.price) *
-                          ((100 - Number(item.discount)) / 100);
+                        ? Number(item.price) - Number(item.discount || 0)
+                        : Number(item.price) * ((100 - Number(item.discount || 0)) / 100);
 
-                itemsSubtotal += netUnit * Number(item.quantity);
+                itemsSubtotal += netUnit * qty;
             }
 
             if (itemsSubtotal <= 0) {
@@ -208,10 +545,10 @@ export const createSaleReturn = async (
             }
 
             /* -------------------------------------------------------
-            4️ FULL ORDER SUBTOTAL
+            4️⃣ FULL ORDER SUBTOTAL
             ------------------------------------------------------- */
             const orderItemsAgg = await tx.orderItem.aggregate({
-                where: { orderId },
+                where: { orderId: Number(orderId) },
                 _sum: { total: true },
             });
 
@@ -221,7 +558,7 @@ export const createSaleReturn = async (
             }
 
             /* -------------------------------------------------------
-            5️ PRORATE DISCOUNT & TAX
+            5️⃣ PRORATE DISCOUNT & TAX
             ------------------------------------------------------- */
             const returnRatio = itemsSubtotal / invoiceSubtotal;
 
@@ -234,10 +571,10 @@ export const createSaleReturn = async (
                 taxableAmount * (Number(order.taxRate || 0) / 100);
 
             /* -------------------------------------------------------
-            6️ PREVIOUS RETURNS (DISCOUNT + TAX)
+            6️⃣ PREVIOUS RETURNS (DISCOUNT + TAX)
             ------------------------------------------------------- */
             const previousReturns = await tx.saleReturns.aggregate({
-                where: { orderId },
+                where: { orderId: Number(orderId) },
                 _sum: {
                     discount: true,
                     taxNet: true,
@@ -251,37 +588,26 @@ export const createSaleReturn = async (
                 (invoiceSubtotal - Number(order.discount || 0)) *
                 (Number(order.taxRate || 0) / 100);
 
-            /* -------------------------------------------------------
-            ✅ FIX: CAP DISCOUNT & TAX (ROUNDING SAFE)
-            ------------------------------------------------------- */
             const remainingDiscount =
                 Number(order.discount || 0) - prevDiscount;
 
             const remainingTax =
                 maxOrderTax - prevTax;
 
-            const returnDiscount = Math.min(
-                rawReturnDiscount,
-                remainingDiscount
-            );
-
-            const returnTax = Math.min(
-                rawReturnTax,
-                remainingTax
-            );
+            const returnDiscount = Math.min(rawReturnDiscount, remainingDiscount);
+            const returnTax = Math.min(rawReturnTax, remainingTax);
 
             const returnTotal =
-                taxableAmount - (rawReturnDiscount - returnDiscount) +
-                returnTax;
+                taxableAmount - (rawReturnDiscount - returnDiscount) + returnTax;
 
             /* -------------------------------------------------------
-            7️ CREATE SALE RETURN
+            7️⃣ CREATE SALE RETURN
             ------------------------------------------------------- */
             const saleReturn = await tx.saleReturns.create({
                 data: {
-                    orderId,
-                    branchId,
-                    customerId,
+                    orderId: Number(orderId),
+                    branchId: Number(branchId),
+                    customerId: customerId ? Number(customerId) : null,
                     ref,
                     discount: returnDiscount,
                     taxRate: order.taxRate,
@@ -298,70 +624,133 @@ export const createSaleReturn = async (
             });
 
             /* -------------------------------------------------------
-            8️ PROCESS RETURN ITEMS
+            8️⃣ PROCESS RETURN ITEMS
             ------------------------------------------------------- */
             for (const item of items) {
+                const isProduct = item.ItemType === "PRODUCT";
 
-                /* -----------------------------
-                CREATE RETURN ITEM (ALL TYPES)
-                ----------------------------- */
-                const returnItem = await tx.saleReturnItems.create({
-                    data: {
-                        saleReturnId: saleReturn.id,
-                        saleItemId: item.orderItemId,
-                        productVariantId: item.productVariantId ?? null,
-                        productId: item.productId,
-                        serviceId: item.serviceId ?? null,
-                        ItemType: item.ItemType,
-                        quantity: item.quantity,
-                        price: item.price,
-                        discount: item.discount,
-                        discountMethod: item.discountMethod,
-                        taxNet: item.taxNet,
-                        taxMethod: item.taxMethod,
-                        total: item.total,
-                    },
-                });
+                const saleItemId = Number(item.orderItemId ?? item.saleItemId);
+                if (!saleItemId) {
+                    throw new Error("saleItemId/orderItemId is required");
+                }
 
-                /* =====================================================
-                🔥 STOCK & FIFO — PRODUCT ONLY
-                ===================================================== */
-                if (item.ItemType === "PRODUCT") {
+                let unitId: number | null = null;
+                let unitQty: Decimal | null = null;
+                let baseQty: Decimal | null = null;
 
+                if (isProduct) {
                     if (!item.productVariantId) {
                         throw new Error("Product return requires productVariantId");
                     }
 
-                    /* ---------- VALIDATE QTY ---------- */
-                    const returnedAgg = await tx.saleReturnItems.aggregate({
-                        where: { saleItemId: item.orderItemId },
-                        _sum: { quantity: true },
+                    const computed = await computeBaseQty(tx, {
+                        productVariantId: Number(item.productVariantId),
+                        unitId: item.unitId ? Number(item.unitId) : undefined,
+                        unitQty: item.unitQty ?? item.quantity ?? 0,
                     });
 
-                    const alreadyReturned = Number(returnedAgg._sum.quantity || 0);
+                    unitId = computed.unitId;
+                    unitQty = computed.unitQty;
+                    baseQty = computed.baseQty;
+                } else {
+                    unitId = null;
+                    unitQty = null;
+                    baseQty = null;
+                }
 
+                /* -----------------------------
+                CREATE RETURN ITEM
+                ----------------------------- */
+                const returnItem = await tx.saleReturnItems.create({
+                    data: {
+                        saleReturn: {
+                            connect: { id: saleReturn.id },
+                        },
+
+                        saleItemId,
+                        ItemType: item.ItemType,
+
+                        quantity: isProduct
+                            ? Number(unitQty ?? 0)
+                            : Number(item.quantity ?? 0),
+
+                        price: new Decimal(item.price ?? 0),
+                        discount: new Decimal(item.discount ?? 0),
+                        discountMethod: item.discountMethod,
+                        taxNet: new Decimal(item.taxNet ?? 0),
+                        taxMethod: item.taxMethod,
+                        total: new Decimal(item.total ?? 0),
+
+                        unitQty: isProduct ? unitQty : null,
+                        baseQty: isProduct ? baseQty : null,
+
+                        ...(isProduct && unitId
+                            ? {
+                                unit: {
+                                    connect: { id: unitId },
+                                },
+                            }
+                            : {}),
+
+                        ...(item.productId
+                            ? {
+                                products: {
+                                    connect: { id: Number(item.productId) },
+                                },
+                            }
+                            : {}),
+
+                        ...(item.productVariantId
+                            ? {
+                                productvariants: {
+                                    connect: { id: Number(item.productVariantId) },
+                                },
+                            }
+                            : {}),
+
+                        ...(item.serviceId
+                            ? {
+                                services: {
+                                    connect: { id: Number(item.serviceId) },
+                                },
+                            }
+                            : {}),
+                    },
+                });
+
+                /* =====================================================
+                PRODUCT STOCK & FIFO RESTORE
+                ===================================================== */
+                if (isProduct) {
                     const orderItem = await tx.orderItem.findUnique({
-                        where: { id: item.orderItemId },
+                        where: { id: saleItemId },
                     });
 
                     if (!orderItem) {
-                        throw new Error(`Order item ${item.orderItemId} not found`);
+                        throw new Error(`Order item ${saleItemId} not found`);
                     }
 
-                    if (alreadyReturned > Number(orderItem.quantity)) {
+                    const returnedAgg = await tx.saleReturnItems.aggregate({
+                        where: { saleItemId },
+                        _sum: { baseQty: true },
+                    });
+
+                    const alreadyReturnedBaseQty = Number(returnedAgg._sum.baseQty || 0);
+                    const soldBaseQty = Number((orderItem as any).baseQty ?? orderItem.quantity ?? 0);
+
+                    if (alreadyReturnedBaseQty > soldBaseQty) {
                         throw new Error(
-                            `Return exceeds available quantity for order item ${item.orderItemId}`
+                            `Return exceeds available quantity for order item ${saleItemId}`
                         );
                     }
 
-                    /* ---------- FIFO RESTORE ---------- */
-                    let qtyToRestore = item.quantity;
+                    let qtyToRestore = new Decimal(baseQty ?? 0);
 
                     const soldMovements = await tx.stockMovements.findMany({
                         where: {
-                            orderItemId: item.orderItemId,
-                            productVariantId: item.productVariantId,
-                            branchId,
+                            orderItemId: saleItemId,
+                            productVariantId: Number(item.productVariantId),
+                            branchId: Number(branchId),
                             type: "ORDER",
                             status: "APPROVED",
                         },
@@ -369,16 +758,16 @@ export const createSaleReturn = async (
                     });
 
                     for (const mov of soldMovements) {
-                        if (qtyToRestore <= 0) break;
+                        if (qtyToRestore.lte(0)) break;
 
-                        const soldQty = Math.abs(Number(mov.quantity));
-                        const restoreQty = Math.min(soldQty, qtyToRestore);
+                        const soldQty = new Decimal(Math.abs(Number(mov.quantity)));
+                        const restoreQty = Decimal.min(soldQty, qtyToRestore);
 
                         await tx.stockMovements.create({
                             data: {
-                                productVariantId: item.productVariantId,
-                                branchId,
-                                orderItemId: item.orderItemId,
+                                productVariantId: Number(item.productVariantId),
+                                branchId: Number(branchId),
+                                orderItemId: saleItemId,
                                 saleReturnItemId: returnItem.id,
                                 type: "SALE_RETURN",
                                 status: "APPROVED",
@@ -394,23 +783,22 @@ export const createSaleReturn = async (
                             },
                         });
 
-                        qtyToRestore -= restoreQty;
+                        qtyToRestore = qtyToRestore.minus(restoreQty);
                     }
 
-                    if (qtyToRestore > 0) {
+                    if (qtyToRestore.gt(0)) {
                         throw new Error("FIFO restore quantity mismatch");
                     }
 
-                    /* ---------- UPDATE STOCK ---------- */
                     await tx.stocks.update({
                         where: {
                             productVariantId_branchId: {
-                                productVariantId: item.productVariantId,
-                                branchId,
+                                productVariantId: Number(item.productVariantId),
+                                branchId: Number(branchId),
                             },
                         },
                         data: {
-                            quantity: { increment: item.quantity },
+                            quantity: { increment: baseQty ?? new Decimal(0) },
                             updatedBy: userId,
                             updatedAt: currentDate,
                         },
@@ -418,40 +806,46 @@ export const createSaleReturn = async (
                 }
             }
 
-            /* ------------------------------------------------------- 
-            9️ PAYMENT REVERSAL (REFUND) 
-            ------------------------------------------------------- */ 
-            const payments = await tx.orderOnPayments.findMany({ where: { orderId }, }); 
-            
-            for (const pay of payments) { 
-                if (Number(pay.totalPaid) > 0) { 
-                    await tx.orderOnPayments.create({ 
-                        data: { 
-                            branchId, 
-                            orderId, 
-                            paymentDate: now, 
-                            paymentMethodId: pay.paymentMethodId, 
-                            totalPaid: new Decimal(-Number(pay.totalPaid)), 
-                            receive_usd: pay.receive_usd ? new Decimal(-Number(pay.receive_usd)) : null, 
-                            receive_khr: pay.receive_khr ? -Number(pay.receive_khr) : null, 
-                            exchangerate: pay.exchangerate, 
-                            status: "REFUND", 
-                            createdBy: userId 
-                        }, 
-                    }); 
+            /* -------------------------------------------------------
+            9️⃣ PAYMENT REVERSAL (REFUND)
+            ------------------------------------------------------- */
+            const payments = await tx.orderOnPayments.findMany({
+                where: { orderId: Number(orderId) },
+            });
+
+            for (const pay of payments) {
+                if (Number(pay.totalPaid) > 0) {
+                    await tx.orderOnPayments.create({
+                        data: {
+                            branchId: Number(branchId),
+                            orderId: Number(orderId),
+                            paymentDate: now,
+                            paymentMethodId: pay.paymentMethodId,
+                            totalPaid: new Decimal(-Number(pay.totalPaid)),
+                            receive_usd: pay.receive_usd
+                                ? new Decimal(-Number(pay.receive_usd))
+                                : null,
+                            receive_khr: pay.receive_khr
+                                ? -Number(pay.receive_khr)
+                                : null,
+                            exchangerate: pay.exchangerate,
+                            status: "REFUND",
+                            createdBy: userId,
+                        },
+                    });
                 }
             }
 
             /* -------------------------------------------------------
-            10 UPDATE ORDER TOTAL
+            🔟 UPDATE ORDER TOTAL
             ------------------------------------------------------- */
             await tx.order.update({
-                where: { id: orderId },
+                where: { id: Number(orderId) },
                 data: {
                     totalAmount: {
                         decrement: returnTotal,
                     },
-                    returnstatus: 1
+                    returnstatus: 1,
                 },
             });
 
@@ -459,7 +853,6 @@ export const createSaleReturn = async (
         });
 
         res.status(201).json(result);
-
     } catch (error: any) {
         console.error(error);
         res.status(500).json({
@@ -477,16 +870,25 @@ export const getSaleReturnById = async (req: Request, res: Response): Promise<vo
             include: {
                 SaleReturns: {
                     include: {
-                        products: true, // Include related products data
-                        productvariants: {
-                            select: {
-                                name: true, // Select the `name` field from `productVariant`
-                                barcode: true,
-                                sku: true,
-                                productType: true,
+                        unit: true,
+                        products: {
+                            include: {
+                                unitConversions: {
+                                    include: {
+                                        fromUnit: { select: { id: true, name: true, type: true } },
+                                        toUnit: { select: { id: true, name: true, type: true } },
+                                    },
+                                },
                             },
                         },
-                        services: true, // Include related services data
+                        productvariants: {
+                            include: {
+                                baseUnit: {
+                                    select: { id: true, name: true, type: true },
+                                },
+                            },
+                        },
+                        services: true,
                     },
                 },
                 customer: true, // Include related customer data
@@ -519,16 +921,25 @@ export const getSaleReturnByReturnId = async (req: Request, res: Response): Prom
             include: {
                 SaleReturns: {
                     include: {
-                        products: true, // Include related products data
-                        productvariants: {
-                            select: {
-                                name: true, // Select the `name` field from `productVariant`
-                                barcode: true,
-                                sku: true,
-                                productType: true,
+                        unit: true,
+                        products: {
+                            include: {
+                                unitConversions: {
+                                    include: {
+                                        fromUnit: { select: { id: true, name: true, type: true } },
+                                        toUnit: { select: { id: true, name: true, type: true } },
+                                    },
+                                },
                             },
                         },
-                        services: true, // Include related services data
+                        productvariants: {
+                            include: {
+                                baseUnit: {
+                                    select: { id: true, name: true, type: true },
+                                },
+                            },
+                        },
+                        services: true,
                     },
                 },
                 customer: true, // Include related customer data

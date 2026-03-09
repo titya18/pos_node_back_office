@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { computeBaseQty } from "../utils/uom";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -243,22 +244,60 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                         sentAt: status === "SENT" ? currentDate : null,
                         sentBy: status === "SENT" ? req.user ? req.user.id : null : null,
                         quotationDetails: {
-                            deleteMany: {
-                                quotationId: Number(quotationId)   // MUST include a filter
-                            }, // Delete existing quotation details
-                            create: quotationDetails.map((detail: any) => ({
-                                productId: detail.productId ? parseInt(detail.productId, 10) : null,
-                                productVariantId: detail.productVariantId ? parseInt(detail.productVariantId, 10) : null,
-                                serviceId: detail.serviceId ? parseInt(detail.serviceId, 10) : null,
-                                cost: parseFloat(detail.cost),
-                                ItemType: detail.ItemType,
-                                taxNet: parseFloat(detail.taxNet),
-                                taxMethod: detail.taxMethod,
-                                discount: detail.discount ? parseFloat(detail.discount) : undefined,
-                                discountMethod: detail.discountMethod,
-                                total: parseFloat(detail.total),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
+                            deleteMany: { quotationId: Number(quotationId) },
+                            create: await Promise.all(
+                                quotationDetails.map(async (detail: any) => {
+                                    // SERVICE
+                                    if (detail.ItemType === "SERVICE") {
+                                        return {
+                                            ItemType: detail.ItemType,
+                                            serviceId: detail.serviceId ? Number(detail.serviceId) : null,
+                                            productId: null,
+                                            productVariantId: null,
+
+                                            // UOM empty for service
+                                            unitId: null,
+                                            unitQty: null,
+                                            baseQty: null,
+
+                                            cost: new Decimal(detail.cost ?? 0),
+                                            costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                            taxNet: new Decimal(detail.taxNet ?? 0),
+                                            taxMethod: detail.taxMethod,
+                                            discount: new Decimal(detail.discount ?? 0),
+                                            discountMethod: detail.discountMethod,
+                                            total: new Decimal(detail.total ?? 0),
+                                            quantity: Number(detail.quantity ?? 1),
+                                        };
+                                    }
+
+                                    // PRODUCT
+                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+
+                                    return {
+                                        ItemType: detail.ItemType,
+                                        productId: detail.productId ? Number(detail.productId) : null,
+                                        productVariantId: detail.productVariantId ? Number(detail.productVariantId) : null,
+                                        serviceId: null,
+
+                                        // ✅ save UOM
+                                        unitId,
+                                        unitQty,
+                                        baseQty,
+
+                                        cost: new Decimal(detail.cost ?? 0),
+                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        taxNet: new Decimal(detail.taxNet ?? 0),
+                                        taxMethod: detail.taxMethod,
+                                        discount: new Decimal(detail.discount ?? 0),
+                                        discountMethod: detail.discountMethod,
+                                        total: new Decimal(detail.total ?? 0),
+
+                                        // keep old field (optional)
+                                        quantity: Number(detail.quantity ?? detail.unitQty ?? 0),
+                                    };
+                                })
+                            ),
                         },
                     }
                 })
@@ -283,19 +322,51 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
                         sentAt: status === "SENT" ? currentDate : null,
                         sentBy: status === "SENT" ? req.user ? req.user.id : null : null,
                         quotationDetails: {
-                            create: quotationDetails.map((detail: any) => ({
-                                productId: detail.productId ? parseInt(detail.productId, 10) : null,
-                                productVariantId: detail.productVariantId ? parseInt(detail.productVariantId, 10) : null,
-                                serviceId: detail.serviceId ? parseInt(detail.serviceId, 10) : null,
-                                cost: parseFloat(detail.cost),
-                                ItemType: detail.ItemType,
-                                taxNet: parseFloat(detail.taxNet),
-                                taxMethod: detail.taxMethod,
-                                discount: detail.discount ? parseFloat(detail.discount) : undefined,
-                                discountMethod: detail.discountMethod,
-                                total: parseFloat(detail.total),
-                                quantity: parseInt(detail.quantity, 10),
-                            })),
+                            create: await Promise.all(
+                                quotationDetails.map(async (detail: any) => {
+                                    if (detail.ItemType === "SERVICE") {
+                                        return {
+                                            ItemType: detail.ItemType,
+                                            serviceId: detail.serviceId ? Number(detail.serviceId) : null,
+                                            productId: null,
+                                            productVariantId: null,
+                                            unitId: null,
+                                            unitQty: null,
+                                            baseQty: null,
+                                            cost: new Decimal(detail.cost ?? 0),
+                                            costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                            taxNet: new Decimal(detail.taxNet ?? 0),
+                                            taxMethod: detail.taxMethod,
+                                            discount: new Decimal(detail.discount ?? 0),
+                                            discountMethod: detail.discountMethod,
+                                            total: new Decimal(detail.total ?? 0),
+                                            quantity: Number(detail.quantity ?? 1),
+                                        };
+                                    }
+
+                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+
+                                    return {
+                                        ItemType: detail.ItemType,
+                                        productId: detail.productId ? Number(detail.productId) : null,
+                                        productVariantId: detail.productVariantId ? Number(detail.productVariantId) : null,
+                                        serviceId: null,
+
+                                        unitId,
+                                        unitQty,
+                                        baseQty,
+
+                                        cost: new Decimal(detail.cost ?? 0),
+                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        taxNet: new Decimal(detail.taxNet ?? 0),
+                                        taxMethod: detail.taxMethod,
+                                        discount: new Decimal(detail.discount ?? 0),
+                                        discountMethod: detail.discountMethod,
+                                        total: new Decimal(detail.total ?? 0),
+                                        quantity: Number(detail.quantity ?? detail.unitQty ?? 0),
+                                    };
+                                })
+                            ),
                         },
                     }
                 });
@@ -311,120 +382,134 @@ export const upsertQuotation = async (req: Request, res: Response): Promise<void
     }
 };
 
-export const getQuotationById = async (
-    req: Request,
-    res: Response
-): Promise<void> => {
-    const { id } = req.params;
-    const quotationId = id ? (Array.isArray(id) ? id[0] : id) : 0;
+export const getQuotationById = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const quotationId = Number(Array.isArray(id) ? id[0] : id);
 
-    try {
-        /* ---------------------------------- */
-        /* 1️⃣ GET QUOTATION (BASE DATA)       */
-        /* ---------------------------------- */
-        const quotation = await prisma.quotations.findUnique({
-            where: { id: Number(quotationId) },
-            include: {
-                branch: true,
-                creator: true,
-                updater: true,
-                customers: true,
-                quotationDetails: {
-                    include: {
-                        products: true,
-                        productvariants: {
-                            select: {
-                                id: true,
-                                name: true,
-                                barcode: true,
-                                sku: true,
-                                productType: true,
-                            },
-                        },
-                        services: true, // Include related services data
-                    },
+  try {
+    /* ---------------------------------- */
+    /* 1️⃣ GET QUOTATION (WITH RELATIONS)  */
+    /* ---------------------------------- */
+    const quotation = await prisma.quotations.findUnique({
+      where: { id: quotationId },
+      include: {
+        branch: true,
+        creator: true,
+        updater: true,
+        customers: true,
+        quotationDetails: {
+          include: {
+            unit: true,
+
+            // ✅ IMPORTANT: include product + unitConversions
+            products: {
+              include: {
+                unitConversions: {
+                  include: {
+                    fromUnit: { select: { id: true, name: true, type: true } },
+                    toUnit: { select: { id: true, name: true, type: true } },
+                  },
                 },
+              },
             },
-        });
 
-        if (!quotation) {
-            res.status(404).json({ message: "Quotation not found!" });
-            return;
-        }
-
-        /* ---------------------------------- */
-        /* 2️⃣ EXTRACT IDS FOR STOCK QUERY    */
-        /* ---------------------------------- */
-        const branchId = quotation.branchId;
-
-        const variantIds = quotation.quotationDetails
-            .filter(detail => detail.ItemType === "PRODUCT")
-            .map(detail => detail.productVariantId)
-            .filter((id): id is number => id != null);
-
-        /* ---------------------------------- */
-        /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY) */
-        /* ---------------------------------- */
-        const stocks = await prisma.stocks.findMany({
-            where: {
-                branchId,
-                productVariantId: {
-                    in: variantIds,
-                },
+            // ✅ IMPORTANT: include baseUnit + baseUnitId
+            productvariants: {
+              include: {
+                baseUnit: { select: { id: true, name: true, type: true } },
+              },
             },
-            select: {
-                productVariantId: true,
-                quantity: true,
-            },
-        });
 
-        /* ---------------------------------- */
-        /* 4️⃣ MAP STOCKS FOR FAST LOOKUP     */
-        /* ---------------------------------- */
-        const stockMap = new Map<number, number>(
-            stocks.map((s) => [
-                s.productVariantId,
-                Number(s.quantity),
-            ])
-        );
+            services: true,
+          },
+        },
+      },
+    });
 
-        /* ---------------------------------- */
-        /* 5️⃣ MERGE STOCK INTO DETAILS       */
-        /* ---------------------------------- */
-        quotation.quotationDetails = quotation.quotationDetails.map(
-            (detail: any) => {
-                if (detail.ItemType === "PRODUCT") {
-                    return {
-                        ...detail,
-                        name: detail.productvariants?.name ?? "",
-                        barcode: detail.productvariants?.barcode ?? null,
-                        sku: detail.productvariants?.sku ?? null,
-                        stocks:
-                            stockMap.get(detail.productVariantId) ?? 0,
-                    };
-                }
-
-                // SERVICE item (no stock)
-                return {
-                    ...detail,
-                    name: detail.services?.name ?? "",
-                    barcode: null,
-                    sku: null,
-                    stocks: null,
-                };
-            }
-        );
-
-        /* ---------------------------------- */
-        /* 6️⃣ SEND RESPONSE                  */
-        /* ---------------------------------- */
-        res.status(200).json(quotation);
-    } catch (error) {
-        console.error("Error fetching quotation by ID:", error);
-        res.status(500).json({
-            message: "Error fetching quotation by ID",
-        });
+    if (!quotation) {
+      res.status(404).json({ message: "Quotation not found!" });
+      return;
     }
+
+    /* ---------------------------------- */
+    /* 2️⃣ EXTRACT IDS FOR STOCK QUERY     */
+    /* ---------------------------------- */
+    const branchId = quotation.branchId;
+
+    const variantIds = quotation.quotationDetails
+      .filter((d: any) => d.ItemType === "PRODUCT")
+      .map((d: any) => d.productVariantId)
+      .filter((x: any): x is number => x != null);
+
+    /* ---------------------------------- */
+    /* 3️⃣ QUERY STOCKS (ONE QUERY ONLY)   */
+    /* ---------------------------------- */
+    const stocks = await prisma.stocks.findMany({
+      where: {
+        branchId,
+        productVariantId: { in: variantIds },
+      },
+      select: {
+        productVariantId: true,
+        quantity: true,
+      },
+    });
+
+    const stockMap = new Map<number, number>(
+      stocks.map((s) => [s.productVariantId, Number(s.quantity)])
+    );
+
+    /* ---------------------------------- */
+    /* 4️⃣ MERGE STOCK + NORMALIZE DETAIL  */
+    /* ---------------------------------- */
+    const details = quotation.quotationDetails.map((detail: any) => {
+      if (detail.ItemType === "PRODUCT") {
+        const baseUnitId =
+          detail.productvariants?.baseUnitId ??
+          detail.productvariants?.baseUnit?.id ??
+          null;
+
+        return {
+          ...detail,
+
+          // ✅ keep useful display fields
+          name: detail.productvariants?.name ?? "",
+          barcode: detail.productvariants?.barcode ?? null,
+          sku: detail.productvariants?.sku ?? null,
+
+          // ✅ stock
+          stocks: stockMap.get(detail.productVariantId) ?? 0,
+
+          // ✅ ensure unitId/unitQty exist (so modal can show correct values)
+          unitId: detail.unitId ?? baseUnitId,
+          unitQty: detail.unitQty ?? detail.quantity ?? 1,
+
+          // (optional) ensure quantity stays synced
+          quantity: detail.unitQty ?? detail.quantity ?? 1,
+        };
+      }
+
+      // SERVICE
+      return {
+        ...detail,
+        name: detail.services?.name ?? "",
+        barcode: null,
+        sku: null,
+        stocks: null,
+      };
+    });
+
+    /* ---------------------------------- */
+    /* 5️⃣ SEND RESPONSE                  */
+    /* ---------------------------------- */
+    res.status(200).json({
+      ...quotation,
+      quotationDetails: details,
+    });
+  } catch (error) {
+    console.error("Error fetching quotation by ID:", error);
+    res.status(500).json({ message: "Error fetching quotation by ID" });
+  }
 };
 
 // export const getQuotationById = async (req: Request, res: Response): Promise<void> => {
@@ -535,7 +620,7 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
             /* 2️ GENERATE ORDER REF                           */
             /* ------------------------------------------------ */
             // Query for the highest ref in the same branch
-            const lastOrder = await prisma.order.findFirst({
+            const lastOrder = await tx.order.findFirst({
                 where: { branchId: quotation.branchId },
                 orderBy: { id: 'desc' }, // Sort by ref in descending order
             });
@@ -579,11 +664,19 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
                                 discount: item.discount,
                                 discountMethod: item.discountMethod,
                                 total: Number(item.total),
+
+                                // legacy
                                 quantity: item.quantity,
                                 price: Number(item.cost),
+
                                 productVariantId: item.productVariantId,
                                 productId: item.productId,
                                 serviceId: item.serviceId,
+
+                                // ✅ UOM copy
+                                unitId: item.unitId,
+                                unitQty: item.unitQty,
+                                baseQty: item.baseQty,
                             };
 
                             return base;
@@ -629,13 +722,15 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
                     },
                 });
 
-                if (!stock || stock.quantity.toNumber() < qd.quantity) {
-                    throw new Error(
-                        `Insufficient stock for barcode: ${qd.productvariants?.barcode}`
-                    );
+                const sellBaseQty = qd.baseQty
+                    ? new Decimal(qd.baseQty)
+                    : new Decimal(qd.quantity ?? 0); // fallback for old records
+
+                if (!stock || new Decimal(stock.quantity).lt(sellBaseQty)) {
+                    throw new Error(`Insufficient stock for barcode: ${qd.productvariants?.barcode}`);
                 }
 
-                let qtyToSell = new Decimal(qd.quantity);
+                let qtyToSell = sellBaseQty;
 
                 const fifoBatches = await tx.stockMovements.findMany({
                     where: {
@@ -692,7 +787,7 @@ export const convertQuotationToOrder = async (req: Request, res: Response): Prom
                 await tx.stocks.update({
                     where: { id: stock.id },
                     data: {
-                        quantity: { decrement: qd.quantity },
+                        quantity: { decrement: sellBaseQty }, // ✅ base unit
                         updatedAt: currentDate,
                         updatedBy: req.user?.id ?? null,
                     },
