@@ -30403,3 +30403,11 @@ Argument `price` is missing.
     at async <anonymous> (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:282:19)
     at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async upsertInvoice (D:\Citylink-Inventory\backend\src\controllers\invoiceController.ts:237:24)
+2026-03-10 11:29:14 error: Error converting quotation to order: Not enough FIFO stock for productVariantId 38 Error: Not enough FIFO stock for productVariantId 38
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:781:27)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async convertQuotationToOrder (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:596:24)
+2026-03-10 11:29:46 error: Error converting quotation to order: Not enough FIFO stock for productVariantId 38 Error: Not enough FIFO stock for productVariantId 38
+    at <anonymous> (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:781:27)
+    at async Proxy._transactionWithCallback (D:\Citylink-Inventory\backend\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async convertQuotationToOrder (D:\Citylink-Inventory\backend\src\controllers\quotationController.ts:596:24)
