@@ -8,6 +8,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
 import { computeBaseQty } from "../utils/uom";
+import { consumeFifoForSale } from "../utils/consumeFifoForSale"
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -257,6 +258,13 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                 return;
             }
 
+            if (invoiceId && checkInvoice?.status === "APPROVED") {
+                res.status(400).json({
+                    message: "Approved invoice cannot be edited directly."
+                });
+                return;
+            }
+
             const checkRef = await tx.order.findFirst({
                 where: { 
                     branchId: Number(branchId),
@@ -455,91 +463,82 @@ export const upsertInvoice = async (req: Request, res: Response): Promise<void> 
                 });
             
             const shouldDeductStock =
-                (!checkInvoice && status === "APPROVED") || // new invoice approved
-                (checkInvoice?.status !== "APPROVED" && status === "APPROVED");
+            (!checkInvoice && status === "APPROVED") ||
+            (checkInvoice?.status !== "APPROVED" && status === "APPROVED");
 
             if (shouldDeductStock) {
                 for (const item of invoice.items) {
-                    if (item.ItemType !== "PRODUCT" || !item.productVariantId) continue;
+                    if (item.ItemType !== "PRODUCT" || !item.productVariantId) {
+                        // service cogs = 0
+                        await tx.orderItem.update({
+                            where: { id: item.id },
+                            data: { cogs: new Decimal(0) },
+                        });
+                        continue;
+                    }
 
-                    // Get stock row
                     const stock = await tx.stocks.findUnique({
                         where: {
                             productVariantId_branchId: {
-                                productVariantId: item.productVariantId,
-                                branchId: invoice.branchId,
-                            },
-                        },
-                    });
-
-                    const sellQty = item.baseQty ?? new Decimal(item.quantity ?? 0);
-
-                    if (!stock || stock.quantity.toNumber() < sellQty.toNumber()) {
-                        throw new Error("Insufficient stock for barcode: " + item.productvariants?.barcode);
-                    }
-
-                    // FIFO logic: fetch oldest IN batches
-                    let qtyToSell = new Decimal(sellQty);
-                    const fifoBatches = await tx.stockMovements.findMany({
-                        where: {
                             productVariantId: item.productVariantId,
                             branchId: invoice.branchId,
-                            type: { in: ['PURCHASE', 'RETURN', 'ADJUSTMENT'] },
-                            AdjustMentType: 'POSITIVE',
-                            status: 'APPROVED',
-                            remainingQty: { gt: 0 },
+                            },
                         },
-                        orderBy: { createdAt: 'asc' },
                     });
 
-                    for (const batch of fifoBatches) {
-                        if (qtyToSell.lte(0)) break;
+                    const sellQty =
+                    (item as any).baseQty != null
+                        ? new Decimal((item as any).baseQty)
+                        : new Decimal(item.quantity ?? 0);
 
-                        const consumeQty = Decimal.min(batch.remainingQty!, qtyToSell);
-
-                        // 1️⃣ Insert OUT movement with FIFO cost
-                        await tx.stockMovements.create({
-                            data: {
-                                productVariantId: item.productVariantId,
-                                branchId: invoice.branchId,
-                                orderItemId: item.id,
-                                type: 'ORDER',
-                                status: 'APPROVED',
-                                quantity: consumeQty.neg(),
-                                unitCost: batch.unitCost,
-                                sourceMovementId: batch.id,
-                                note: `Invoice #${invoice.ref}`,
-                                createdBy: loggedInUser.id,
-                                createdAt: currentDate
-                            },
-                        });
-
-                        // 2️⃣ Update remainingQty in IN batch
-                        await tx.stockMovements.update({
-                            where: { id: batch.id },
-                            data: { remainingQty: batch.remainingQty!.minus(consumeQty) },
-                        });
-
-                        qtyToSell = qtyToSell.minus(consumeQty);
+                    if (!stock || stock.quantity.lt(sellQty)) {
+                        throw new Error(
+                            "Insufficient stock for barcode: " + item.productvariants?.barcode
+                        );
                     }
 
-                    if (qtyToSell.gt(0)) {
-                        throw new Error(`Not enough stock (FIFO) for product variant ID: ${item.productVariantId}`);
-                    }
+                    const totalCogs = await consumeFifoForSale({
+                        tx,
+                        productVariantId: item.productVariantId,
+                        branchId: invoice.branchId,
+                        orderItemId: item.id,
+                        invoiceRef: invoice.ref,
+                        sellQty,
+                        userId: loggedInUser.id,
+                        currentDate,
+                    });
 
-                    // Update total stock
+                    await tx.orderItem.update({
+                        where: { id: item.id },
+                        data: {
+                            cogs: totalCogs,
+                        },
+                    });
+
                     await tx.stocks.update({
                         where: { id: stock.id },
                         data: {
                             quantity: { decrement: sellQty },
-                            updatedAt: new Date(),
+                            updatedAt: currentDate,
                             updatedBy: loggedInUser.id,
                         },
                     });
                 }
             }
 
-            return invoice;
+            const finalInvoice = await tx.order.findUnique({
+                where: { id: invoice.id },
+                include: {
+                    items: {
+                        include: {
+                            products: true,
+                            productvariants: true,
+                        },
+                    },
+                },
+            });
+
+            return finalInvoice;
         });
         
         res.status(id ? 200 : 201).json(result);
@@ -915,14 +914,13 @@ export const approveInvoice = async (req: Request, res: Response): Promise<void>
                 return;
             }
 
-            // 1️⃣ Fetch invoice with items
             const invoice = await tx.order.findUnique({
                 where: { id: Number(orderId) },
                 include: {
                     items: {
                         include: {
-                            products: true,
-                            productvariants: true,
+                        products: true,
+                        productvariants: true,
                         },
                     },
                 },
@@ -931,22 +929,25 @@ export const approveInvoice = async (req: Request, res: Response): Promise<void>
             if (!invoice) throw new Error("Invoice not found");
             if (invoice.approvedAt) throw new Error("Invoice already approved");
 
-            // 2️⃣ Deduct stock by BASE QTY
             for (const item of invoice.items) {
-                if (item.ItemType !== "PRODUCT" || !item.productVariantId) continue;
+                if (item.ItemType !== "PRODUCT" || !item.productVariantId) {
+                    await tx.orderItem.update({
+                        where: { id: item.id },
+                        data: { cogs: new Decimal(0) },
+                    });
+                    continue;
+                }
 
-                // ✅ use baseQty if exists, fallback to quantity
                 const sellQty =
                 (item as any).baseQty != null
-                    ? (item as any).baseQty // Decimal
+                    ? new Decimal((item as any).baseQty)
                     : new Decimal(item.quantity ?? 0);
 
-                // Get stock row
                 const stock = await tx.stocks.findUnique({
                     where: {
-                            productVariantId_branchId: {
-                            productVariantId: item.productVariantId,
-                            branchId: invoice.branchId,
+                        productVariantId_branchId: {
+                        productVariantId: item.productVariantId,
+                        branchId: invoice.branchId,
                         },
                     },
                 });
@@ -957,7 +958,24 @@ export const approveInvoice = async (req: Request, res: Response): Promise<void>
                     );
                 }
 
-                // Update stock
+                const totalCogs = await consumeFifoForSale({
+                    tx,
+                    productVariantId: item.productVariantId,
+                    branchId: invoice.branchId,
+                    orderItemId: item.id,
+                    invoiceRef: invoice.ref,
+                    sellQty,
+                    userId: loggedInUser.id,
+                    currentDate,
+                });
+
+                await tx.orderItem.update({
+                    where: { id: item.id },
+                    data: {
+                        cogs: totalCogs,
+                    },
+                });
+
                 await tx.stocks.update({
                     where: { id: stock.id },
                     data: {
@@ -966,34 +984,16 @@ export const approveInvoice = async (req: Request, res: Response): Promise<void>
                         updatedBy: loggedInUser.id,
                     },
                 });
-
-                // Insert stock movement (use negative qty for OUT is cleaner)
-                await tx.stockMovements.create({
-                    data: {
-                        productVariantId: item.productVariantId,
-                        branchId: invoice.branchId,
-                        type: "ORDER",
-                        status: "APPROVED",
-                        quantity: sellQty.neg(), // ✅ OUT
-                        note: `Invoice #${invoice.ref}`,
-                        createdBy: loggedInUser.id,
-                        createdAt: currentDate,
-
-                        // Optional: store unit fields if your table has them
-                        // unitId: (item as any).unitId ?? null,
-                        // unitQty: (item as any).unitQty ?? null,
-                        // baseQty: sellQty,
-                    },
-                });
             }
 
-            // 3️⃣ Update invoice approve status
             const updated = await tx.order.update({
                 where: { id: invoice.id },
                 data: {
                     approvedAt: currentDate,
                     approvedBy: loggedInUser.id,
                     status: "APPROVED",
+                    updatedAt: currentDate,
+                    updatedBy: loggedInUser.id,
                 },
                 include: { items: true },
             });
@@ -1001,10 +1001,9 @@ export const approveInvoice = async (req: Request, res: Response): Promise<void>
             return updated;
         });
 
-        // if transaction returned early due to res.status(401) above
         if (!result) return;
 
-        res.status(201).json(result);
+        res.status(200).json(result);
     } catch (error) {
         logger.error("Error approve invoice:", error);
         const typedError = error as Error;

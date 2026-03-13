@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { DateTime } from "luxon";
 import multer from "multer";
 import fs from "fs"; // Import fs module to delete files
@@ -9,6 +10,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { addPositiveAdjustmentLayer, consumeFifoForNegativeAdjustment, resolveCostPerBaseUnit } from "../utils/consumeFifoForAdjustment";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -375,40 +377,51 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
     note,
     isActive,
     imagesToDelete,
-
-    unitId,        // default unit (optional)
-    baseUnitId,    // ✅ base unit for stock
-    unitConversions,   // ✅ UOM conversions array
-
+    unitId,
+    baseUnitId,
+    unitConversions,
     barcode,
     sku,
+    stockAlert,
     purchasePrice,
+    purchasePriceUnitId,
     retailPrice,
     wholeSalePrice,
     variantValueIds,
-    stocks
+    stocks,
   } = req.body;
 
   const imagePaths = req.files
-    ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, ""))
+    ? (req.files as Express.Multer.File[]).map((file) =>
+        file.path.replace(/^public[\\/]/, "")
+      )
     : [];
 
-  // Parse variantValueIds safely
   let parsedVariantValueIds: number[] = [];
-  if (typeof variantValueIds === "string") parsedVariantValueIds = JSON.parse(variantValueIds);
-  else if (Array.isArray(variantValueIds)) parsedVariantValueIds = variantValueIds.map(Number);
-
-  // Parse stocks safely
-  let parsedStocks: { branchId: number; quantity: number }[] = [];
-  if (typeof stocks === "string") parsedStocks = JSON.parse(stocks);
-  else if (Array.isArray(stocks)) {
-    parsedStocks = stocks.map((s: any) => ({ branchId: Number(s.branchId), quantity: Number(s.quantity) }));
+  if (typeof variantValueIds === "string") {
+    parsedVariantValueIds = JSON.parse(variantValueIds);
+  } else if (Array.isArray(variantValueIds)) {
+    parsedVariantValueIds = variantValueIds.map(Number);
   }
 
-  // Parse conversions safely
-  let parsedConversions: { fromUnitId: number; toUnitId: number; multiplier: number }[] = [];
-  if (typeof unitConversions === "string") parsedConversions = JSON.parse(unitConversions);
-  else if (Array.isArray(unitConversions)) {
+  let parsedStocks: { branchId: number; quantity: number }[] = [];
+  if (typeof stocks === "string") {
+    parsedStocks = JSON.parse(stocks);
+  } else if (Array.isArray(stocks)) {
+    parsedStocks = stocks.map((s: any) => ({
+      branchId: Number(s.branchId),
+      quantity: Number(s.quantity),
+    }));
+  }
+
+  let parsedConversions: {
+    fromUnitId: number;
+    toUnitId: number;
+    multiplier: number;
+  }[] = [];
+  if (typeof unitConversions === "string") {
+    parsedConversions = JSON.parse(unitConversions);
+  } else if (Array.isArray(unitConversions)) {
     parsedConversions = unitConversions.map((c: any) => ({
       fromUnitId: Number(c.fromUnitId),
       toUnitId: Number(c.toUnitId),
@@ -417,7 +430,6 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
   }
 
   try {
-    // -------------------- VALIDATE BASE UNIT --------------------
     if (!baseUnitId) {
       throw new Error("Base unit is required");
     }
@@ -430,32 +442,39 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
     const result = await prisma.$transaction(async (tx) => {
       const productId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
 
-      // -------------------- PRODUCT UNIQUE NAME --------------------
       const existingProduct = await tx.products.findFirst({
         where: { name, id: { not: productId || 0 } },
       });
-      if (existingProduct) throw new Error("Product's name must be unique");
+      if (existingProduct) {
+        throw new Error("Product's name must be unique");
+      }
 
-      // -------------------- IMAGE MERGE --------------------
       let existingImages: string[] = [];
       if (productId) {
-        const checkProduct = await tx.products.findUnique({ where: { id: productId } });
+        const checkProduct = await tx.products.findUnique({
+          where: { id: productId },
+        });
         if (!checkProduct) throw new Error("Product not found");
         existingImages = checkProduct.image || [];
       }
 
-      const parsedImagesToDelete = typeof imagesToDelete === "string" ? JSON.parse(imagesToDelete) : imagesToDelete;
+      const parsedImagesToDelete =
+        typeof imagesToDelete === "string"
+          ? JSON.parse(imagesToDelete)
+          : imagesToDelete;
+
       if (Array.isArray(parsedImagesToDelete)) {
         parsedImagesToDelete.forEach((imagePath: string) => {
           const fullPath = `public/${imagePath}`;
           if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
         });
-        existingImages = existingImages.filter(img => !parsedImagesToDelete.includes(img));
+        existingImages = existingImages.filter(
+          (img) => !parsedImagesToDelete.includes(img)
+        );
       }
 
       const updatedImages = [...existingImages, ...imagePaths];
 
-      // -------------------- UPSERT PRODUCT --------------------
       const productData = {
         categoryId: Number(categoryId),
         brandId: Number(brandId),
@@ -468,28 +487,33 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
       };
 
       const product = productId
-        ? await tx.products.update({ where: { id: productId }, data: productData })
+        ? await tx.products.update({
+            where: { id: productId },
+            data: productData,
+          })
         : await tx.products.create({
-            data: { ...productData, createdAt: currentDate, createdBy: req.user?.id || null },
+            data: {
+              ...productData,
+              createdAt: currentDate,
+              createdBy: req.user?.id || null,
+            },
           });
 
-      // -------------------- UOM CONVERSIONS (ProductUnitConversion) --------------------
-      // simplest: delete + recreate
-      await tx.productUnitConversion.deleteMany({ where: { productId: product.id } });
+      await tx.productUnitConversion.deleteMany({
+        where: { productId: product.id },
+      });
 
       if (parsedConversions.length > 0) {
-        // Optional: validate multiplier > 0
-        if (parsedConversions.some(c => !c.multiplier || c.multiplier <= 0)) {
+        if (parsedConversions.some((c) => !c.multiplier || c.multiplier <= 0)) {
           throw new Error("UOM multiplier must be > 0");
         }
 
-        // Optional: validate fromUnitId != toUnitId
-        if (parsedConversions.some(c => c.fromUnitId === c.toUnitId)) {
+        if (parsedConversions.some((c) => c.fromUnitId === c.toUnitId)) {
           throw new Error("UOM conversion cannot be same unit");
         }
 
         await tx.productUnitConversion.createMany({
-          data: parsedConversions.map(c => ({
+          data: parsedConversions.map((c) => ({
             productId: product.id,
             fromUnitId: c.fromUnitId,
             toUnitId: c.toUnitId,
@@ -498,28 +522,30 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
         });
       }
 
-      // -------------------- VARIANT (single default variant per product) --------------------
-      const existingVariant = await tx.productVariants.findFirst({ where: { productId: product.id } });
+      const existingVariant = await tx.productVariants.findFirst({
+        where: { productId: product.id },
+      });
 
       const variantData = {
         productId: product.id,
-        // unitId: unitId ? Number(unitId) : null,
-        unitId: parsedBaseUnitId, // ✅ I have change this to always set base unit as variant's unit for stock consistency
-        baseUnitId: parsedBaseUnitId,    // ✅ base unit
+        unitId: parsedBaseUnitId,
+        baseUnitId: parsedBaseUnitId,
         sku,
+        stockAlert: Number(stockAlert ?? 0),
         barcode,
         productType,
         name,
-        purchasePrice: Number(purchasePrice),
-        retailPrice: Number(retailPrice),
-        wholeSalePrice: Number(wholeSalePrice),
+        purchasePrice: Number(purchasePrice ?? 0),
+        purchasePriceUnitId: purchasePriceUnitId ? Number(purchasePriceUnitId) : null, // ✅
+        retailPrice: Number(retailPrice ?? 0),
+        wholeSalePrice: Number(wholeSalePrice ?? 0),
         image: updatedImages,
         updatedAt: currentDate,
         updatedBy: req.user?.id || null,
       };
 
       let variantId: number;
-
+console.log("sssss :", variantData);
       try {
         if (existingVariant) {
           const updatedVariant = await tx.productVariants.update({
@@ -528,56 +554,163 @@ export const upsertProduct = async (req: Request, res: Response): Promise<void> 
           });
           variantId = updatedVariant.id;
 
-          // clear old join values
-          await tx.productVariantValues.deleteMany({ where: { productVariantId: variantId } });
+          await tx.productVariantValues.deleteMany({
+            where: { productVariantId: variantId },
+          });
         } else {
           const newVariant = await tx.productVariants.create({
-            data: { ...variantData, isActive: 1, createdAt: currentDate, createdBy: req.user?.id || null },
+            data: {
+              ...variantData,
+              isActive: 1,
+              createdAt: currentDate,
+              createdBy: req.user?.id || null,
+            },
           });
           variantId = newVariant.id;
         }
       } catch (error: any) {
         if (error.code === "P2002") {
           const target = error.meta?.target;
-          if (target?.includes("sku")) throw new Error("SKU already exists for this product type");
-          if (target?.includes("barcode")) throw new Error("Barcode already exists for this product type");
+          if (target?.includes("sku")) {
+            throw new Error("SKU already exists for this product type");
+          }
+          if (target?.includes("barcode")) {
+            throw new Error("Barcode already exists for this product type");
+          }
         }
         throw error;
       }
 
-      // -------------------- VARIANT VALUES (join table) --------------------
       if (parsedVariantValueIds.length > 0) {
         await tx.productVariantValues.createMany({
-          data: parsedVariantValueIds.map(vId => ({
+          data: parsedVariantValueIds.map((vId) => ({
             productVariantId: variantId,
             variantValueId: vId,
           })),
         });
       }
 
-      // -------------------- STOCK (SET quantity, NOT increment) --------------------
-      // stocks.quantity must be stored in baseUnit quantity
+      // Convert opening cost to base-unit cost
+      const openingUnitCost = await resolveCostPerBaseUnit(
+        tx,
+        product.id,
+        parsedBaseUnitId,
+        purchasePrice ?? 0,
+        purchasePriceUnitId ?? null
+      );
+
+      // STOCK WITH FIFO-SAFE MOVEMENTS
+      // Assumption: stock quantity entered in product form is already in BASE UNIT
       for (const stock of parsedStocks) {
         if (!stock.branchId) continue;
 
-        await tx.stocks.upsert({
+        const branchIdNum = Number(stock.branchId);
+        const newQty = new Decimal(stock.quantity ?? 0);
+
+        const existingStock = await tx.stocks.findUnique({
           where: {
             productVariantId_branchId: {
               productVariantId: variantId,
-              branchId: stock.branchId,
+              branchId: branchIdNum,
             },
           },
-          update: {
-            quantity: stock.quantity, // ✅ SET
-            updatedBy: req.user?.id || null,
-          },
-          create: {
-            productVariantId: variantId,
-            branchId: stock.branchId,
-            quantity: stock.quantity,
-            createdBy: req.user?.id || null,
-          },
         });
+
+        const oldQty = existingStock?.quantity ?? new Decimal(0);
+        const diffQty = newQty.minus(oldQty);
+
+        const note = productId
+          ? `Product stock adjusted from ${oldQty.toString()} to ${newQty.toString()} from product form: ${name}`
+          : `Opening stock from product form: ${name}`;
+
+        if (!existingStock) {
+          await tx.stocks.create({
+            data: {
+              productVariantId: variantId,
+              branchId: branchIdNum,
+              quantity: newQty,
+              createdBy: req.user?.id || null,
+              createdAt: currentDate,
+              updatedBy: req.user?.id || null,
+              updatedAt: currentDate,
+            },
+          });
+
+          if (newQty.gt(0)) {
+            await addPositiveAdjustmentLayer({
+              tx,
+              productVariantId: variantId,
+              branchId: branchIdNum,
+              qtyToAdd: newQty,
+              unitCost: openingUnitCost,
+              userId: req.user?.id || null,
+              currentDate,
+              note,
+            });
+          }
+
+          continue;
+        }
+
+        if (diffQty.eq(0)) {
+          await tx.stocks.update({
+            where: { id: existingStock.id },
+            data: {
+              updatedBy: req.user?.id || null,
+              updatedAt: currentDate,
+            },
+          });
+          continue;
+        }
+
+        if (diffQty.gt(0)) {
+          await tx.stocks.update({
+            where: { id: existingStock.id },
+            data: {
+              quantity: newQty,
+              updatedBy: req.user?.id || null,
+              updatedAt: currentDate,
+            },
+          });
+
+          await addPositiveAdjustmentLayer({
+            tx,
+            productVariantId: variantId,
+            branchId: branchIdNum,
+            qtyToAdd: diffQty,
+            unitCost: openingUnitCost,
+            userId: req.user?.id || null,
+            currentDate,
+            note,
+          });
+        } else {
+          const reduceQty = diffQty.abs();
+
+          if (oldQty.lt(reduceQty)) {
+            throw new Error(
+              `Cannot reduce stock below zero for branch ${branchIdNum}`
+            );
+          }
+
+          await consumeFifoForNegativeAdjustment({
+            tx,
+            productVariantId: variantId,
+            branchId: branchIdNum,
+            qtyToReduce: reduceQty,
+            userId: req.user?.id || null,
+            currentDate,
+            note,
+          });
+
+          await tx.stocks.update({
+            where: { id: existingStock.id },
+            data: {
+              quantity: newQty,
+              updatedBy: req.user?.id || null,
+              updatedAt: currentDate,
+            },
+          });
+        }
       }
 
       return product;
@@ -602,6 +735,7 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
               include: {
                 productVariantValues: { include: { variantValue: true } },
                 stocks: { include: { branch: true } },
+                purchasePriceUnit: true, // optional
                 baseUnit: true,  // optional
                 units: true      // optional
               }

@@ -11,6 +11,7 @@ import path from "path";
 import fs from "fs"; // Import fs module to delete file
 import { getQueryNumber, getQueryString } from "../utils/request";
 import { computeBaseQty } from "../utils/uom";
+import { resolveCostPerBaseUnit } from "../utils/consumeFifoForAdjustment";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -394,26 +395,33 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                             }, // Delete existing purchase details
                             create: await Promise.all(
                                 parsedPurchaseDetails.map(async (detail: any) => {
-                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+                                    const { unitId, unitQty, baseQty, baseUnitId, productId } = await computeBaseQty(tx, detail);
+
+                                    const cost = new Decimal(detail.cost ?? 0);
+                                    const costPerBaseUnit = await resolveCostPerBaseUnit(
+                                        tx,
+                                        productId,
+                                        baseUnitId,
+                                        detail.cost ?? 0,
+                                        unitId
+                                    );
 
                                     return {
                                         productId: Number(detail.productId),
                                         productVariantId: Number(detail.productVariantId),
 
-                                        // ✅ save UOM
                                         unitId,
                                         unitQty,
                                         baseQty,
 
-                                        cost: new Decimal(detail.cost ?? 0),
-                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        cost,
+                                        costPerBaseUnit,
                                         taxNet: new Decimal(detail.taxNet ?? 0),
                                         taxMethod: detail.taxMethod,
                                         discount: new Decimal(detail.discount ?? 0),
                                         discountMethod: detail.discountMethod,
                                         total: new Decimal(detail.total ?? 0),
 
-                                        // keep your old field (optional)
                                         quantity: Number(detail.quantity ?? unitQty.toString()),
                                     };
                                 })
@@ -446,26 +454,33 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
                         purchaseDetails: {
                             create: await Promise.all(
                                 parsedPurchaseDetails.map(async (detail: any) => {
-                                    const { unitId, unitQty, baseQty } = await computeBaseQty(tx, detail);
+                                    const { unitId, unitQty, baseQty, baseUnitId, productId } = await computeBaseQty(tx, detail);
+
+                                    const cost = new Decimal(detail.cost ?? 0);
+                                    const costPerBaseUnit = await resolveCostPerBaseUnit(
+                                        tx,
+                                        productId,
+                                        baseUnitId,
+                                        detail.cost ?? 0,
+                                        unitId
+                                    );
 
                                     return {
                                         productId: Number(detail.productId),
                                         productVariantId: Number(detail.productVariantId),
 
-                                        // ✅ save UOM
                                         unitId,
                                         unitQty,
                                         baseQty,
 
-                                        cost: new Decimal(detail.cost ?? 0),
-                                        costPerBaseUnit: new Decimal(detail.costPerBaseUnit ?? 0),
+                                        cost,
+                                        costPerBaseUnit,
                                         taxNet: new Decimal(detail.taxNet ?? 0),
                                         taxMethod: detail.taxMethod,
                                         discount: new Decimal(detail.discount ?? 0),
                                         discountMethod: detail.discountMethod,
                                         total: new Decimal(detail.total ?? 0),
 
-                                        // keep your old field (optional)
                                         quantity: Number(detail.quantity ?? unitQty.toString()),
                                     };
                                 })
@@ -476,59 +491,75 @@ export const upsertPurchase = async (req: Request, res: Response): Promise<void>
             
             // ✅ If status is RECEIVED (only when switching to RECEIVED)
             if (isReceivingNow) {
-                for (const detail of parsedPurchaseDetails) {
-                    const { baseQty } = await computeBaseQty(tx, detail);
+            for (const detail of parsedPurchaseDetails) {
+                const {
+                    unitId,
+                    baseQty,
+                    baseUnitId,
+                    productId,
+                } = await computeBaseQty(tx, detail);
 
-                    const variantId = Number(detail.productVariantId);
-                    const existingStock = await tx.stocks.findFirst({
-                        where: {
-                            branchId: Number(branchId),
-                            productVariantId: variantId,
+                const variantId = Number(detail.productVariantId);
+
+                const costPerBaseUnit = await resolveCostPerBaseUnit(
+                    tx,
+                    productId,
+                    baseUnitId,
+                    detail.cost ?? 0,
+                    unitId
+                );
+
+                const existingStock = await tx.stocks.findFirst({
+                    where: {
+                        branchId: Number(branchId),
+                        productVariantId: variantId,
+                    },
+                });
+
+                if (existingStock) {
+                    await tx.stocks.update({
+                        where: { id: existingStock.id },
+                        data: {
+                            quantity: { increment: baseQty },
+                            updatedAt: currentDate,
+                            updatedBy: req.user ? req.user.id : null,
                         },
                     });
-
-                    if (existingStock) {
-                        await tx.stocks.update({
-                            where: { id: existingStock.id },
-                            data: {
-                                quantity: { increment: baseQty },
-                                updatedAt: currentDate,
-                                updatedBy: req.user ? req.user.id : null,
-                            },
-                        });
-                    } else {
-                        await tx.stocks.create({
-                            data: {
-                                branchId: Number(branchId),
-                                productVariantId: variantId,
-                                quantity: baseQty,
-                                createdAt: currentDate,
-                                createdBy: req.user ? req.user.id : null,
-                            },
-                        });
-                    }
-
-                    await tx.stockMovements.create({
+                } else {
+                    await tx.stocks.create({
                         data: {
-                            productVariantId: variantId,
                             branchId: Number(branchId),
-
-                            type: "PURCHASE",
-                            AdjustMentType: "POSITIVE",
-                            status: "APPROVED",
-
+                            productVariantId: variantId,
                             quantity: baseQty,
-                            remainingQty: baseQty,
-                            unitCost: new Decimal(detail.cost ?? 0),
-
-                            note: `Purchase Received #${ref}`,
                             createdAt: currentDate,
-                            createdBy: req.user?.id ?? null,
-                            approvedAt: currentDate,
-                            approvedBy: req.user?.id ?? null,
+                            createdBy: req.user ? req.user.id : null,
+                            updatedAt: currentDate,
+                            updatedBy: req.user ? req.user.id : null,
                         },
                     });
                 }
+
+                await tx.stockMovements.create({
+                    data: {
+                        productVariantId: variantId,
+                        branchId: Number(branchId),
+
+                        type: "PURCHASE",
+                        AdjustMentType: "POSITIVE",
+                        status: "APPROVED",
+
+                        quantity: baseQty,
+                        remainingQty: baseQty,
+                        unitCost: costPerBaseUnit,
+
+                        note: `Purchase Received #${ref}`,
+                        createdAt: currentDate,
+                        createdBy: req.user?.id ?? null,
+                        approvedAt: currentDate,
+                        approvedBy: req.user?.id ?? null,
+                    },
+                });
+            }
             }
 
             return purchase;

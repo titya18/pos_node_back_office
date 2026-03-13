@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { buildBranchFilter } from "../utils/branchFilter";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -2744,5 +2745,221 @@ export const getDashboardLowStockProducts = async (
     } catch (error) {
         console.error("Dashboard low stock products error:", error);
         res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const profitReport = async (req: Request, res: Response) => {
+    try {
+        const loggedInUser = req.user;
+
+        if (!loggedInUser) {
+            res.status(401).json({ message: "User is not authenticated." });
+            return;
+        }
+
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const startDate = getQueryString(req.query.startDate, "")!.trim();
+        const endDate = getQueryString(req.query.endDate, "")!.trim();
+        const branchId = getQueryNumber(req.query.branchId);
+
+        const sortField = getQueryString(req.query.sortField, "orderDate")!;
+        const sortOrder =
+        getQueryString(req.query.sortOrder)?.toLowerCase() === "asc"
+            ? "asc"
+            : "desc";
+
+        const offset = (pageNumber - 1) * pageSize;
+        const likeTerm = `%${searchTerm}%`;
+
+        /* ------------------------ */
+        /* BRANCH RESTRICTION       */
+        /* ------------------------ */
+        let branchRestriction = "";
+        if (loggedInUser.roleType === "ADMIN") {
+            if (branchId) {
+                branchRestriction = `AND o."branchId" = ${Number(branchId)}`;
+            }
+        } else {
+            if (!loggedInUser.branchId) {
+                res.status(403).json({ message: "Branch not assigned." });
+                return;
+            }
+
+            branchRestriction = `
+                AND o."branchId" = ${Number(loggedInUser.branchId)}
+                AND o."createdBy" = ${Number(loggedInUser.id)}
+            `;
+        }
+
+        let dateCondition = "";
+        if (startDate) {
+            dateCondition += ` AND o."orderDate" >= '${startDate}'::date`;
+        }
+        if (endDate) {
+            dateCondition += ` AND o."orderDate" <= '${endDate}'::date`;
+        }
+
+        const SORT_FIELD_MAP: Record<string, string> = {
+            orderDate: `o."orderDate"`,
+            ref: `o.ref`,
+            customerName: `COALESCE(c.name, '')`,
+            branchName: `b.name`,
+            totalSales: `COALESCE(o."totalAmount", 0)`,
+            totalCogs: `COALESCE(SUM(COALESCE(oi.cogs, 0)), 0)`,
+            grossProfit: `(COALESCE(o."totalAmount", 0) - COALESCE(SUM(COALESCE(oi.cogs, 0)), 0))`,
+            marginPercent: `
+                CASE
+                WHEN COALESCE(o."totalAmount", 0) = 0 THEN 0
+                ELSE ((COALESCE(o."totalAmount", 0) - COALESCE(SUM(COALESCE(oi.cogs, 0)), 0)) / COALESCE(o."totalAmount", 0)) * 100
+                END
+            `,
+        };
+
+        const sortColumn = SORT_FIELD_MAP[sortField] || `o."orderDate"`;
+
+        const totalResult: any[] = await prisma.$queryRawUnsafe(
+            `
+                SELECT COUNT(*) AS total
+                FROM (
+                    SELECT o.id
+                    FROM "Order" o
+                    LEFT JOIN "Customer" c ON o."customerId" = c.id
+                    JOIN "Branch" b ON o."branchId" = b.id
+                    LEFT JOIN "OrderItem" oi ON oi."orderId" = o.id
+                    WHERE o."deletedAt" IS NULL
+                    AND o.status IN ('APPROVED', 'COMPLETED')
+                    AND (
+                        o.ref ILIKE $1
+                        OR COALESCE(c.name, '') ILIKE $1
+                        OR b.name ILIKE $1
+                    )
+                    ${branchRestriction}
+                    ${dateCondition}
+                    GROUP BY o.id
+                ) t
+            `,
+            likeTerm
+        );
+
+        const total = Number(totalResult[0]?.total || 0);
+
+        const rows: any[] = await prisma.$queryRawUnsafe(
+            `
+                SELECT
+                    o.id AS "orderId",
+                    o.ref,
+                    o."orderDate",
+
+                    c.id AS "customerId",
+                    c.name AS "customerName",
+
+                    b.id AS "branchId",
+                    b.name AS "branchName",
+
+                    COALESCE(o."totalAmount", 0)::FLOAT AS "totalSales",
+                    COALESCE(SUM(COALESCE(oi.cogs, 0)), 0)::FLOAT AS "totalCogs",
+
+                    (COALESCE(o."totalAmount", 0) - COALESCE(SUM(COALESCE(oi.cogs, 0)), 0))::FLOAT AS "grossProfit",
+
+                    CASE
+                    WHEN COALESCE(o."totalAmount", 0) = 0 THEN 0
+                    ELSE (((COALESCE(o."totalAmount", 0) - COALESCE(SUM(COALESCE(oi.cogs, 0)), 0)) / COALESCE(o."totalAmount", 0)) * 100)
+                    END::FLOAT AS "marginPercent",
+
+                    u.id AS "createdById",
+                    (u."firstName" || ' ' || u."lastName") AS "createdByName"
+
+                FROM "Order" o
+                LEFT JOIN "Customer" c ON o."customerId" = c.id
+                JOIN "Branch" b ON o."branchId" = b.id
+                LEFT JOIN "OrderItem" oi ON oi."orderId" = o.id
+                LEFT JOIN "User" u ON o."createdBy" = u.id
+
+                WHERE o."deletedAt" IS NULL
+                    AND o.status IN ('APPROVED', 'COMPLETED')
+                    AND (
+                    o.ref ILIKE $1
+                    OR COALESCE(c.name, '') ILIKE $1
+                    OR b.name ILIKE $1
+                    )
+                    ${branchRestriction}
+                    ${dateCondition}
+
+                GROUP BY
+                    o.id,
+                    o.ref,
+                    o."orderDate",
+                    c.id,
+                    c.name,
+                    b.id,
+                    b.name,
+                    u.id,
+                    u."firstName",
+                    u."lastName"
+
+                ORDER BY ${sortColumn} ${sortOrder}
+                LIMIT $2 OFFSET $3
+            `,
+            likeTerm,
+            pageSize,
+            offset
+        );
+
+        const data = rows.map((r) => ({
+            orderId: r.orderId,
+            ref: r.ref,
+            orderDate: r.orderDate,
+            customerId: r.customerId,
+            customerName: r.customerName,
+            branchId: r.branchId,
+            branchName: r.branchName,
+            totalSales: Number(r.totalSales || 0),
+            totalCogs: Number(r.totalCogs || 0),
+            grossProfit: Number(r.grossProfit || 0),
+            marginPercent: Number(r.marginPercent || 0),
+            createdBy: r.createdById
+                ? { id: r.createdById, name: r.createdByName }
+                : null,
+        }));
+
+        const summary = data.reduce(
+            (acc, item) => {
+                acc.totalSales += item.totalSales;
+                acc.totalCogs += item.totalCogs;
+                acc.totalProfit += item.grossProfit;
+                return acc;
+            },
+            {
+                totalSales: 0,
+                totalCogs: 0,
+                totalProfit: 0,
+            }
+        );
+
+        const avgMarginPercent =
+            summary.totalSales > 0
+                ? (summary.totalProfit / summary.totalSales) * 100
+                : 0;
+
+        res.json({
+            data,
+            summary: {
+                totalSales: Number(summary.totalSales.toFixed(2)),
+                totalCogs: Number(summary.totalCogs.toFixed(2)),
+                totalProfit: Number(summary.totalProfit.toFixed(2)),
+                avgMarginPercent: Number(avgMarginPercent.toFixed(2)),
+            },
+            pagination: {
+                total,
+                page: pageNumber,
+                pageSize,
+                totalPages: Math.ceil(total / pageSize),
+            },
+        });
+    } catch (error) {
+        console.error("profitReport error:", error);
+        res.status(500).json({ message: "Failed to load profit report" });
     }
 };

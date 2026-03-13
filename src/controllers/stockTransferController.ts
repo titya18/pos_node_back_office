@@ -6,6 +6,8 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
 import { Decimal } from "@prisma/client/runtime/library";
+import { computeBaseQty } from "../utils/uom";
+import { consumeFifoForTransfer } from "../utils/consumeFifoForTransfer";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -124,266 +126,243 @@ export const getAllStockTransfer = async (req: Request, res: Response): Promise<
 };
 
 export const upsertTransfer = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const { fromBranchId, toBranchId, StatusType, note, transferDetails, transferDate } = req.body;
+  const { id } = req.params;
+  const { fromBranchId, toBranchId, StatusType, note, transferDetails, transferDate } = req.body;
 
-    try {
-        const result = await prisma.$transaction(async (tx) => {
-            const loggedInUser = req.user;
-            if (!loggedInUser) {
-                res.status(401).json({ message: "User is not authenticated." });
-                return;
-            }
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const loggedInUser = req.user;
+      if (!loggedInUser) {
+        res.status(401).json({ message: "User is not authenticated." });
+        return;
+      }
 
-            if (Number(fromBranchId) === Number(toBranchId)) {
-                throw new Error("From branch and To branch cannot be the same");
-            }
+      if (Number(fromBranchId) === Number(toBranchId)) {
+        throw new Error("From branch and To branch cannot be the same");
+      }
 
-            if (!transferDetails || !Array.isArray(transferDetails) || transferDetails.length === 0) {
-                throw new Error("Transfer details cannot be empty");
-            }
+      if (!transferDetails || !Array.isArray(transferDetails) || transferDetails.length === 0) {
+        throw new Error("Transfer details cannot be empty");
+      }
 
-            const transferId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
+      const transferId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
 
-            let oldTransfer: any = null;
+      let oldTransfer: any = null;
 
-            if (transferId) {
-                oldTransfer = await tx.stockTransfers.findUnique({
-                    where: { id: transferId },
-                    include: {
-                        transferDetails: true,
-                    },
-                });
-
-                if (!oldTransfer) {
-                    res.status(404).json({ message: "Transfer not found!" });
-                    return;
-                }
-
-                if (oldTransfer.StatusType === "APPROVED") {
-                    throw new Error("Approved transfer cannot be edited.");
-                }
-
-                if (oldTransfer.StatusType === "CANCELLED") {
-                    throw new Error("Cancelled transfer cannot be edited.");
-                }
-            }
-
-            for (const detail of transferDetails) {
-                if (!detail.productVariantId) {
-                    throw new Error("productVariantId is required in transfer details");
-                }
-
-                if (!detail.unitId) {
-                    throw new Error("unitId is required in transfer details");
-                }
-
-                if (detail.unitQty == null || Number(detail.unitQty) <= 0) {
-                    throw new Error("unitQty must be greater than 0");
-                }
-
-                if (detail.baseQty == null || Number(detail.baseQty) <= 0) {
-                    throw new Error("baseQty must be greater than 0");
-                }
-            }
-
-            let ref = "SRT-";
-
-            if (!transferId) {
-                const lastTransfer = await tx.stockTransfers.findFirst({
-                    where: { branchId: Number(fromBranchId) },
-                    orderBy: { id: "desc" },
-                    select: { ref: true },
-                });
-
-                if (lastTransfer?.ref) {
-                    const refNumber = parseInt(lastTransfer.ref.split("-")[1], 10) || 0;
-                    ref += String(refNumber + 1).padStart(5, "0");
-                } else {
-                    ref += "00001";
-                }
-            }
-
-            const transferPayload = {
-                branchId: Number(fromBranchId),
-                fromBranchId: Number(fromBranchId),
-                toBranchId: Number(toBranchId),
-                transferDate: new Date(dayjs(transferDate).format("YYYY-MM-DD")),
-                StatusType,
-                note,
-                updatedAt: currentDate,
-                updatedBy: loggedInUser.id,
-                transferDetails: {
-                    deleteMany: transferId ? { transferId } : undefined,
-                    create: transferDetails.map((detail: any) => ({
-                        productId: detail.productId ? Number(detail.productId) : null,
-                        productVariantId: Number(detail.productVariantId),
-                        unitId: Number(detail.unitId),
-                        unitQty: new Decimal(detail.unitQty ?? 0),
-                        baseQty: new Decimal(detail.baseQty ?? 0),
-
-                        // optional legacy field
-                        quantity: Math.round(Number(detail.baseQty ?? 0)),
-                    })),
-                },
-            };
-
-            const transfer = transferId
-                ? await tx.stockTransfers.update({
-                    where: { id: transferId },
-                    data: transferPayload,
-                    include: {
-                        transferDetails: true,
-                    },
-                })
-                : await tx.stockTransfers.create({
-                    data: {
-                        ...transferPayload,
-                        ref,
-                        createdAt: currentDate,
-                        createdBy: loggedInUser.id,
-                    },
-                    include: {
-                        transferDetails: true,
-                    },
-                });
-
-            if (StatusType === "APPROVED") {
-                if (Number(fromBranchId) === Number(toBranchId)) {
-                    throw new Error("From branch and To branch cannot be the same");
-                }
-
-                for (const detail of transfer.transferDetails) {
-                    const baseQty = Number(detail.baseQty ?? 0);
-
-                    if (baseQty <= 0) {
-                        throw new Error("baseQty must be greater than 0");
-                    }
-
-                    // Check stock availability in source branch
-                    const currentStock = await tx.stocks.findUnique({
-                        where: {
-                            productVariantId_branchId: {
-                                productVariantId: Number(detail.productVariantId),
-                                branchId: Number(fromBranchId),
-                            },
-                        },
-                    });
-
-                    const availableQty = Number(currentStock?.quantity ?? 0);
-
-                    if (availableQty < baseQty) {
-                        throw new Error(
-                            `Insufficient stock for variant ID ${detail.productVariantId}. Available: ${availableQty}, Requested: ${baseQty}`
-                        );
-                    }
-
-                    /* =========================
-                       1) DECREASE FROM BRANCH
-                    ========================== */
-                    await tx.stocks.upsert({
-                        where: {
-                            productVariantId_branchId: {
-                                productVariantId: Number(detail.productVariantId),
-                                branchId: Number(fromBranchId),
-                            },
-                        },
-                        update: {
-                            quantity: { decrement: baseQty },
-                            updatedBy: loggedInUser.id,
-                            updatedAt: currentDate,
-                        },
-                        create: {
-                            productVariantId: Number(detail.productVariantId),
-                            branchId: Number(fromBranchId),
-                            quantity: -baseQty,
-                            createdBy: loggedInUser.id,
-                            createdAt: currentDate,
-                            updatedBy: loggedInUser.id,
-                            updatedAt: currentDate,
-                        },
-                    });
-
-                    await tx.stockMovements.create({
-                        data: {
-                            productVariantId: Number(detail.productVariantId),
-                            branchId: Number(fromBranchId),
-                            type: "TRANSFER",
-                            status: "APPROVED",
-                            quantity: new Decimal(-baseQty),
-                            unitCost: null,
-                            transferDetailId: detail.id,
-                            note,
-                            createdBy: loggedInUser.id,
-                            createdAt: currentDate,
-                            approvedAt: currentDate,
-                            approvedBy: loggedInUser.id,
-                        },
-                    });
-
-                    /* =========================
-                       2) INCREASE TO BRANCH
-                    ========================== */
-                    await tx.stocks.upsert({
-                        where: {
-                            productVariantId_branchId: {
-                                productVariantId: Number(detail.productVariantId),
-                                branchId: Number(toBranchId),
-                            },
-                        },
-                        update: {
-                            quantity: { increment: baseQty },
-                            updatedBy: loggedInUser.id,
-                            updatedAt: currentDate,
-                        },
-                        create: {
-                            productVariantId: Number(detail.productVariantId),
-                            branchId: Number(toBranchId),
-                            quantity: baseQty,
-                            createdBy: loggedInUser.id,
-                            createdAt: currentDate,
-                            updatedBy: loggedInUser.id,
-                            updatedAt: currentDate,
-                        },
-                    });
-
-                    await tx.stockMovements.create({
-                        data: {
-                            productVariantId: Number(detail.productVariantId),
-                            branchId: Number(toBranchId),
-                            type: "TRANSFER",
-                            status: "APPROVED",
-                            quantity: new Decimal(baseQty),
-                            unitCost: null,
-                            transferDetailId: detail.id,
-                            note,
-                            createdBy: loggedInUser.id,
-                            createdAt: currentDate,
-                            approvedAt: currentDate,
-                            approvedBy: loggedInUser.id,
-                        },
-                    });
-                }
-
-                await tx.stockTransfers.update({
-                    where: { id: transfer.id },
-                    data: {
-                        StatusType: "APPROVED",
-                        approvedAt: currentDate,
-                        approvedBy: loggedInUser.id,
-                    },
-                });
-            }
-
-            return transfer;
+      if (transferId) {
+        oldTransfer = await tx.stockTransfers.findUnique({
+          where: { id: transferId },
+          include: {
+            transferDetails: true,
+          },
         });
 
-        res.status(id ? 200 : 201).json(result);
-    } catch (error) {
-        logger.error("Error creating/updating transfer:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
-    }
+        if (!oldTransfer) {
+          res.status(404).json({ message: "Transfer not found!" });
+          return;
+        }
+
+        if (oldTransfer.StatusType === "APPROVED") {
+          throw new Error("Approved transfer cannot be edited.");
+        }
+
+        if (oldTransfer.StatusType === "CANCELLED") {
+          throw new Error("Cancelled transfer cannot be edited.");
+        }
+      }
+
+      const normalizedDetails = await Promise.all(
+        transferDetails.map(async (detail: any) => {
+          if (!detail.productVariantId) {
+            throw new Error("productVariantId is required in transfer details");
+          }
+
+          if (!detail.unitId) {
+            throw new Error("unitId is required in transfer details");
+          }
+
+          if (detail.unitQty == null || Number(detail.unitQty) <= 0) {
+            throw new Error("unitQty must be greater than 0");
+          }
+
+          const { unitId, unitQty, baseQty, productId } = await computeBaseQty(tx, detail);
+
+          if (new Decimal(baseQty).lte(0)) {
+            throw new Error("baseQty must be greater than 0");
+          }
+
+          return {
+            productId: detail.productId ? Number(detail.productId) : productId,
+            productVariantId: Number(detail.productVariantId),
+            unitId: Number(unitId),
+            unitQty: new Decimal(unitQty),
+            baseQty: new Decimal(baseQty),
+            quantity: Math.round(Number(baseQty)),
+          };
+        })
+      );
+
+      let ref = "SRT-";
+
+      if (!transferId) {
+        const lastTransfer = await tx.stockTransfers.findFirst({
+          where: { branchId: Number(fromBranchId) },
+          orderBy: { id: "desc" },
+          select: { ref: true },
+        });
+
+        if (lastTransfer?.ref) {
+          const refNumber = parseInt(lastTransfer.ref.split("-")[1], 10) || 0;
+          ref += String(refNumber + 1).padStart(5, "0");
+        } else {
+          ref += "00001";
+        }
+      }
+
+      const transferPayload = {
+        branchId: Number(fromBranchId),
+        fromBranchId: Number(fromBranchId),
+        toBranchId: Number(toBranchId),
+        transferDate: new Date(dayjs(transferDate).format("YYYY-MM-DD")),
+        StatusType,
+        note,
+        updatedAt: currentDate,
+        updatedBy: loggedInUser.id,
+        transferDetails: {
+          deleteMany: transferId ? { transferId } : undefined,
+          create: normalizedDetails.map((detail) => ({
+            productId: detail.productId,
+            productVariantId: detail.productVariantId,
+            unitId: detail.unitId,
+            unitQty: detail.unitQty,
+            baseQty: detail.baseQty,
+            quantity: detail.quantity,
+          })),
+        },
+      };
+
+      const transfer = transferId
+        ? await tx.stockTransfers.update({
+            where: { id: transferId },
+            data: transferPayload,
+            include: {
+              transferDetails: true,
+            },
+          })
+        : await tx.stockTransfers.create({
+            data: {
+              ...transferPayload,
+              ref,
+              createdAt: currentDate,
+              createdBy: loggedInUser.id,
+            },
+            include: {
+              transferDetails: true,
+            },
+          });
+
+      if (StatusType === "APPROVED") {
+        for (const detail of transfer.transferDetails) {
+          const baseQty = new Decimal(detail.baseQty ?? 0);
+
+          if (baseQty.lte(0)) {
+            throw new Error("baseQty must be greater than 0");
+          }
+
+          // check source stock
+          const sourceStock = await tx.stocks.findUnique({
+            where: {
+              productVariantId_branchId: {
+                productVariantId: Number(detail.productVariantId),
+                branchId: Number(fromBranchId),
+              },
+            },
+          });
+
+          const availableQty = new Decimal(sourceStock?.quantity ?? 0);
+
+          if (availableQty.lt(baseQty)) {
+            throw new Error(
+              `Insufficient stock for variant ID ${detail.productVariantId}. Available: ${availableQty.toString()}, Requested: ${baseQty.toString()}`
+            );
+          }
+
+          // 1) consume FIFO from source and recreate layers in destination
+          await consumeFifoForTransfer({
+            tx,
+            productVariantId: Number(detail.productVariantId),
+            fromBranchId: Number(fromBranchId),
+            toBranchId: Number(toBranchId),
+            transferDetailId: detail.id,
+            qtyToTransfer: baseQty,
+            userId: loggedInUser.id,
+            currentDate,
+            note: note || `Stock transfer #${transfer.ref}`,
+          });
+
+          // 2) update Stocks source
+          await tx.stocks.update({
+            where: { id: sourceStock!.id },
+            data: {
+              quantity: { decrement: baseQty },
+              updatedBy: loggedInUser.id,
+              updatedAt: currentDate,
+            },
+          });
+
+          // 3) update Stocks destination
+          const destStock = await tx.stocks.findUnique({
+            where: {
+              productVariantId_branchId: {
+                productVariantId: Number(detail.productVariantId),
+                branchId: Number(toBranchId),
+              },
+            },
+          });
+
+          if (destStock) {
+            await tx.stocks.update({
+              where: { id: destStock.id },
+              data: {
+                quantity: { increment: baseQty },
+                updatedBy: loggedInUser.id,
+                updatedAt: currentDate,
+              },
+            });
+          } else {
+            await tx.stocks.create({
+              data: {
+                productVariantId: Number(detail.productVariantId),
+                branchId: Number(toBranchId),
+                quantity: baseQty,
+                createdBy: loggedInUser.id,
+                createdAt: currentDate,
+                updatedBy: loggedInUser.id,
+                updatedAt: currentDate,
+              },
+            });
+          }
+        }
+
+        await tx.stockTransfers.update({
+          where: { id: transfer.id },
+          data: {
+            StatusType: "APPROVED",
+            approvedAt: currentDate,
+            approvedBy: loggedInUser.id,
+          },
+        });
+      }
+
+      return transfer;
+    });
+
+    res.status(id ? 200 : 201).json(result);
+  } catch (error) {
+    logger.error("Error creating/updating transfer:", error);
+    const typedError = error as Error;
+    res.status(500).json({ message: typedError.message });
+  }
 };
 
 export const getStockTransferById = async (

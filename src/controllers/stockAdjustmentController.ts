@@ -6,6 +6,12 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { getQueryNumber, getQueryString } from "../utils/request";
+import { computeBaseQty } from "../utils/uom";
+import {
+  consumeFifoForNegativeAdjustment,
+  addPositiveAdjustmentLayer,
+  resolveCostPerBaseUnit,
+} from "../utils/consumeFifoForAdjustment";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -121,223 +127,261 @@ export const getAllStockAdjustments = async (req: Request, res: Response): Promi
 };
 
 export const upsertAdjustment = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const { branchId, AdjustMentType, StatusType, note, adjustmentDetails, adjustDate } = req.body;
+  const { id } = req.params;
+  const { branchId, AdjustMentType, StatusType, note, adjustmentDetails, adjustDate } = req.body;
 
-    try {
-        const result = await prisma.$transaction(async (tx) => {
-            const loggedInUser = req.user;
-            if (!loggedInUser) {
-                res.status(401).json({ message: "User is not authenticated." });
-                return;
-            }
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const loggedInUser = req.user;
+      if (!loggedInUser) {
+        res.status(401).json({ message: "User is not authenticated." });
+        return;
+      }
 
-            const adjustmentId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
+      const adjustmentId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
 
-            let oldAdjustment: any = null;
+      let oldAdjustment: any = null;
 
-            if (adjustmentId) {
-                oldAdjustment = await tx.stockAdjustments.findUnique({
-                    where: { id: adjustmentId },
-                    include: {
-                        adjustmentDetails: true,
-                    },
-                });
-
-                if (!oldAdjustment) {
-                    res.status(404).json({ message: "Adjustment not found!" });
-                    return;
-                }
-
-                if (oldAdjustment.StatusType === "APPROVED") {
-                    throw new Error("Approved stock adjustment cannot be edited.");
-                }
-
-                if (oldAdjustment.StatusType === "CANCELLED") {
-                    throw new Error("Cancelled stock adjustment cannot be edited.");
-                }
-            }
-
-            if (!adjustmentDetails || !Array.isArray(adjustmentDetails) || adjustmentDetails.length === 0) {
-                throw new Error("Adjustment details cannot be empty");
-            }
-
-            // Validate details
-            for (const detail of adjustmentDetails) {
-                if (!detail.productVariantId) {
-                    throw new Error("productVariantId is required in adjustment details");
-                }
-
-                if (!detail.unitId) {
-                    throw new Error("unitId is required in adjustment details");
-                }
-
-                if (detail.unitQty == null || Number(detail.unitQty) <= 0) {
-                    throw new Error("unitQty must be greater than 0");
-                }
-
-                if (detail.baseQty == null || Number(detail.baseQty) <= 0) {
-                    throw new Error("baseQty must be greater than 0");
-                }
-            }
-
-            let ref = "SAJM-";
-
-            if (!adjustmentId) {
-                const lastAdjustment = await tx.stockAdjustments.findFirst({
-                    where: { branchId: Number(branchId) },
-                    orderBy: { id: "desc" },
-                    select: { ref: true },
-                });
-
-                if (lastAdjustment?.ref) {
-                    const refNumber = parseInt(lastAdjustment.ref.split("-")[1], 10) || 0;
-                    ref += String(refNumber + 1).padStart(5, "0");
-                } else {
-                    ref += "00001";
-                }
-            }
-
-            const adjustmentPayload = {
-                branchId: Number(branchId),
-                adjustDate: new Date(dayjs(adjustDate).format("YYYY-MM-DD")),
-                AdjustMentType,
-                StatusType,
-                note,
-                updatedAt: currentDate,
-                updatedBy: loggedInUser.id,
-                adjustmentDetails: {
-                    deleteMany: adjustmentId ? { adjustmentId } : undefined,
-                    create: adjustmentDetails.map((detail: any) => ({
-                        productId: detail.productId ? Number(detail.productId) : null,
-                        productVariantId: Number(detail.productVariantId),
-                        unitId: Number(detail.unitId),
-                        unitQty: new Decimal(detail.unitQty ?? 0),
-                        baseQty: new Decimal(detail.baseQty ?? 0),
-
-                        // optional legacy field
-                        quantity: Math.round(Number(detail.baseQty ?? 0)),
-                    })),
-                },
-            };
-
-            const adjustment = adjustmentId
-                ? await tx.stockAdjustments.update({
-                    where: { id: adjustmentId },
-                    data: adjustmentPayload,
-                    include: {
-                        adjustmentDetails: true,
-                    },
-                })
-                : await tx.stockAdjustments.create({
-                    data: {
-                        ...adjustmentPayload,
-                        ref,
-                        createdAt: currentDate,
-                        createdBy: loggedInUser.id,
-                    },
-                    include: {
-                        adjustmentDetails: true,
-                    },
-                });
-
-            // Only post stock when APPROVED
-            if (StatusType === "APPROVED") {
-                for (const detail of adjustment.adjustmentDetails) {
-                    const baseQty = Number(detail.baseQty ?? 0);
-
-                    if (baseQty <= 0) {
-                        throw new Error("baseQty must be greater than 0");
-                    }
-
-                    const signedBaseQty =
-                        AdjustMentType === "POSITIVE" ? baseQty : -baseQty;
-
-                    // Prevent negative stock if adjustment is NEGATIVE
-                    if (AdjustMentType === "NEGATIVE") {
-                        const currentStock = await tx.stocks.findUnique({
-                            where: {
-                                productVariantId_branchId: {
-                                    productVariantId: Number(detail.productVariantId),
-                                    branchId: Number(branchId),
-                                },
-                            },
-                        });
-
-                        const availableQty = Number(currentStock?.quantity ?? 0);
-
-                        if (availableQty < baseQty) {
-                            throw new Error(
-                                `Insufficient stock for variant ID ${detail.productVariantId}. Available: ${availableQty}, Requested: ${baseQty}`
-                            );
-                        }
-                    }
-
-                    await tx.stocks.upsert({
-                        where: {
-                            productVariantId_branchId: {
-                                productVariantId: Number(detail.productVariantId),
-                                branchId: Number(branchId),
-                            },
-                        },
-                        update: {
-                            quantity: { increment: signedBaseQty },
-                            updatedBy: loggedInUser.id,
-                            updatedAt: currentDate,
-                        },
-                        create: {
-                            productVariantId: Number(detail.productVariantId),
-                            branchId: Number(branchId),
-                            quantity: signedBaseQty,
-                            createdBy: loggedInUser.id,
-                            createdAt: currentDate,
-                            updatedBy: loggedInUser.id,
-                            updatedAt: currentDate,
-                        },
-                    });
-
-                    await tx.stockMovements.create({
-                        data: {
-                            productVariantId: Number(detail.productVariantId),
-                            branchId: Number(branchId),
-                            type: "ADJUSTMENT",
-                            AdjustMentType,
-                            status: "APPROVED",
-                            quantity: new Decimal(signedBaseQty),
-
-                            // adjustment normally has no purchase cost source
-                            // keep null or 0 depending on your system design
-                            unitCost: null,
-
-                            adjustmentDetailId: detail.id,
-                            note,
-                            createdBy: loggedInUser.id,
-                            createdAt: currentDate,
-                            approvedAt: currentDate,
-                            approvedBy: loggedInUser.id,
-                        },
-                    });
-                }
-
-                await tx.stockAdjustments.update({
-                    where: { id: adjustment.id },
-                    data: {
-                        StatusType: "APPROVED",
-                        approvedAt: currentDate,
-                        approvedBy: loggedInUser.id,
-                    },
-                });
-            }
-
-            return adjustment;
+      if (adjustmentId) {
+        oldAdjustment = await tx.stockAdjustments.findUnique({
+          where: { id: adjustmentId },
+          include: {
+            adjustmentDetails: true,
+          },
         });
 
-        res.status(id ? 200 : 201).json(result);
-    } catch (error) {
-        logger.error("Error creating/updating adjustment:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
-    }
+        if (!oldAdjustment) {
+          res.status(404).json({ message: "Adjustment not found!" });
+          return;
+        }
+
+        if (oldAdjustment.StatusType === "APPROVED") {
+          throw new Error("Approved stock adjustment cannot be edited.");
+        }
+
+        if (oldAdjustment.StatusType === "CANCELLED") {
+          throw new Error("Cancelled stock adjustment cannot be edited.");
+        }
+      }
+
+      if (!adjustmentDetails || !Array.isArray(adjustmentDetails) || adjustmentDetails.length === 0) {
+        throw new Error("Adjustment details cannot be empty");
+      }
+
+      let ref = "SAJM-";
+
+      if (!adjustmentId) {
+        const lastAdjustment = await tx.stockAdjustments.findFirst({
+          where: { branchId: Number(branchId) },
+          orderBy: { id: "desc" },
+          select: { ref: true },
+        });
+
+        if (lastAdjustment?.ref) {
+          const refNumber = parseInt(lastAdjustment.ref.split("-")[1], 10) || 0;
+          ref += String(refNumber + 1).padStart(5, "0");
+        } else {
+          ref += "00001";
+        }
+      }
+
+      // build detail rows safely from backend calculations
+      const normalizedDetails = await Promise.all(
+        adjustmentDetails.map(async (detail: any) => {
+          if (!detail.productVariantId) {
+            throw new Error("productVariantId is required in adjustment details");
+          }
+
+          if (!detail.unitId) {
+            throw new Error("unitId is required in adjustment details");
+          }
+
+          if (detail.unitQty == null || Number(detail.unitQty) <= 0) {
+            throw new Error("unitQty must be greater than 0");
+          }
+
+          const { unitId, unitQty, baseQty, baseUnitId, productId } = await computeBaseQty(tx, detail);
+
+          if (new Decimal(baseQty).lte(0)) {
+            throw new Error("baseQty must be greater than 0");
+          }
+
+          let cost = new Decimal(0);
+          let costPerBaseUnit = new Decimal(0);
+
+          if (AdjustMentType === "POSITIVE") {
+            cost = new Decimal(detail.cost ?? 0);
+
+            if (cost.lte(0)) {
+              throw new Error("cost must be greater than 0 for positive adjustment");
+            }
+
+            costPerBaseUnit = await resolveCostPerBaseUnit(
+              tx,
+              productId,
+              baseUnitId,
+              detail.cost ?? 0,
+              unitId
+            );
+          }
+
+          return {
+            productId: detail.productId ? Number(detail.productId) : productId,
+            productVariantId: Number(detail.productVariantId),
+            unitId: Number(unitId),
+            unitQty: new Decimal(unitQty),
+            baseQty: new Decimal(baseQty),
+            quantity: Math.round(Number(baseQty)),
+            cost,
+            costPerBaseUnit,
+          };
+        })
+      );
+
+      const adjustmentPayload: any = {
+        branchId: Number(branchId),
+        adjustDate: new Date(dayjs(adjustDate).format("YYYY-MM-DD")),
+        AdjustMentType,
+        StatusType,
+        note,
+        updatedAt: currentDate,
+        updatedBy: loggedInUser.id,
+        adjustmentDetails: {
+          deleteMany: adjustmentId ? { adjustmentId } : undefined,
+          create: normalizedDetails.map((detail) => ({
+            productId: detail.productId,
+            productVariantId: detail.productVariantId,
+            unitId: detail.unitId,
+            unitQty: detail.unitQty,
+            baseQty: detail.baseQty,
+            quantity: detail.quantity,
+            cost: detail.cost,
+            costPerBaseUnit: detail.costPerBaseUnit,
+          })),
+        },
+      };
+
+      const adjustment = adjustmentId
+        ? await tx.stockAdjustments.update({
+            where: { id: adjustmentId },
+            data: adjustmentPayload,
+            include: {
+              adjustmentDetails: true,
+            },
+          })
+        : await tx.stockAdjustments.create({
+            data: {
+              ...adjustmentPayload,
+              ref,
+              createdAt: currentDate,
+              createdBy: loggedInUser.id,
+            },
+            include: {
+              adjustmentDetails: true,
+            },
+          });
+
+      // Only post stock when APPROVED
+      if (StatusType === "APPROVED") {
+        for (const detail of adjustment.adjustmentDetails) {
+          const baseQty = new Decimal(detail.baseQty ?? 0);
+
+          if (baseQty.lte(0)) {
+            throw new Error("baseQty must be greater than 0");
+          }
+
+          const stock = await tx.stocks.findUnique({
+            where: {
+              productVariantId_branchId: {
+                productVariantId: Number(detail.productVariantId),
+                branchId: Number(branchId),
+              },
+            },
+          });
+
+          if (AdjustMentType === "POSITIVE") {
+            if (stock) {
+              await tx.stocks.update({
+                where: { id: stock.id },
+                data: {
+                  quantity: { increment: baseQty },
+                  updatedBy: loggedInUser.id,
+                  updatedAt: currentDate,
+                },
+              });
+            } else {
+              await tx.stocks.create({
+                data: {
+                  productVariantId: Number(detail.productVariantId),
+                  branchId: Number(branchId),
+                  quantity: baseQty,
+                  createdBy: loggedInUser.id,
+                  createdAt: currentDate,
+                  updatedBy: loggedInUser.id,
+                  updatedAt: currentDate,
+                },
+              });
+            }
+
+            await addPositiveAdjustmentLayer({
+              tx,
+              productVariantId: Number(detail.productVariantId),
+              branchId: Number(branchId),
+              qtyToAdd: baseQty,
+              unitCost: new Decimal(detail.costPerBaseUnit ?? 0),
+              userId: loggedInUser.id,
+              currentDate,
+              note: note || `Positive stock adjustment #${adjustment.ref}`,
+            });
+          } else {
+            const availableQty = new Decimal(stock?.quantity ?? 0);
+
+            if (availableQty.lt(baseQty)) {
+              throw new Error(
+                `Insufficient stock for variant ID ${detail.productVariantId}. Available: ${availableQty.toString()}, Requested: ${baseQty.toString()}`
+              );
+            }
+
+            await consumeFifoForNegativeAdjustment({
+              tx,
+              productVariantId: Number(detail.productVariantId),
+              branchId: Number(branchId),
+              qtyToReduce: baseQty,
+              userId: loggedInUser.id,
+              currentDate,
+              note: note || `Negative stock adjustment #${adjustment.ref}`,
+            });
+
+            await tx.stocks.update({
+              where: { id: stock!.id },
+              data: {
+                quantity: { decrement: baseQty },
+                updatedBy: loggedInUser.id,
+                updatedAt: currentDate,
+              },
+            });
+          }
+        }
+
+        await tx.stockAdjustments.update({
+          where: { id: adjustment.id },
+          data: {
+            StatusType: "APPROVED",
+            approvedAt: currentDate,
+            approvedBy: loggedInUser.id,
+          },
+        });
+      }
+
+      return adjustment;
+    });
+
+    res.status(id ? 200 : 201).json(result);
+  } catch (error) {
+    logger.error("Error creating/updating adjustment:", error);
+    const typedError = error as Error;
+    res.status(500).json({ message: typedError.message });
+  }
 };
 
 export const getStockAdjustmentById = async (
@@ -517,49 +561,6 @@ export const getStockAdjustmentById = async (
         });
     }
 };
-
-// export const getStockAdjustmentById = async (req: Request, res: Response): Promise<void> => {
-//     const { id } = req.params;
-//     const stockAdjustmentId = id ? (Array.isArray(id) ? id[0] : id) : 0;
-//     try {
-//         const adjustment = await prisma.stockAdjustments.findUnique({
-//             where: { id: Number(stockAdjustmentId) },
-//             include: { 
-//                 adjustmentDetails: {
-//                     include: {
-//                         products: true, // Include related products data
-//                         productvariants: {
-//                             select: {
-//                                 name: true, // Select the `name` field from `productVariant`
-//                                 barcode: true,
-//                                 sku: true
-//                             },
-//                         },
-//                     },
-//                 },
-//                 branch: true, // Include related branch data
-//             },
-//         });
-
-//         // Transform data to flatten `name` into `adjustDetails`
-//         if (adjustment) {
-//             adjustment.adjustmentDetails = adjustment.adjustmentDetails.map((detail: any) => ({
-//                 ...detail,
-//                 name: detail.productvariants.name, // Add `name` directly
-//             }));
-//         }
-
-//         if (!adjustment) {
-//             res.status(404).json({ message: "Adjustment not found!" });
-//             return;
-//         }
-//         res.status(200).json(adjustment);
-//     } catch (error) {
-//         logger.error("Error fetching adjustment by ID:", error);
-//         const typedError = error as Error;
-//         res.status(500).json({ message: typedError.message });
-//     }
-// };
 
 export const deleteAdjustment = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;

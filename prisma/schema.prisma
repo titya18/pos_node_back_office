@@ -329,6 +329,7 @@ model Units {
   baseOfVariants    ProductVariants[]       @relation("BaseUnit")
   convFrom          ProductUnitConversion[] @relation("ConvFromUnit")
   convTo            ProductUnitConversion[] @relation("ConvToUnit")
+  purchasePriceVariants ProductVariants[] @relation("PurchasePriceUnit")
 }
 
 model Products {
@@ -436,6 +437,9 @@ model ProductVariants {
   creator User? @relation("ProductVariantsCreatedBy", fields: [createdBy], references: [id])
   updater User? @relation("ProductVariantsUpdatedBy", fields: [updatedBy], references: [id])
   deleter User? @relation("ProductVariantsDeletedBy", fields: [deletedBy], references: [id])
+
+  purchasePriceUnitId Int?   // ✅ NEW
+  purchasePriceUnit   Units? @relation("PurchasePriceUnit", fields: [purchasePriceUnitId], references: [id])
 
   // ✅ NEW: base unit (stock stored in this unit)
   baseUnitId Int?
@@ -1056,6 +1060,9 @@ model AdjustmentDetails {
   unitQty Decimal? @db.Decimal(10, 4)
   baseQty Decimal? @db.Decimal(10, 4)
   unit    Units?   @relation(fields: [unitId], references: [id])
+
+  cost            Decimal? @db.Decimal(10, 4)      // ✅ NEW
+  costPerBaseUnit Decimal? @db.Decimal(10, 4)      // ✅ NEW
 
   stockadjustments StockAdjustments @relation(fields: [adjustmentId], references: [id])
   products         Products?        @relation(fields: [productId], references: [id])
