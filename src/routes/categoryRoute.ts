@@ -13,7 +13,7 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/all").get(authorize(["Category-View"]), getAllCategories);
+router.route("/all").get(getAllCategories);
 router.route("/").get(getAllCategoriesWithPagination).post(authorize(["Category-Create"]), validateCategoryRequest, upsertCategory);
 router.route("/:id").get(getCategoryById).put(authorize(["Category-Edit"]), validateCategoryRequest, upsertCategory).delete(authorize(["Category-Delete"]), deleteCategory);
 

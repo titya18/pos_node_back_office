@@ -15,7 +15,7 @@ router.use(verifyToken);
 
 router.route('/all').get(getAllVariantAttributes);
 router.route('/')
-    .get(authorize(['Variant-Attribute-View']), getAllVariantAttributesWithPagination)
+    .get(getAllVariantAttributesWithPagination)
     .post(authorize(['Variant-Attribute-Create']), validateVariantAttributeRequest, upsertVariantAttribute);
 router.route('/:id')
     .get(getVariantAttributeById)
