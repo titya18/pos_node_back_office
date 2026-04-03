@@ -27,7 +27,8 @@ beforeAll(async () => {
     await prisma.brands.create({
         data: {
             id: 1,
-            name: "Test Brand",
+            en_name: "Test Brand",
+            kh_name: "Test Brand",
         },
     });
 });

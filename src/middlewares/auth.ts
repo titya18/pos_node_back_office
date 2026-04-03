@@ -1,8 +1,8 @@
 import { NextFunction, Request, RequestHandler, Response } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
+import logger from "../utils/logger";
 
-const prisma = new PrismaClient();
 
 declare global {
     namespace Express {
@@ -103,7 +103,7 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
             return;
         }
     } catch (error) {
-        console.log("Token verification error:", error); // Log the error
+        logger.error("Token verification error:", error);
         res.status(401).json({ message: "Unauthorized: Invalid token" });
         return;
     }

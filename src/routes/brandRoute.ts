@@ -1,8 +1,9 @@
 import express from "express";
-import { validateBranchRequest } from "../middlewares/validation";
+import { validateBrandRequest } from "../middlewares/validation";
 import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
+    getAllBrandsWithPagination,
     getAllBrands,
     getBrandById,
     upsertBrand,
@@ -13,7 +14,8 @@ import {
 const router = express.Router();
 
 router.use(verifyToken);
-router.route("/").get(authorize(["Brand-View"]), getAllBrands).post(authorize(["Brand-Create"]), validateBranchRequest, uploadImage, upsertBrand);
-router.route("/:id").get(authorize(["Brand-View"]), getBrandById).put(authorize(["Brand-Edit"]), validateBranchRequest, uploadImage, upsertBrand).delete(authorize(["Brand-Delete"]), deleteBrand);
+router.route("/all").get(authorize(["Brand-View"]), getAllBrands);
+router.route("/").get(getAllBrandsWithPagination).post(authorize(["Brand-Create"]), uploadImage, validateBrandRequest, upsertBrand);
+router.route("/:id").get(getBrandById).put(authorize(["Brand-Edit"]), uploadImage, validateBrandRequest, upsertBrand).delete(authorize(["Brand-Delete"]), deleteBrand);
 
 export default router;

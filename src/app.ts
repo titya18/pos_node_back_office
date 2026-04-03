@@ -14,18 +14,38 @@ import roleRoute from './routes/roleRoute';
 import categoryRoute from './routes/categoryRoute';
 import unitRoute from './routes/unitRoute';
 import brandRoute from './routes/brandRoute';
+import variantAttributeRoute from './routes/variantAttributeRoute';
 import productRoute from './routes/productRoute';
 import productVariantRoute from './routes/productVariantRoute';
 import supplierRoute from './routes/supplierRoute';
 import purchaseRoute from './routes/purchaseRoute';
 import searchProductRoute from './routes/searchProductRoute';
+import searchServiceRoute from './routes/searchServiceRoute';
+import serviceRoute from './routes/serviceRoute';
+import quotationRoute from './routes/quotationRoute';
+import customerRoute from './routes/customerRoute';
+import invoiceRoute from './routes/invoiceRoute';
+import saleReturnRoute from './routes/saleReturnRoute';
+import stockRoute from './routes/stockRoute';
+import stockAdjustmentRoute from './routes/stockAdjustmentRoute';
+import stockTransferRoute from './routes/stockTransferRoute';
+import stockRequestRoute from './routes/stockRequestRoute';
+import stockReturnRoute from './routes/stockReturnRoute';
+import expenseRoute from './routes/expenseRoute';
+import incomeRoute from './routes/incomeRoute';
+import reportRoute from './routes/reportRoute';
+import exchangRateRoute from './routes/exchangeRateRoute';
 
 const app = express();
 
 // Serve the 'public' folder as the root for static files
 // Serve static images
-const publicPath = path.resolve(__dirname, '../../../../../public');
+
+// // Note: If doesn't show image on frontend, we just add/remove ../.. like this behide of /public
 // const publicPath = path.resolve(__dirname, '../public');
+// // const publicPath = path.resolve(__dirname, '../public');
+// app.use('/images', express.static(path.join(publicPath, 'images')));
+const publicPath = path.join(process.cwd(), 'public');
 app.use('/images', express.static(path.join(publicPath, 'images')));
 
 // console.log('Static images path:', path.join(publicPath, 'images'));
@@ -60,15 +80,35 @@ app.use('/api/role', roleRoute);
 app.use('/api/category', categoryRoute);
 app.use('/api/unit', unitRoute);
 app.use('/api/brand', brandRoute);
+app.use('/api/variant_attribute', variantAttributeRoute);
 app.use('/api/product', productRoute);
 app.use('/api/productvariant', productVariantRoute);
 app.use('/api/supplier', supplierRoute);
 app.use('/api/purchase', purchaseRoute);
 app.use('/api/searchProductRoute', searchProductRoute);
+app.use('/api/searchServiceRoute', searchServiceRoute);
+app.use('/api/service', serviceRoute);
+app.use('/api/quotation', quotationRoute);
+app.use('/api/customer', customerRoute);
+app.use('/api/invoice', invoiceRoute);
+app.use('/api/salereturn', saleReturnRoute);
+app.use('/api/stock', stockRoute);
+app.use('/api/stockadjustment', stockAdjustmentRoute);
+app.use('/api/stocktransfer', stockTransferRoute);
+app.use('/api/stockrequest', stockRequestRoute);
+app.use('/api/stockreturn', stockReturnRoute);
+app.use('/api/expense', expenseRoute);
+app.use('/api/income', incomeRoute);
+app.use('/api/report', reportRoute);
+app.use('/api/exchange-rate', exchangRateRoute);
 
 // Default route
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.send("Stock Management API is running...");
+});
+
+app.get('/api/health', (req, res) => {
+    res.status(200).json({status: 'OK'});
 });
 
 export default app;

@@ -1,65 +1,111 @@
 import { NextFunction, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
+import { Prisma } from "@prisma/client";
 import { DateTime } from "luxon";
 import multer from "multer";
 import fs from "fs"; // Import fs module to delete files
 import path from "path";
 import logger from "../utils/logger";
-import { log } from "console";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import { getQueryNumber, getQueryString } from "../utils/request";
+import { addPositiveAdjustmentLayer, consumeFifoForNegativeAdjustment, resolveCostPerBaseUnit } from "../utils/consumeFifoForAdjustment";
+import { prisma } from "../lib/prisma";
 
-const prisma = new PrismaClient();
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const tz = "Asia/Phnom_Penh";
+const now = dayjs().tz(tz);
+const currentDate = new Date(Date.UTC(now.year(), now.month(), now.date(), now.hour(), now.minute(), now.second()));
 
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
     try {
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
-        const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString() : "";
-        const sortField = req.query.sortField ? req.query.sortField.toString() : "name";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
-        const skip = (pageNumber - 1) * pageSize;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const rawSortField = getQueryString(req.query.sortField, "name")!;
+        const sortField = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(rawSortField) ? rawSortField : "name";
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
+        const offset = (pageNumber - 1) * pageSize;
 
-        const whereCondition: any = {
-            deletedAt: null
-        }
+        // Base LIKE term
+        const likeTerm = `%${searchTerm}%`;
 
-        if (searchTerm) {
-            whereCondition.name = {
-                contains: searchTerm,
-                mode: "insensitive" // Case-Insensitive search
-            }
-        }
+        // Split searchTerm into words → e.g. "Lorn Titya"
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
 
-        const total = await prisma.products.count({
-            where: whereCondition
-        });
+        // creator/updater multi-word name search
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (
+                    cr."firstName" ILIKE $${idx + 2} OR cr."lastName" ILIKE $${idx + 2}
+                    OR up."firstName" ILIKE $${idx + 2} OR up."lastName" ILIKE $${idx + 2}
+                )
+            `)
+            .join(" AND ");
 
-        const products = await prisma.products.findMany({
-            where: whereCondition,
-            skip: skip,
-            orderBy: {
-                [sortField]: sortOrder as "asc" | "desc"
-            },
-            take: pageSize,
-            include: {
-                categories: {
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                },
-                brands: {
-                    select: {
-                        id: true,
-                        name: true
-                    }
-                }
-            }
-        });
+        // Build params dynamically
+        const params = [likeTerm, ...searchWords.map(w => `%${w}%`), pageSize, offset];
+
+        // 1️ Count total
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM "Products" p
+            LEFT JOIN "Categories" c ON p."categoryId" = c.id
+            LEFT JOIN "Brands" b ON p."brandId" = b.id
+            LEFT JOIN "User" cr ON p."createdBy" = cr.id
+            LEFT JOIN "User" up ON p."updatedBy" = up.id
+            WHERE p."deletedAt" IS NULL
+            AND (
+                p."name" ILIKE $1
+                OR c."name" ILIKE $1
+                OR b."en_name" ILIKE $1
+                OR b."kh_name" ILIKE $1
+                OR TO_CHAR(p."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+        `, ...params.slice(0, params.length - 2));
+
+        const total = parseInt(totalResult[0]?.total ?? 0, 10);
+
+        // 2️ Fetch paginated products
+        const products: any = await prisma.$queryRawUnsafe(`
+            SELECT 
+                p.*,
+                json_build_object('id', c.id, 'name', c."name") AS category,
+                json_build_object('id', b.id, 'en_name', b."en_name", 'kh_name', b."kh_name") AS brand,
+                json_build_object('id', cr.id, 'firstName', cr."firstName", 'lastName', cr."lastName") AS creator,
+                json_build_object('id', up.id, 'firstName', up."firstName", 'lastName', up."lastName") AS updater
+            FROM "Products" p
+            LEFT JOIN "Categories" c ON p."categoryId" = c.id
+            LEFT JOIN "Brands" b ON p."brandId" = b.id
+            LEFT JOIN "User" cr ON p."createdBy" = cr.id
+            LEFT JOIN "User" up ON p."updatedBy" = up.id
+            WHERE p."deletedAt" IS NULL
+            AND (
+                p."name" ILIKE $1
+                OR c."name" ILIKE $1
+                OR b."en_name" ILIKE $1
+                OR b."kh_name" ILIKE $1
+                OR TO_CHAR(p."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                OR TO_CHAR(p."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+            )
+            ORDER BY p."${sortField}" ${sortOrder}
+            LIMIT $${params.length - 1} OFFSET $${params.length}
+        `, ...params);
+
         res.status(200).json({ data: products, total });
+
     } catch (error) {
         logger.error("Error fetching products:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+        res.status(500).json({ message: (error as Error).message });
     }
 };
 
@@ -79,10 +125,11 @@ const storage = multer.diskStorage({
 export const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // const productId = req.params.id ? parseInt(req.params.id, 10) : undefined;
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
+    const ext = path.extname(file.originalname).toLowerCase();
 
-    if (!allowedTypes.includes(file.mimetype)) {
-        return cb(new Error("Invalid file type. Only JPG, PNG, WEBP, and GIF are allowed."));
+    if (!allowedExtensions.includes(ext)) {
+        return cb(new Error("Invalid file type. Only JPG, PNG, WEBP, GIF, and SVG are allowed."));
     }
 
     // Check for file size here as well (besides multer's built-in fileSize limit)
@@ -91,23 +138,10 @@ export const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.F
         return cb(new multer.MulterError('LIMIT_FILE_SIZE', 'File is too large')); // Explicitly reject file
     }
 
-    // if (productId) {
-    //     const existingProduct = prisma.products.findUnique({
-    //         where: { id: productId },
-    //         select: { image: true },
-    //     });
-
-    //     const resolvedProduct = await existingProduct;
-    //     if (resolvedProduct?.image?.includes(file.originalname)) {
-    //         console.log(`File ${file.originalname} already exists in the database. Skipping upload.`);
-    //         return cb(null, false); // Reject upload
-    //     }
-    // }
-
     const filePath = path.join("public/images/products/", file.originalname);
 
     if (fs.existsSync(filePath)) {
-        console.log(`File ${file.originalname} already exists in the directory. Skipping upload.`);
+        logger.info(`File ${file.originalname} already exists in the directory. Skipping upload.`);
         return cb(null, false); // Reject upload
     }
 
@@ -134,183 +168,1064 @@ export const uploadImage = (req: Request, res: Response, next: NextFunction) => 
     });
 };
 
-// export const uploadImage = multer({ storage: storage, fileFilter: fileFilter, limits: { fileSize: 5 * 1024 * 1024 }, }).array('images[]', 10); // Max 5 images
+const normalizeMac = (value?: string | null): string | null => {
+  if (!value) return null;
+  const normalized = value.replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
+  return normalized || null;
+};
 
-export const upsertProduct = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const { categoryId, brandId, name, note, isActive, imagesToDelete } = req.body;
-    const imagePaths = req.files ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, "")) : [];
-    const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
+const groupTrackedItemsToStocks = (
+  trackedItems: {
+    branchId: number;
+    assetCode?: string | null;
+    macAddress?: string | null;
+    serialNumber?: string | null;
+  }[]
+) => {
+  const grouped: Record<number, number> = {};
 
-    try {
-        const productId = id ? parseInt(id, 10) : undefined;
+  for (const item of trackedItems) {
+    if (!item.branchId) continue;
+    grouped[item.branchId] = (grouped[item.branchId] || 0) + 1;
+  }
 
-        const checkExisting = await prisma.products.findFirst({
-            where: {
-                name,
-                id: { not: productId },
-            },
-        });
+  return Object.entries(grouped).map(([branchId, quantity]) => ({
+    branchId: Number(branchId),
+    quantity,
+  }));
+};
 
-        if (checkExisting) {
-            res.status(400).json({ message: "Product's name must be unique" });
-            return;
-        }
+const validateTrackedItems = (
+  trackedItems: {
+    id?: number;
+    branchId: number;
+    assetCode?: string | null;
+    macAddress?: string | null;
+    serialNumber?: string | null;
+  }[]
+) => {
+  const assetSet = new Set<string>();
+  const macSet = new Set<string>();
+  const serialSet = new Set<string>();
 
-        let existingImages: string[] = [];
-        if (productId) {
-            const checkProduct = await prisma.products.findUnique({ where: { id: productId } });
-            if (!checkProduct) {
-                res.status(404).json({ message: "Product not found!" });
-                return;
-            }
-            existingImages = checkProduct.image || [];
-        }
+  const cleaned = trackedItems
+    .map((item) => ({
+      id: item.id ? Number(item.id) : undefined,
+      branchId: Number(item.branchId || 0),
+      assetCode: item.assetCode?.trim() || null,
+      macAddress: normalizeMac(item.macAddress),
+      serialNumber: item.serialNumber?.trim() || null,
+    }))
+    .filter((item) => item.branchId);
 
-        // Parse and handle imagesToDelete
-        const parsedImagesToDelete = typeof imagesToDelete === "string" ? JSON.parse(imagesToDelete) : imagesToDelete;
-
-        if (Array.isArray(parsedImagesToDelete)) {
-            parsedImagesToDelete.forEach((imagePath: string) => {
-                // const fullPath = path.join("public/images/products/", imagePath);
-                const fullPath = `public/${imagePath}`;
-                if (fs.existsSync(fullPath)) {
-                    fs.unlinkSync(fullPath); // Delete file from filesystem
-                }
-            });
-
-            // Remove deleted images from existingImages
-            existingImages = existingImages.filter(img => !parsedImagesToDelete.includes(img));
-        } else if (imagesToDelete) {
-            console.error("imagesToDelete is not a valid array:", imagesToDelete);
-        }
-
-        // Combine new and existing images
-        const updatedImages = [...existingImages, ...imagePaths];
-
-        // Create or Update the product
-        const product = productId
-            ? await prisma.products.update({
-                where: { id: productId },
-                data: {
-                    categoryId: parseInt(categoryId, 10),
-                    brandId: parseInt(brandId, 10),
-                    name,
-                    note,
-                    isActive,
-                    updatedAt: utcNow.toJSDate(),
-                    image: updatedImages, // Combine existing and new images
-                },
-            })
-            : await prisma.products.create({
-                data: {
-                    categoryId: parseInt(categoryId, 10),
-                    brandId: parseInt(brandId, 10),
-                    name,
-                    note,
-                    isActive,
-                    createdAt: utcNow.toJSDate(),
-                    updatedAt: utcNow.toJSDate(),
-                    image: updatedImages, // Include new images only
-                },
-            });
-
-        res.status(id ? 200 : 201).json(product);
-    } catch (error) {
-        logger.error("Error upserting product:", error);
-        const typedError = error as Error;
-        res.status(500).json({ message: typedError.message });
+  for (const item of cleaned) {
+    if (!item.serialNumber) {
+      throw new Error("Serial Number is required for every tracked item");
     }
+
+    const serialKey = item.serialNumber.toUpperCase();
+    if (serialSet.has(serialKey)) {
+      throw new Error(`Duplicate Serial Number: ${item.serialNumber}`);
+    }
+    serialSet.add(serialKey);
+
+    if (item.assetCode) {
+      const assetKey = item.assetCode.toUpperCase();
+      if (assetSet.has(assetKey)) {
+        throw new Error(`Duplicate Asset Code: ${item.assetCode}`);
+      }
+      assetSet.add(assetKey);
+    }
+
+    if (item.macAddress) {
+      if (macSet.has(item.macAddress)) {
+        throw new Error(`Duplicate MAC Address: ${item.macAddress}`);
+      }
+      macSet.add(item.macAddress);
+    }
+  }
+
+  return cleaned;
 };
 
 // export const upsertProduct = async (req: Request, res: Response): Promise<void> => {
-//     const { id } = req.params;
-//     const { categoryId, brandId, name, note, isActive } = req.body;
-//     const imagePaths = req.files ? (req.files as Express.Multer.File[]).map(file => file.path.replace(/^public[\\/]/, "")) : []; // Handle multiple images
-//     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
+//   const { id } = req.params;
 
-//     try {
-//         const productId = id ? parseInt(id, 10) : undefined;
+//   const {
+//     productType,
+//     categoryId,
+//     brandId,
+//     name,
+//     note,
+//     isActive,
+//     imagesToDelete,
 
-//         const checkExisting = await prisma.products.findFirst({
-//             where: {
-//                 name,
-//                 id: { not: productId }
-//             }
+//     unitId,
+//     baseUnitId,
+//     unitConversions,
+
+//     barcode,
+//     sku,
+//     stockAlert,
+
+//     purchasePrice,
+//     purchasePriceUnitId,
+
+//     retailPrice,
+//     retailPriceUnitId,
+//     wholeSalePrice,
+//     wholeSalePriceUnitId,
+
+//     variantValueIds,
+//     stocks,
+//     updateStock,
+//   } = req.body;
+
+//   const shouldUpdateStock =
+//     updateStock === true ||
+//     updateStock === "true" ||
+//     updateStock === 1 ||
+//     updateStock === "1";
+
+//   const imagePaths = req.files
+//     ? (req.files as Express.Multer.File[]).map((file) =>
+//         file.path.replace(/^public[\\/]/, "")
+//       )
+//     : [];
+
+//   let parsedVariantValueIds: number[] = [];
+//   if (typeof variantValueIds === "string") {
+//     parsedVariantValueIds = JSON.parse(variantValueIds);
+//   } else if (Array.isArray(variantValueIds)) {
+//     parsedVariantValueIds = variantValueIds.map(Number);
+//   }
+
+//   let parsedStocks: { branchId: number; quantity: number }[] = [];
+//   if (shouldUpdateStock) {
+//     if (typeof stocks === "string") {
+//       parsedStocks = JSON.parse(stocks);
+//     } else if (Array.isArray(stocks)) {
+//       parsedStocks = stocks.map((s: any) => ({
+//         branchId: Number(s.branchId),
+//         quantity: Number(s.quantity),
+//       }));
+//     }
+//   }
+
+//   let parsedConversions: {
+//     fromUnitId: number;
+//     toUnitId: number;
+//     multiplier: number;
+//   }[] = [];
+
+//   if (typeof unitConversions === "string") {
+//     parsedConversions = JSON.parse(unitConversions);
+//   } else if (Array.isArray(unitConversions)) {
+//     parsedConversions = unitConversions.map((c: any) => ({
+//       fromUnitId: Number(c.fromUnitId),
+//       toUnitId: Number(c.toUnitId),
+//       multiplier: Number(c.multiplier),
+//     }));
+//   }
+
+//   try {
+//     if (!baseUnitId) {
+//       throw new Error("Base unit is required");
+//     }
+
+//     const parsedBaseUnitId = Number(baseUnitId);
+//     if (isNaN(parsedBaseUnitId)) {
+//       throw new Error("Invalid base unit");
+//     }
+
+//     if (!purchasePriceUnitId) {
+//       throw new Error("Opening cost unit is required");
+//     }
+
+//     if (!retailPriceUnitId) {
+//       throw new Error("Retail price unit is required");
+//     }
+
+//     if (!wholeSalePriceUnitId) {
+//       throw new Error("Wholesale price unit is required");
+//     }
+
+//     const result = await prisma.$transaction(async (tx) => {
+//       const productId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
+
+//       const existingProduct = await tx.products.findFirst({
+//         where: { name, id: { not: productId || 0 } },
+//       });
+
+//       if (existingProduct) {
+//         throw new Error("Product's name must be unique");
+//       }
+
+//       let existingImages: string[] = [];
+//       if (productId) {
+//         const checkProduct = await tx.products.findUnique({
+//           where: { id: productId },
+//         });
+//         if (!checkProduct) throw new Error("Product not found");
+//         existingImages = checkProduct.image || [];
+//       }
+
+//       const parsedImagesToDelete =
+//         typeof imagesToDelete === "string"
+//           ? JSON.parse(imagesToDelete)
+//           : imagesToDelete;
+
+//       if (Array.isArray(parsedImagesToDelete)) {
+//         parsedImagesToDelete.forEach((imagePath: string) => {
+//           const fullPath = `public/${imagePath}`;
+//           if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
 //         });
 
-//         if (checkExisting) {
-//             // If the product name exists, delete uploaded images and return an error
-//             // if (imagePaths) {
-//             //     imagePaths.forEach(imagePath => {
-//             //         const filePath = `public/${imagePath}`;
-//             //         if (fs.existsSync(filePath)) {
-//             //             fs.unlinkSync(filePath); // Delete the uploaded image
-//             //         }
-//             //     });
-//             // }
-//             res.status(400).json({ message: "Product's name must be unique" });
-//             return;
+//         existingImages = existingImages.filter(
+//           (img) => !parsedImagesToDelete.includes(img)
+//         );
+//       }
+
+//       const updatedImages = [...existingImages, ...imagePaths];
+
+//       const productData = {
+//         categoryId: Number(categoryId),
+//         brandId: Number(brandId),
+//         name,
+//         note,
+//         isActive: Number(isActive ?? 1),
+//         image: updatedImages,
+//         updatedAt: currentDate,
+//         updatedBy: req.user?.id || null,
+//       };
+
+//       const product = productId
+//         ? await tx.products.update({
+//             where: { id: productId },
+//             data: productData,
+//           })
+//         : await tx.products.create({
+//             data: {
+//               ...productData,
+//               createdAt: currentDate,
+//               createdBy: req.user?.id || null,
+//             },
+//           });
+
+//       await tx.productUnitConversion.deleteMany({
+//         where: { productId: product.id },
+//       });
+
+//       if (parsedConversions.length > 0) {
+//         if (parsedConversions.some((c) => !c.multiplier || c.multiplier <= 0)) {
+//           throw new Error("UOM multiplier must be > 0");
 //         }
 
-//         if (productId) {
-//             const checkProduct = await prisma.products.findUnique({ where: { id: productId } });
-//             if (!checkProduct) {
-//                 res.status(404).json({ message: "Product not found!" });
-//                 return;
+//         if (parsedConversions.some((c) => c.fromUnitId === c.toUnitId)) {
+//           throw new Error("UOM conversion cannot be same unit");
+//         }
+
+//         await tx.productUnitConversion.createMany({
+//           data: parsedConversions.map((c) => ({
+//             productId: product.id,
+//             fromUnitId: c.fromUnitId,
+//             toUnitId: c.toUnitId,
+//             multiplier: c.multiplier,
+//           })),
+//         });
+//       }
+
+//       const existingVariant = await tx.productVariants.findFirst({
+//         where: { productId: product.id },
+//       });
+
+//       const variantData = {
+//         productId: product.id,
+//         unitId: parsedBaseUnitId,
+//         baseUnitId: parsedBaseUnitId,
+
+//         sku,
+//         stockAlert: Number(stockAlert ?? 0),
+//         barcode,
+//         productType,
+//         name,
+
+//         purchasePrice: Number(purchasePrice ?? 0),
+//         purchasePriceUnitId: Number(purchasePriceUnitId),
+
+//         retailPrice: Number(retailPrice ?? 0),
+//         retailPriceUnitId: Number(retailPriceUnitId),
+
+//         wholeSalePrice: Number(wholeSalePrice ?? 0),
+//         wholeSalePriceUnitId: Number(wholeSalePriceUnitId),
+
+//         image: updatedImages,
+//         updatedAt: currentDate,
+//         updatedBy: req.user?.id || null,
+//       };
+
+//       let variantId: number;
+
+//       try {
+//         if (existingVariant) {
+//           const updatedVariant = await tx.productVariants.update({
+//             where: { id: existingVariant.id },
+//             data: variantData,
+//           });
+//           variantId = updatedVariant.id;
+
+//           await tx.productVariantValues.deleteMany({
+//             where: { productVariantId: variantId },
+//           });
+//         } else {
+//           const newVariant = await tx.productVariants.create({
+//             data: {
+//               ...variantData,
+//               isActive: 1,
+//               createdAt: currentDate,
+//               createdBy: req.user?.id || null,
+//             },
+//           });
+//           variantId = newVariant.id;
+//         }
+//       } catch (error: any) {
+//         if (error.code === "P2002") {
+//           const target = error.meta?.target;
+//           if (target?.includes("sku")) {
+//             throw new Error("SKU already exists for this product type");
+//           }
+//           if (target?.includes("barcode")) {
+//             throw new Error("Barcode already exists for this product type");
+//           }
+//         }
+//         throw error;
+//       }
+
+//       if (parsedVariantValueIds.length > 0) {
+//         await tx.productVariantValues.createMany({
+//           data: parsedVariantValueIds.map((vId) => ({
+//             productVariantId: variantId,
+//             variantValueId: vId,
+//           })),
+//         });
+//       }
+
+//       if (shouldUpdateStock) {
+//         const openingUnitCost = await resolveCostPerBaseUnit(
+//           tx,
+//           product.id,
+//           parsedBaseUnitId,
+//           purchasePrice ?? 0,
+//           purchasePriceUnitId ?? null
+//         );
+
+//         for (const stock of parsedStocks) {
+//           if (!stock.branchId) continue;
+
+//           const branchIdNum = Number(stock.branchId);
+//           const newQty = new Decimal(stock.quantity ?? 0);
+
+//           const existingStock = await tx.stocks.findUnique({
+//             where: {
+//               productVariantId_branchId: {
+//                 productVariantId: variantId,
+//                 branchId: branchIdNum,
+//               },
+//             },
+//           });
+
+//           const oldQty = existingStock?.quantity ?? new Decimal(0);
+//           const diffQty = newQty.minus(oldQty);
+
+//           const note = productId
+//             ? `Product stock adjusted from ${oldQty.toString()} to ${newQty.toString()} from product form: ${name}`
+//             : `Opening stock from product form: ${name}`;
+
+//           if (!existingStock) {
+//             await tx.stocks.create({
+//               data: {
+//                 productVariantId: variantId,
+//                 branchId: branchIdNum,
+//                 quantity: newQty,
+//                 createdBy: req.user?.id || null,
+//                 createdAt: currentDate,
+//                 updatedBy: req.user?.id || null,
+//                 updatedAt: currentDate,
+//               },
+//             });
+
+//             if (newQty.gt(0)) {
+//               await addPositiveAdjustmentLayer({
+//                 tx,
+//                 productVariantId: variantId,
+//                 branchId: branchIdNum,
+//                 qtyToAdd: newQty,
+//                 unitCost: openingUnitCost,
+//                 userId: req.user?.id || null,
+//                 currentDate,
+//                 note,
+//               });
 //             }
 
-//             // Delete old images if the product already has them and new ones are uploaded
-//             // if (checkProduct.image && imagePaths.length > 0) {
-//             //     checkProduct.image.forEach(oldImage => {
-//             //         const oldImagePath = `public/${oldImage}`;
-//             //         if (fs.existsSync(oldImagePath)) {
-//             //             fs.unlinkSync(oldImagePath); // Delete old image file
-//             //         }
-//             //     });
-//             // }
-//         }
+//             continue;
+//           }
 
-//         // Create or Update the product
-//         console.log("backend:", imagePaths);
-//         const product = productId
-//             ? await prisma.products.update({
-//                 where: { id: productId },
-//                 data: {
-//                     categoryId: parseInt(categoryId, 10),
-//                     brandId: parseInt(brandId, 10),
-//                     name,
-//                     note,
-//                     isActive,
-//                     updatedAt: utcNow.toJSDate(),
-//                     image: imagePaths.length > 0 ? imagePaths : undefined // Only set image if imagePaths is not empty
-//                 }
-//             })
-//             : await prisma.products.create({
-//                 data: {
-//                     categoryId: parseInt(categoryId, 10),
-//                     brandId: parseInt(brandId, 10),
-//                     name,
-//                     note,
-//                     isActive,
-//                     createdAt: utcNow.toJSDate(),
-//                     updatedAt: utcNow.toJSDate(),
-//                     image: imagePaths.length > 0 ? imagePaths : undefined // Only set image if imagePaths is not empty
-//                 }
+//           if (diffQty.eq(0)) {
+//             await tx.stocks.update({
+//               where: { id: existingStock.id },
+//               data: {
+//                 updatedBy: req.user?.id || null,
+//                 updatedAt: currentDate,
+//               },
 //             });
-//         res.status(id ? 200 : 201).json(product);
-//     } catch (error) {
-//         const typedError = error as Error;
-//         res.status(500).json({ messsage: typedError.message });
-//     }
+//             continue;
+//           }
+
+//           if (diffQty.gt(0)) {
+//             await tx.stocks.update({
+//               where: { id: existingStock.id },
+//               data: {
+//                 quantity: newQty,
+//                 updatedBy: req.user?.id || null,
+//                 updatedAt: currentDate,
+//               },
+//             });
+
+//             await addPositiveAdjustmentLayer({
+//               tx,
+//               productVariantId: variantId,
+//               branchId: branchIdNum,
+//               qtyToAdd: diffQty,
+//               unitCost: openingUnitCost,
+//               userId: req.user?.id || null,
+//               currentDate,
+//               note,
+//             });
+//           } else {
+//             const reduceQty = diffQty.abs();
+
+//             if (oldQty.lt(reduceQty)) {
+//               throw new Error(`Cannot reduce stock below zero for branch ${branchIdNum}`);
+//             }
+
+//             await consumeFifoForNegativeAdjustment({
+//               tx,
+//               productVariantId: variantId,
+//               branchId: branchIdNum,
+//               qtyToReduce: reduceQty,
+//               userId: req.user?.id || null,
+//               currentDate,
+//               note,
+//             });
+
+//             await tx.stocks.update({
+//               where: { id: existingStock.id },
+//               data: {
+//                 quantity: newQty,
+//                 updatedBy: req.user?.id || null,
+//                 updatedAt: currentDate,
+//               },
+//             });
+//           }
+//         }
+//       }
+
+//       return product;
+//     });
+
+//     res.status(id ? 200 : 201).json(result);
+//   } catch (error: any) {
+//     logger.error("Error upserting product:", error);
+//     res.status(500).json({ message: error.message });
+//   }
 // };
+
+export const upsertProduct = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  const {
+    productType,
+    categoryId,
+    brandId,
+    name,
+    note,
+    isActive,
+    imagesToDelete,
+
+    unitId,
+    baseUnitId,
+    unitConversions,
+
+    barcode,
+    sku,
+    stockAlert,
+
+    purchasePrice,
+    purchasePriceUnitId,
+
+    retailPrice,
+    retailPriceUnitId,
+    wholeSalePrice,
+    wholeSalePriceUnitId,
+
+    variantValueIds,
+    stocks,
+    updateStock,
+
+    trackingType,
+    trackedItems,
+  } = req.body;
+
+  const shouldUpdateStock =
+    updateStock === true ||
+    updateStock === "true" ||
+    updateStock === 1 ||
+    updateStock === "1";
+
+  const parsedTrackingType =
+    trackingType === "ASSET_ONLY" ||
+    trackingType === "MAC_ONLY" ||
+    trackingType === "ASSET_AND_MAC"
+      ? trackingType
+      : "NONE";
+
+  const imagePaths = req.files
+    ? (req.files as Express.Multer.File[]).map((file) =>
+        file.path.replace(/^public[\\/]/, "")
+      )
+    : [];
+
+  let parsedVariantValueIds: number[] = [];
+  if (typeof variantValueIds === "string") {
+    parsedVariantValueIds = JSON.parse(variantValueIds);
+  } else if (Array.isArray(variantValueIds)) {
+    parsedVariantValueIds = variantValueIds.map(Number);
+  }
+
+  let parsedStocks: { branchId: number; quantity: number }[] = [];
+  if (shouldUpdateStock) {
+    if (typeof stocks === "string") {
+      parsedStocks = JSON.parse(stocks);
+    } else if (Array.isArray(stocks)) {
+      parsedStocks = stocks.map((s: any) => ({
+        branchId: Number(s.branchId),
+        quantity: Number(s.quantity),
+      }));
+    }
+  }
+
+  let parsedTrackedItems: {
+    id?: number;
+    branchId: number;
+    assetCode?: string | null;
+    macAddress?: string | null;
+    serialNumber?: string | null;
+  }[] = [];
+
+  if (shouldUpdateStock) {
+    if (typeof trackedItems === "string") {
+      const raw = JSON.parse(trackedItems);
+      parsedTrackedItems = Array.isArray(raw)
+        ? raw.map((x: any) => ({
+            id: x.id ? Number(x.id) : undefined,
+            branchId: Number(x.branchId),
+            assetCode: x.assetCode?.trim() || null,
+            macAddress: x.macAddress || null,
+            serialNumber: x.serialNumber?.trim() || null,
+          }))
+        : [];
+    } else if (Array.isArray(trackedItems)) {
+      parsedTrackedItems = trackedItems.map((x: any) => ({
+        id: x.id ? Number(x.id) : undefined,
+        branchId: Number(x.branchId),
+        assetCode: x.assetCode?.trim() || null,
+        macAddress: x.macAddress || null,
+        serialNumber: x.serialNumber?.trim() || null,
+      }));
+    }
+  }
+
+  let parsedConversions: {
+    fromUnitId: number;
+    toUnitId: number;
+    multiplier: number;
+  }[] = [];
+
+  if (typeof unitConversions === "string") {
+    parsedConversions = JSON.parse(unitConversions);
+  } else if (Array.isArray(unitConversions)) {
+    parsedConversions = unitConversions.map((c: any) => ({
+      fromUnitId: Number(c.fromUnitId),
+      toUnitId: Number(c.toUnitId),
+      multiplier: Number(c.multiplier),
+    }));
+  }
+
+  try {
+    if (!baseUnitId) {
+      throw new Error("Base unit is required");
+    }
+
+    const parsedBaseUnitId = Number(baseUnitId);
+    if (isNaN(parsedBaseUnitId)) {
+      throw new Error("Invalid base unit");
+    }
+
+    if (!purchasePriceUnitId) {
+      throw new Error("Opening cost unit is required");
+    }
+
+    if (!retailPriceUnitId) {
+      throw new Error("Retail price unit is required");
+    }
+
+    if (!wholeSalePriceUnitId) {
+      throw new Error("Wholesale price unit is required");
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const productId = id ? Number(Array.isArray(id) ? id[0] : id) : 0;
+
+      // Block same name + same productType across all products
+      const duplicateVariant = await tx.productVariants.findFirst({
+        where: {
+          productType,
+          productId: { not: productId || 0 },
+          products: { name },
+        },
+      });
+
+      if (duplicateVariant) {
+        throw new Error(`A ${productType} product with this name already exists`);
+      }
+
+      let existingImages: string[] = [];
+      if (productId) {
+        const checkProduct = await tx.products.findUnique({ where: { id: productId } });
+        if (!checkProduct) throw new Error("Product not found");
+        existingImages = checkProduct.image || [];
+      }
+
+      const parsedImagesToDelete =
+        typeof imagesToDelete === "string"
+          ? JSON.parse(imagesToDelete)
+          : imagesToDelete;
+
+      if (Array.isArray(parsedImagesToDelete)) {
+        parsedImagesToDelete.forEach((imagePath: string) => {
+          const fullPath = `public/${imagePath}`;
+          if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+        });
+        existingImages = existingImages.filter(
+          (img) => !parsedImagesToDelete.includes(img)
+        );
+      }
+
+      const updatedImages = [...existingImages, ...imagePaths];
+
+      const productData = {
+        categoryId: Number(categoryId),
+        brandId: Number(brandId),
+        name,
+        note,
+        isActive: Number(isActive ?? 1),
+        image: updatedImages,
+        updatedAt: currentDate,
+        updatedBy: req.user?.id || null,
+      };
+
+      const product = productId
+        ? await tx.products.update({ where: { id: productId }, data: productData })
+        : await tx.products.create({
+            data: { ...productData, createdAt: currentDate, createdBy: req.user?.id || null },
+          });
+
+      await tx.productUnitConversion.deleteMany({ where: { productId: product.id } });
+
+      if (parsedConversions.length > 0) {
+        if (parsedConversions.some((c) => !c.multiplier || c.multiplier <= 0)) {
+          throw new Error("UOM multiplier must be > 0");
+        }
+
+        if (parsedConversions.some((c) => c.fromUnitId === c.toUnitId)) {
+          throw new Error("UOM conversion cannot be same unit");
+        }
+
+        await tx.productUnitConversion.createMany({
+          data: parsedConversions.map((c) => ({
+            productId: product.id,
+            fromUnitId: c.fromUnitId,
+            toUnitId: c.toUnitId,
+            multiplier: c.multiplier,
+          })),
+        });
+      }
+
+      const existingVariant = await tx.productVariants.findFirst({
+        where: { productId: product.id },
+      });
+
+      const variantData = {
+        productId: product.id,
+        unitId: parsedBaseUnitId,
+        baseUnitId: parsedBaseUnitId,
+
+        sku,
+        stockAlert: Number(stockAlert ?? 0),
+        barcode,
+        productType,
+        name,
+
+        purchasePrice: Number(purchasePrice ?? 0),
+        purchasePriceUnitId: Number(purchasePriceUnitId),
+
+        retailPrice: Number(retailPrice ?? 0),
+        retailPriceUnitId: Number(retailPriceUnitId),
+
+        wholeSalePrice: Number(wholeSalePrice ?? 0),
+        wholeSalePriceUnitId: Number(wholeSalePriceUnitId),
+
+        trackingType: parsedTrackingType,
+
+        image: updatedImages,
+        updatedAt: currentDate,
+        updatedBy: req.user?.id || null,
+      };
+
+      let variantId: number;
+
+      try {
+        if (existingVariant) {
+          const updatedVariant = await tx.productVariants.update({
+            where: { id: existingVariant.id },
+            data: variantData,
+          });
+          variantId = updatedVariant.id;
+
+          await tx.productVariantValues.deleteMany({
+            where: { productVariantId: variantId },
+          });
+        } else {
+          const newVariant = await tx.productVariants.create({
+            data: {
+              ...variantData,
+              isActive: 1,
+              createdAt: currentDate,
+              createdBy: req.user?.id || null,
+            },
+          });
+          variantId = newVariant.id;
+        }
+      } catch (error: any) {
+        if (error.code === "P2002") {
+          const target = error.meta?.target;
+          if (target?.includes("sku")) {
+            throw new Error("SKU already exists for this product type");
+          }
+          if (target?.includes("barcode")) {
+            throw new Error("Barcode already exists for this product type");
+          }
+        }
+        throw error;
+      }
+
+      if (parsedVariantValueIds.length > 0) {
+        await tx.productVariantValues.createMany({
+          data: parsedVariantValueIds.map((vId) => ({
+            productVariantId: variantId,
+            variantValueId: vId,
+          })),
+        });
+      }
+
+      if (shouldUpdateStock) {
+        const openingUnitCost = await resolveCostPerBaseUnit(
+          tx,
+          product.id,
+          parsedBaseUnitId,
+          purchasePrice ?? 0,
+          purchasePriceUnitId ?? null
+        );
+
+        let finalParsedStocks = parsedStocks;
+
+        if (parsedTrackingType !== "NONE") {
+          const cleanedTrackedItems = validateTrackedItems(parsedTrackedItems);
+
+          // edit-safe duplicate checks
+          for (const item of cleanedTrackedItems) {
+            if (item.serialNumber) {
+              const existsSerial = await tx.productAssetItem.findFirst({
+                where: {
+                  productVariantId: variantId,
+                  serialNumber: item.serialNumber,
+                  ...(item.id ? { id: { not: item.id } } : {}),
+                },
+              });
+
+              if (existsSerial) {
+                throw new Error(`Serial Number already exists: ${item.serialNumber}`);
+              }
+            }
+
+            if (item.assetCode) {
+              const existsAsset = await tx.productAssetItem.findFirst({
+                where: {
+                  productVariantId: variantId,
+                  assetCode: item.assetCode,
+                  ...(item.id ? { id: { not: item.id } } : {}),
+                },
+              });
+
+              if (existsAsset) {
+                throw new Error(`Asset Code already exists: ${item.assetCode}`);
+              }
+            }
+
+            if (item.macAddress) {
+              const existsMac = await tx.productAssetItem.findFirst({
+                where: {
+                  productVariantId: variantId,
+                  macAddress: normalizeMac(item.macAddress),
+                  ...(item.id ? { id: { not: item.id } } : {}),
+                },
+              });
+
+              if (existsMac) {
+                throw new Error(`MAC Address already exists: ${item.macAddress}`);
+              }
+            }
+          }
+
+          finalParsedStocks = groupTrackedItemsToStocks(cleanedTrackedItems);
+
+          // load current in-stock tracked rows
+          const existingInStockItems = await tx.productAssetItem.findMany({
+            where: {
+              productVariantId: variantId,
+              status: "IN_STOCK",
+            },
+            select: {
+              id: true,
+              branchId: true,
+              assetCode: true,
+              macAddress: true,
+              serialNumber: true,
+            },
+          });
+
+          const submittedIds = new Set(
+            cleanedTrackedItems
+              .filter((x) => x.id)
+              .map((x) => Number(x.id))
+          );
+
+          // update existing rows
+          for (const item of cleanedTrackedItems.filter((x) => x.id)) {
+            await tx.productAssetItem.update({
+              where: { id: Number(item.id) },
+              data: {
+                branchId: item.branchId,
+                assetCode: item.assetCode || undefined,
+                macAddress: normalizeMac(item.macAddress) || undefined,
+                serialNumber: item.serialNumber || undefined,
+                updatedAt: currentDate,
+                updatedBy: req.user?.id || null,
+              },
+            });
+          }
+
+          // create new rows
+          const newRows = cleanedTrackedItems.filter((x) => !x.id);
+
+          if (newRows.length > 0) {
+            await tx.productAssetItem.createMany({
+              data: newRows.map((item) => ({
+                productVariantId: variantId,
+                branchId: item.branchId,
+                assetCode: item.assetCode || null,
+                macAddress: normalizeMac(item.macAddress) || null,
+                serialNumber: item.serialNumber as string,
+                status: "IN_STOCK",
+                sourceType: productId ? "PRODUCT_EDIT" : "OPENING",
+                createdBy: req.user?.id || null,
+                updatedBy: req.user?.id || null,
+                createdAt: currentDate,
+                updatedAt: currentDate,
+              })),
+            });
+          }
+
+          // mark removed rows instead of deleting
+          const rowsToRemove = existingInStockItems.filter(
+            (row) => !submittedIds.has(row.id)
+          );
+
+          for (const row of rowsToRemove) {
+            await tx.productAssetItem.update({
+              where: { id: row.id },
+              data: {
+                status: "REMOVED",
+                updatedAt: currentDate,
+                updatedBy: req.user?.id || null,
+              },
+            });
+          }
+        }
+
+        for (const stock of finalParsedStocks) {
+          if (!stock.branchId) continue;
+
+          const branchIdNum = Number(stock.branchId);
+          const newQty = new Decimal(stock.quantity ?? 0);
+
+          const existingStock = await tx.stocks.findUnique({
+            where: {
+              productVariantId_branchId: {
+                productVariantId: variantId,
+                branchId: branchIdNum,
+              },
+            },
+          });
+
+          const oldQty = existingStock?.quantity ?? new Decimal(0);
+          const diffQty = newQty.minus(oldQty);
+
+          const note = productId
+            ? `Product stock adjusted from ${oldQty.toString()} to ${newQty.toString()} from product form: ${name}`
+            : `Opening stock from product form: ${name}`;
+
+          if (!existingStock) {
+            await tx.stocks.create({
+              data: {
+                productVariantId: variantId,
+                branchId: branchIdNum,
+                quantity: newQty,
+                createdBy: req.user?.id || null,
+                createdAt: currentDate,
+                updatedBy: req.user?.id || null,
+                updatedAt: currentDate,
+              },
+            });
+
+            if (newQty.gt(0)) {
+              await addPositiveAdjustmentLayer({
+                tx,
+                productVariantId: variantId,
+                branchId: branchIdNum,
+                qtyToAdd: newQty,
+                unitCost: openingUnitCost,
+                userId: req.user?.id || null,
+                currentDate,
+                note,
+              });
+            }
+
+            continue;
+          }
+
+          if (diffQty.eq(0)) {
+            await tx.stocks.update({
+              where: { id: existingStock.id },
+              data: {
+                updatedBy: req.user?.id || null,
+                updatedAt: currentDate,
+              },
+            });
+            continue;
+          }
+
+          if (diffQty.gt(0)) {
+            await tx.stocks.update({
+              where: { id: existingStock.id },
+              data: {
+                quantity: newQty,
+                updatedBy: req.user?.id || null,
+                updatedAt: currentDate,
+              },
+            });
+
+            await addPositiveAdjustmentLayer({
+              tx,
+              productVariantId: variantId,
+              branchId: branchIdNum,
+              qtyToAdd: diffQty,
+              unitCost: openingUnitCost,
+              userId: req.user?.id || null,
+              currentDate,
+              note,
+            });
+          } else {
+            const reduceQty = diffQty.abs();
+
+            if (oldQty.lt(reduceQty)) {
+              throw new Error(`Cannot reduce stock below zero for branch ${branchIdNum}`);
+            }
+
+            await consumeFifoForNegativeAdjustment({
+              tx,
+              productVariantId: variantId,
+              branchId: branchIdNum,
+              qtyToReduce: reduceQty,
+              userId: req.user?.id || null,
+              currentDate,
+              note,
+            });
+
+            await tx.stocks.update({
+              where: { id: existingStock.id },
+              data: {
+                quantity: newQty,
+                updatedBy: req.user?.id || null,
+                updatedAt: currentDate,
+              },
+            });
+          }
+        }
+      }
+
+      return product;
+    });
+
+    res.status(id ? 200 : 201).json(result);
+  } catch (error: any) {
+    logger.error("Error upserting product:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 export const getProductById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const product = await prisma.products.findUnique({
-            where: { id: parseInt(id, 10) }
+          where: { id: Number(productId) },
+          include: {
+            unitConversions: true, // ✅ add this
+            productvariants: {
+              include: {
+                productVariantValues: { 
+                  include: { variantValue: true } 
+                },
+                productAssetItems: {
+                  where: {
+                    status: "IN_STOCK",
+                  },
+                  orderBy: [
+                    { branchId: "asc" },
+                    { assetCode: "asc" },
+                    { macAddress: "asc" },
+                  ],
+                },
+                stocks: { include: { branch: true } },
+                purchasePriceUnit: true, // optional
+                baseUnit: true,  // optional
+                units: true      // optional
+              }
+            }
+          }
         });
+
         if (!product) {
             res.status(404).json({ message: "Product not found!" });
             return;
@@ -325,17 +1240,19 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
 
 export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const utcNow = DateTime.now().setZone("Asia/Phnom_Penh").toUTC();
     try {
-        const product = await prisma.products.findUnique({ where: { id: parseInt(id, 10) } });
+        const product = await prisma.products.findUnique({ where: { id: Number(productId) } });
         if (!product) {
             res.status(404).json({ message: "Product not found!" });
             return;
         }
         await prisma.products.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(productId) },
             data: {
-                deletedAt: utcNow.toJSDate()
+                deletedAt: currentDate,
+                deletedBy: req.user ? req.user.id : null
             }
         });
         res.status(200).json(product);
@@ -347,12 +1264,13 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
 };
 
 export const statusProduct = async (req: Request, res: Response): Promise<void> => {
-    const prdouctId = parseInt(req.params.id, 10); // Parse user ID from request params
+    const { id } = req.params;
+    const productId = id ? (Array.isArray(id) ? id[0] : id) : 0;// Parse user ID from request params
 
     try {
         // Find the user by ID
         const user = await prisma.products.findUnique({
-            where: { id: prdouctId },
+            where: { id: Number(productId) },
         });
 
         if (!user) {
@@ -362,13 +1280,13 @@ export const statusProduct = async (req: Request, res: Response): Promise<void> 
 
         // Toggle the user's status
         const updatedProduct = await prisma.products.update({
-            where: { id: prdouctId },
+            where: { id: Number(productId) },
             data: { isActive: user.isActive === 1 ? 0 : 1 },
         });
 
         res.status(200).json(updatedProduct);
     } catch (error) {
-        logger.error("Error toggling user status:", error);
+        logger.error("Error toggling product status:", error);
         const typedError = error as Error; // Type assertion
         res.status(500).json({ message: typedError.message });
     }

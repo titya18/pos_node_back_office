@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "PurchaseOnPayments" ADD COLUMN     "delReason" VARCHAR(2000),
+ADD COLUMN     "deletedAt" TIMESTAMP(3),
+ADD COLUMN     "deletedBy" INTEGER,
+ADD COLUMN     "paymentDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "status" VARCHAR(20);

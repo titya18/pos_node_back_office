@@ -1,10 +1,10 @@
+import { prisma } from "../lib/prisma";
 import { Request, Response } from 'express';
 import { DateTime } from "luxon";
-import { PrismaClient } from '@prisma/client';
-import logger from '../utils/logger';
-import { log } from 'console';
 
-const prisma = new PrismaClient();
+import logger from '../utils/logger';
+import { getQueryNumber, getQueryString } from "../utils/request";
+
 
 export const upsertModule = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; // Extract id from URL parameters
@@ -13,13 +13,13 @@ export const upsertModule = async (req: Request, res: Response): Promise<void> =
 
     try {
         // Parse id to integer if present
-        const moduleId = id ? parseInt(id, 10) : undefined;
+        const moduleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
 
         // Step 1: Fetch the current module if updating
         let currentModulePermissions: string[] = [];
         if (moduleId) {
             const currentModule = await prisma.module.findUnique({
-                where: { id: moduleId },
+                where: { id: Number(moduleId) },
                 include: { permissions: true } // Include associated permissions
             });
 
@@ -36,7 +36,7 @@ export const upsertModule = async (req: Request, res: Response): Promise<void> =
         const existingModule = await prisma.module.findFirst({
             where: {
                 name,
-                id: { not: moduleId } // Exclude the current module from the unique name check
+                id: { not: Number(moduleId) } // Exclude the current module from the unique name check
             }
         });
 
@@ -84,7 +84,7 @@ export const upsertModule = async (req: Request, res: Response): Promise<void> =
         if (moduleId) {
             // Update existing module
             module = await prisma.module.update({
-                where: { id: moduleId },
+                where: { id: Number(moduleId) },
                 data: {
                     name,
                     updatedAt: utcNow.toJSDate(),
@@ -117,13 +117,13 @@ export const upsertModule = async (req: Request, res: Response): Promise<void> =
 };
 
 // Get All Modules
-export const getModules = async (req: Request, res: Response): Promise<void> => {
+export const getAllModulesWithPagination = async (req: Request, res: Response): Promise<void> => {
     try {
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
-        const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString() : "";
-        const sortField = req.query.sortField ? req.query.sortField.toString() : "name";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const sortField = getQueryString(req.query.sortField, "name")!;
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "desc" : "asc";
 
         const skip = (pageNumber - 1) * pageSize;
 
@@ -150,9 +150,27 @@ export const getModules = async (req: Request, res: Response): Promise<void> => 
                 [sortField]: sortOrder as "asc" | "desc", // Dynamic sorting
             },
             take: pageSize,
-            include: { permissions: true }
+            include: { 
+                permissions: true,
+                creator: true,
+                updater: true
+            }
         });
         res.status(200).json({data: modules, total});
+    } catch (error) {
+        logger.error("Error fetching modules:", error);
+        const typedError = error as Error; // Type assertion
+        res.status(500).json({ message: typedError.message });
+    }
+};
+
+// Get All Modules
+export const getAllModules = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const modules = await prisma.module.findMany({
+            include: { permissions: true }
+        });
+        res.status(200).json(modules);
     } catch (error) {
         logger.error("Error fetching modules:", error);
         const typedError = error as Error; // Type assertion
@@ -163,9 +181,10 @@ export const getModules = async (req: Request, res: Response): Promise<void> => 
 // Get Module by ID
 export const getModuleById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const moduleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const module = await prisma.module.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(moduleId) },
             include: { permissions: true }
         });
 
@@ -184,14 +203,26 @@ export const getModuleById = async (req: Request, res: Response): Promise<void> 
 // Delete a Module
 export const deleteModule = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const moduleId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
-        await prisma.module.delete({
-            where: { id: parseInt(id, 10) }
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete all permissions linked to this module
+            await tx.permission.deleteMany({
+                where: { moduleId: Number(moduleId) }
+            });
+
+            // 2. Now delete the module
+            await tx.module.delete({
+                where: { id: Number(moduleId) }
+            });
         });
-        res.status(204).end(); // No content
+
+        res.status(200).json({ message: "Module deleted successfully" });
     } catch (error) {
         logger.error("Error deleting module:", error);
-        const typedError = error as Error; // Type assertion
-        res.status(500).json({ message: typedError.message });
+
+        res.status(500).json({
+            message: (error as Error).message
+        });
     }
 };

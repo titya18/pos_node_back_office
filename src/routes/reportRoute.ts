@@ -1,0 +1,42 @@
+import express from "express";
+import { verifyToken, authorize } from "../middlewares/auth";
+
+import {
+    getAllReportInvoices,
+    getAllCancelReportInvoices,
+    getAllPaymentInvoices,
+    getAllReportQuotations,
+    getAllReportPurchases,
+    getAllPaymentPurchases,
+    getAllReportAdjustments,
+    getAllReportTransfers,
+    getAllReportRequests,
+    getAllReportReturns,
+    getAllReportExpenses,
+    getAllReportIncomes,
+    getAllReportSalesReturns,
+    getDashboardTopSellingProducts,
+    getDashboardLowStockProducts,
+    profitReport
+} from "../controllers/reportController";
+
+const router = express.Router();
+
+router.use(verifyToken);
+router.route("/reportInvoices").get(authorize(["Sale-Report"]), getAllReportInvoices);
+router.route("/reportCancelInvoices").get(authorize(["Cancel-Sale"]), getAllCancelReportInvoices);
+router.route("/reportPaymentInvoices").get(authorize(["Payment-Sale-Report"]), getAllPaymentInvoices);
+router.route("/reportQuotations").get(authorize(["Quotation-Report"]), getAllReportQuotations);
+router.route("/reportPurchases").get(authorize(["Purchase-Report"]), getAllReportPurchases);
+router.route("/reportPaymentPurchases").get(authorize(["Payment-Purchase-Report"]), getAllPaymentPurchases);
+router.route("/reportAdjustments").get(authorize(["Adjustment-Report"]), getAllReportAdjustments);
+router.route("/reportTransfers").get(authorize(["Transfer-Report"]), getAllReportTransfers);
+router.route("/reportRequests").get(authorize(["Request-Report"]), getAllReportRequests);
+router.route("/reportReturns").get(authorize(["Return-Report"]), getAllReportReturns);
+router.route("/reportExpenses").get(authorize(["Expense-Report"]), getAllReportExpenses);
+router.route("/reportIncomes").get(authorize(["Income-Report"]), getAllReportIncomes);
+router.route("/reportSalesReturns").get(authorize(["Sale-Return-Report"]), getAllReportSalesReturns);
+router.route("/dashboardTopSellingProducts").get(getDashboardTopSellingProducts);
+router.route("/dashboardLowStockProducts").get(getDashboardLowStockProducts);
+router.route("/profitReport").get(authorize(["Profit-Report"]), profitReport);
+export default router;

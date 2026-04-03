@@ -4,14 +4,16 @@ import { verifyToken, authorize } from "../middlewares/auth";
 
 import {
     upsertModule,
-    getModules,
+    getAllModulesWithPagination,
+    getAllModules,
     getModuleById,
     deleteModule
 } from "../controllers/module_permissionController";
 
 const router = express.Router();
 
-router.get("/", verifyToken, authorize(["Permission-View"]), getModules);
+router.get("/all", verifyToken, authorize(["Permission-View"]), getAllModules);
+router.get("/", verifyToken, authorize(["Permission-View"]), getAllModulesWithPagination);
 router.get("/:id", verifyToken, authorize(["Permission-View"]), getModuleById);
 router.post("/", verifyToken, authorize(["Permission-Create"]), validateRoleandPermissionRequest, upsertModule);
 router.put("/:id", verifyToken, authorize(["Permission-Edit"]), validateRoleandPermissionRequest, upsertModule);

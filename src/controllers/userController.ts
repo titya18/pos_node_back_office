@@ -1,97 +1,135 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { DateTime } from "luxon";
 import bcrypt from "bcrypt";
 import logger from "../utils/logger";
-import { log } from "console";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import { getQueryNumber, getQueryString } from "../utils/request";
 
-const prisma = new PrismaClient();
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const tz = "Asia/Phnom_Penh";
+const now = dayjs().tz(tz);
+const currentDate = new Date(Date.UTC(now.year(), now.month(), now.date(), now.hour(), now.minute(), now.second()));
 
 export const getAllUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
-        const pageNumber = parseInt(req.query.page ? req.query.page.toString() : "1", 10);
-        const searchTerm = req.query.searchTerm ? req.query.searchTerm.toString() : "";
-        const sortField = req.query.sortField ? req.query.sortField.toString() : "lastName";
-        const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
-        const skip = (pageNumber - 1) * pageSize;
+        const pageSize = getQueryNumber(req.query.pageSize, 10)!;
+        const pageNumber = getQueryNumber(req.query.page, 1)!;
+        const searchTerm = getQueryString(req.query.searchTerm, "")!.trim();
+        const rawSortField = getQueryString(req.query.sortField, "lastName")!;
+        const sortField = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(rawSortField) ? rawSortField : "lastName";
+        const sortOrder = getQueryString(req.query.sortOrder)?.toLowerCase() === "desc" ? "DESC" : "ASC";
+        const offset = (pageNumber - 1) * pageSize;
 
-        const loggedInUser = req.user; // Assuming you have a middleware that attaches the logged-in user to the request
-        // Verify that loggedInUser is defined
+        const loggedInUser = req.user;
         if (!loggedInUser) {
             res.status(401).json({ message: "User is not authenticated." });
             return;
         }
 
-        // Dynamically construct the where condition
-        const whereCondition: any = {};
+        // Base LIKE term
+        const likeTerm = `%${searchTerm}%`;
+        const searchWords = searchTerm.split(/\s+/).filter(Boolean);
 
-        // Apply branchId filter only for USER roleType
+        // Build dynamic search conditions for creator/updater/branch/role names
+        const fullNameConditions = searchWords
+            .map((_, idx) => `
+                (c."firstName" ILIKE $${idx + 2} OR c."lastName" ILIKE $${idx + 2}
+                 OR u."firstName" ILIKE $${idx + 2} OR u."lastName" ILIKE $${idx + 2}
+                 OR br."name" ILIKE $${idx + 2}
+                 OR r."name" ILIKE $${idx + 2})
+            `)
+            .join(" AND ");
+
+        // Parameters: $1 = likeTerm, $2..$n = searchWords, $n+1 = limit, $n+2 = offset
+        const params = [likeTerm, ...searchWords.map(w => `%${w}%`), pageSize, offset];
+
+        // Branch restriction for USER role
+        let branchRestriction = "";
         if (loggedInUser.roleType === "USER" && loggedInUser.branchId) {
-            whereCondition.branchId = loggedInUser.branchId;
+            branchRestriction = `AND u."branchId" = ${loggedInUser.branchId}`;
         }
 
-        if (searchTerm) {
-            whereCondition.name = {
-                contains: searchTerm,
-                mode: "insensitive", // Case-insensitive search
-            }
-        }
+        // ----- 1) COUNT -----
+        const totalResult: any = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) AS total
+            FROM "User" u
+            LEFT JOIN "User" c ON u."createdBy" = c.id
+            LEFT JOIN "User" u2 ON u."updatedBy" = u2.id
+            LEFT JOIN "Branch" br ON u."branchId" = br.id
+            LEFT JOIN "RoleOnUser" ru ON ru."userId" = u.id
+            LEFT JOIN "Role" r ON ru."roleId" = r.id
+            WHERE u."deletedAt" IS NULL
+                ${branchRestriction}
+                AND (
+                    u."firstName" ILIKE $1
+                    OR u."lastName" ILIKE $1
+                    OR u."email" ILIKE $1
+                    OR u."phoneNumber" ILIKE $1
+                    OR TO_CHAR(u."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(u."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(u."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(u."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+                )
+        `, ...params.slice(0, params.length - 2));
 
-        // Get total count of user matching the search term
-        const total = await prisma.user.count({
-            where: whereCondition
-        });
+        const total = parseInt(totalResult[0]?.total ?? 0, 10);
 
-        // Fetch pagination user with sorting and include permission
-        const users = await prisma.user.findMany({
-            where: whereCondition, // Filter based on searchTerm if available
-            skip: skip,
-            orderBy: {
-                [sortField]: sortOrder as "asc" | "desc", // Dynamic sorting
-            },
-            take: pageSize,
-            include: {
-                branch: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                roles: {
-                    select: {
-                        role: {
-                            select: {
-                                id: true,
-                                name: true,  // Select only the fields you need
-                            },
-                        },
-                    },
-                },
-            },
-        });
-        
-        // Step 2: Transform the users' data to fit the UserData and RoleType structure
-        const formattedUsers = users.map((user: any) => ({
-            ...user,  // Spread the rest of the user data (id, email, firstName, etc.)
-            roles: user.roles.map((roleOnUser: any) => ({
-                id: roleOnUser.role.id,  // Extract id from nested role object
-                name: roleOnUser.role.name,  // Extract name from nested role object
-            })),
-        }));
+        // ----- 2) DATA FETCH -----
+        const users: any = await prisma.$queryRawUnsafe(`
+            SELECT u.*,
+                   json_build_object('id', br.id, 'name', br.name) AS branch,
+                   COALESCE(
+                        json_agg(
+                        json_build_object('id', r.id, 'name', r.name)
+                        ) FILTER (WHERE r.id IS NOT NULL),
+                        '[]'
+                   ) AS roles,
+                   json_build_object('id', c.id, 'firstName', c."firstName", 'lastName', c."lastName") AS creator,
+                   json_build_object('id', u2.id, 'firstName', u2."firstName", 'lastName', u2."lastName") AS updater
+            FROM "User" u
+            LEFT JOIN "User" c ON u."createdBy" = c.id
+            LEFT JOIN "User" u2 ON u."updatedBy" = u2.id
+            LEFT JOIN "Branch" br ON u."branchId" = br.id
+            LEFT JOIN "RoleOnUser" ru ON ru."userId" = u.id
+            LEFT JOIN "Role" r ON ru."roleId" = r.id
+            WHERE u."deletedAt" IS NULL
+                ${branchRestriction}
+                AND (
+                    u."firstName" ILIKE $1
+                    OR u."lastName" ILIKE $1
+                    OR u."email" ILIKE $1
+                    OR u."phoneNumber" ILIKE $1
+                    OR TO_CHAR(u."createdAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(u."updatedAt", 'YYYY-MM-DD HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(u."createdAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    OR TO_CHAR(u."updatedAt", 'DD / Mon / YYYY HH24:MI:SS') ILIKE $1
+                    ${fullNameConditions ? `OR (${fullNameConditions})` : ""}
+                )
+            GROUP BY u.id, br.id, c.id, u2.id
+            ORDER BY u."${sortField}" ${sortOrder}
+            LIMIT $${params.length - 1} OFFSET $${params.length}
+        `, ...params);
 
-        res.status(200).json({data: formattedUsers, total});
+        res.status(200).json({ data: users, total });
+
     } catch (error) {
         logger.error("Error fetching users:", error);
-        const typedError = error as Error; // Type assertion
+        const typedError = error as Error;
         res.status(500).json({ message: typedError.message });
     }
 };
 
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         const user = await prisma.user.findUnique({ 
-            where: { id: parseInt(req.params.id, 10) }, 
+            where: { id: Number(userId) }, 
             include: { roles: true }
         });
         if (!user) {
@@ -139,6 +177,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
                 phoneNumber,
                 email,
                 password: hashedPassword,
+                show_pass: password,
                 roleType: userType,
                 status: 1,
                 roles: {
@@ -150,8 +189,9 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
                     //     roleId: roleId,
                     // })),
                 },
-                createdAt: utcNow.toJSDate(),
-                updatedAt: utcNow.toJSDate(),
+                createdAt: currentDate,
+                createdBy: req.user ? req.user.id : null,
+                updatedAt: currentDate,
             },
             include: {
                 roles: {
@@ -172,6 +212,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; // Get user ID from request params
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     const { branchId, firstName, lastName, phoneNumber, email, roleType, password, roleIds } = req.body;
 
     // Convert branchId to an integer if it's provided
@@ -183,7 +224,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     try {
         // Check if the user exists
         const existingUser = await prisma.user.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(userId) },
         });
 
         if (!existingUser) {
@@ -211,17 +252,19 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
             phoneNumber,
             roleType,
             email,
-            updatedAt: utcNow.toJSDate(),
+            updatedAt: currentDate,
+            updatedBy: req.user ? req.user.id : null,
         };
 
         if (password) {
             // Hash the new password if provided
             updateData.password = await bcrypt.hash(password, 10);
+            updateData.show_pass = password;
         }
 
         // Update user and manage role connections
         const updatedUser = await prisma.user.update({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(userId) },
             data: {
                 ...updateData,
                 roles: {
@@ -250,11 +293,11 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; // Get user ID from request params
-
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         // Check if the user exists
         const existingUser = await prisma.user.findUnique({
-            where: { id: parseInt(id, 10) },
+            where: { id: Number(userId) },
         });
 
         if (!existingUser) {
@@ -263,8 +306,12 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
         }
 
         // Delete the user
-        await prisma.user.delete({
-            where: { id: parseInt(id, 10) },
+        await prisma.user.update({
+            where: { id: Number(userId) },
+            data: { 
+                deletedAt: currentDate,
+                deletedBy: req.user ? req.user.id : null
+            }, // Mark the user as deleted by setting the deletedAt timestamp
         });
 
         res.status(200).json({ message: "User deleted successfully" });
@@ -276,12 +323,12 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const statusUser = async (req: Request, res: Response): Promise<void> => {
-    const userId = parseInt(req.params.id, 10); // Parse user ID from request params
-
+    const { id } = req.params;
+    const userId = id ? (Array.isArray(id) ? id[0] : id) : 0;
     try {
         // Find the user by ID
         const user = await prisma.user.findUnique({
-            where: { id: userId },
+            where: { id: Number(userId) },
         });
 
         if (!user) {
@@ -291,8 +338,12 @@ export const statusUser = async (req: Request, res: Response): Promise<void> => 
 
         // Toggle the user's status
         const updatedUser = await prisma.user.update({
-            where: { id: userId },
-            data: { status: user.status === 1 ? 0 : 1 },
+            where: { id: Number(userId) },
+            data: { 
+                status: user.status === 1 ? 0 : 1,
+                updatedAt: currentDate,
+                updatedBy: req.user ? req.user.id : null
+            },
         });
 
         res.status(200).json(updatedUser);

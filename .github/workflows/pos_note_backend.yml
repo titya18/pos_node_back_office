@@ -6,7 +6,7 @@ on:
       - main  # Deploy when code is pushed to 'main'
   pull_request:
     branches:
-      - main  # Deploy when a PR is merged into 'main'
+      - main  # Deploy when a PR is merged into 'main'.
 
 jobs:
   deploy:
@@ -38,7 +38,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@${{ secrets.SERVER_IP }} << 'EOF'
             cd /var/www
             if [ -d "pos_node_back_office" ]; then
-              cd pos_react_front_office
+              cd pos_node_back_office
               git fetch --all  # Fetch all branches
               git reset --hard origin/main  # Discard local changes and force sync with remote
             else
@@ -46,7 +46,7 @@ jobs:
             fi
           EOF
 
-      # Step 5: Rebuild and deploy frontend only
+      # Step 5: Rebuild and deploy frontend only.
       - name: Deploy frontend to VPS
         run: |
           echo "Rebuilding and restarting backend on VPS..."

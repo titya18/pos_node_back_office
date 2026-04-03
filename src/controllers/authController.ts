@@ -2,17 +2,34 @@ import { Request, Response } from "express";
 import { DateTime } from 'luxon';
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "../lib/prisma";
 import logger from "../utils/logger";
 
-const prisma = new PrismaClient();
-
 const setAuthToken = (res: Response, token: string) => {
+    // // My original
+    // res.cookie("auth_token", token, {
+    //     httpOnly: true,
+    //     secure: process.env.NODE_ENV === "production",
+    //     maxAge: 86400000
+    // });
+
+    // // use it when we use https
+    // res.cookie("auth_token", token, {
+    //     httpOnly: true,
+    //     secure: true,
+    //     sameSite: "none",
+    //     path: "/",
+    //     maxAge: 24 * 60 * 60 * 1000,
+    // });
+
     res.cookie("auth_token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        maxAge: 86400000
+        sameSite: "lax",
+        path: "/",
+        maxAge: 86400000,
     });
+
 }
 
 const generateToken = (user: any): string => {
@@ -49,7 +66,6 @@ export const signIn = async(req: Request, res: Response): Promise<void> => {
         }
 
         const token = generateToken(user);
-        console.log("get token", token);
         setAuthToken(res, token);
 
         res.status(200).json({user, token});
